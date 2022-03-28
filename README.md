@@ -1,5 +1,6 @@
 # GTB
-**GTB** (https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/) is a desktop software application for generic raster image processing.
+**GTB** is a desktop software application for generic raster image processing. Precompiled executables (macOS, Linux, MS-Windows) of the 
+application can be downloaded on the project homepage (https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/).
 This repository provides information on the GTB source code:
 
 a) directory: data
