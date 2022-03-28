@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kml xmlns="http://earth.google.com/kml/2.2">
+<Document>
+<name>FAD-GuidosToolbox</name>
+       <description>Example of ground overlay showing fragmentation classes produced by GuidosToolbox:
+	https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/
+	<br></br>
+	<b>Instructions:</b> Please click on FAD-GTB on the left in the 'Places' panel. Then and at the bottom of this panel, click on the transparency icon next to the magnifier icon and use the slider to set the transparency of the image overlay.<br></br>
+	<br><b>Note:</b> For proper display ensure that in <i>Tools</i> -> <i>Options</i>, <i>3D View</i> tab <i>Texture Colors</i> the <i>Compress</i> option is <b>unchecked</b>.</br>
+	</description>
+<ScreenOverlay>
+        <name>Legend</name>
+        <visibility>1</visibility>
+        <Icon>
+         <href>legend.png</href>
+        </Icon>
+	<overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
+        <screenXY x="0" y="1" xunits="fraction" yunits="fraction"/>
+        <rotationXY x="0" y="0" xunits="fraction" yunits="fraction"/>
+        <size x="0" y="0" xunits="fraction" yunits="fraction"/>
+  </ScreenOverlay>
