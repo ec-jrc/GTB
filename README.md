@@ -1,6 +1,5 @@
 # GTB
-**GTB** is a desktop software application for generic raster image processing. Precompiled executables (macOS, Linux, MS-Windows) of the 
-application can be downloaded from the project homepage (https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/).
+**GTB** is a desktop software application for generic raster image processing. Full installation packages, and including precompiled executables (macOS, Linux, MS-Windows) of the application, can be downloaded from the project homepage (https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/).
 
 **Reference:** Vogt P. and Riitters K. (2017). GuidosToolbox: universal digital image object analysis. European Journal of Remote Sensing, 50, 1, pp. 352-361, doi: 10.1080/22797254.2017.1330650
 
