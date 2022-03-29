@@ -1,17 +1,8 @@
 ;;=======================================================================
 ;;=======================================================================
+;; Author(s): Peter Vogt
 ;; Copyright (C) 2000-2022 European Union (Joint Research Centre)
-;;=======================================================================
-;;=======================================================================
-;; AUTHOR:
-;;
-;;       Peter Vogt
-;;       D.1, T.P. 261
-;;       European Commission, JRC
-;;       Via E. Fermi, 2749
-;;       21027 Ispra, ITALY
-;;       E-mail: Peter.Vogt@ec.europa.eu
-;;
+;; 
 ;; This file is part of the GTB software package.
 ;; GTB is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -24,6 +15,7 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with GTB.  If not, see <https://www.gnu.org/licenses/>.
 ;;
+;;=======================================================================
 ;;=======================================================================
 compile_opt idl2
 ;;=======================================================================
