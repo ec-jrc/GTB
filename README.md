@@ -30,7 +30,7 @@ GTB-required directories and files:
 -   *.png: images
 -   *.jpg: images
 -   *.txt: descriptions
--   startGTBterminal.sh: bash-script to launch a terminal session
+-   startGTBterminal.sh: bash-script to launch a terminal session 
 
 d) file: guidostoolbox.pro
 ------
