@@ -6,11 +6,15 @@
 
 This repository provides information on the GTB source code:
 
-a) directory: data
+a) directory: MSPAstandalone
+-----------
+-   location of the OS-specific compiled mspa executable
+
+b) directory: data 
 -----------
 -   input.tif: test image for GTB
 
-b) directory: external_sources
+c) directory: external_sources
 -------
 C-source code of GTB-external programs:
 -   ggeo: https://github.com/ec-jrc/jeolib-miallib/blob/master/core/c/ggeo.c
@@ -20,11 +24,13 @@ C-source code of GTB-external programs:
 -   spatcon: spatcon30Sept2021.c
 -   orig/spatcon: spatcon2July2018.c; older version of spatcon, needed for the GTB-Dominance module
 
-c) directory: guidos_progs
+d) directory: guidos_progs
 ------
 GTB-required directories and files:
--   mspatmp: used for intermediate processing
--   tmp: used for intermediate processing
+-   mspatmp: directory used for intermediate processing
+-   spatcon: directory of the OS-specific compiled executables combineltp, recode, spatcon
+-   spatcon/orig: directory of the OS-specific compiled older spatcon executable
+-   tmp: directory used for intermediate processing
 -   *.pro: IDL-subroutines
 -   *.sav: IDL-settings and colortables
 -   *.png: images
@@ -32,11 +38,11 @@ GTB-required directories and files:
 -   *.txt: descriptions
 -   startGTBterminal.sh: bash-script to launch a terminal session 
 
-d) file: guidostoolbox.pro
+e) file: guidostoolbox.pro
 ------
 -   guidostoolbox.pro: GTB IDL-source code
 
-e) Additional documents of the current GTB-version:
+f) Additional documents of the current GTB-version:
 -----
 -   changelog: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/changelog.txt
 -   GTB Manual: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/GuidosToolbox_Manual.pdf
