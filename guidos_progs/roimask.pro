@@ -4,12 +4,6 @@ FUNCTION ROIMask, $
    Indices=indices, $       ; Outputs the indices inside the ROI
    mask                     ; the output image
 
-IF N_Elements(image) EQ 0 THEN BEGIN
-;; Get an image, if needed.
-   filename = Filepath(Subdir=['examples','data'], 'mr_knee.dcm')
-   image = Read_DICOM(filename)
-ENDIF
-
 ;; Draw ROI's on image. (Use the freehand PENCIL tool, for example.)
 XROI, image, Regions_Out=rois, title=title, /Block
 
