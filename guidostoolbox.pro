@@ -35,13 +35,13 @@ compile_opt idl2
 
 ;; include required subroutines
 @guidos_progs/canny
-@guidos_progs/cgerrormsg ;; David Fanning, unmodified;  AS IS 
-@guidos_progs/cgprogressbar__define ;; David Fanning, unmodified;  AS IS 
+@guidos_progs/cgerrormsg 
+@guidos_progs/cgprogressbar__define 
 @guidos_progs/disp_png
 @guidos_progs/entropy_mspainp
-@guidos_progs/error_message ;; David Fanning, unmodified; OSI
+@guidos_progs/error_message
 @guidos_progs/filter_image
-@guidos_progs/find_boundary ;; David Fanning, unmodified and including my fix; AS IS 
+@guidos_progs/find_boundary  
 @guidos_progs/fmdistg
 @guidos_progs/get_CIparams
 @guidos_progs/get_fad
@@ -57,15 +57,15 @@ compile_opt idl2
 @guidos_progs/get_xset
 @guidos_progs/laplace
 @guidos_progs/roimask 
-@guidos_progs/setdefaultvalue  ;; David Fanning, unmodified;  AS IS
-@guidos_progs/sharpen ;; David Fanning, unmodified; OSI
-@guidos_progs/showprogress__define ;; David Fanning, unmodified; OSI
+@guidos_progs/setdefaultvalue 
+@guidos_progs/sharpen 
+@guidos_progs/showprogress__define 
 @guidos_progs/sigma_filter
-@guidos_progs/tvimage ;; David Fanning, unmodified; OSI
-@guidos_progs/tvread ;; David Fanning, unmodified; OSI
-@guidos_progs/xcontrast_roi ;; David Fanning; old; OSI
+@guidos_progs/tvimage 
+@guidos_progs/tvread 
+@guidos_progs/xcontrast_roi
 @guidos_progs/xmorph_roi
-@guidos_progs/xthreshold_roi ;; David Fanning; old; OSI
+@guidos_progs/xthreshold_roi 
 
 FUNCTION UrlBigFileGetCallbackStatus, status, progress, oProgressbar
   IF progress[0] THEN oProgressbar->Update, 100.0*progress[2]/progress[1]
