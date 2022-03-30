@@ -1,8 +1,10 @@
 ;;=======================================================================
 ;;=======================================================================
-;; Author(s): Peter Vogt
 ;; Copyright (C) 2000-2022 European Union (Joint Research Centre)
-;; 
+;;=======================================================================
+;;=======================================================================
+;; AUTHOR: Peter Vogt
+;;
 ;; This file is part of the GTB software package.
 ;; GTB is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -15,7 +17,14 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with GTB.  If not, see <https://www.gnu.org/licenses/>.
 ;;
-;;=======================================================================
+;; GTB is written in the IDL language, and you must be the legal owner of
+;; an IDL licence to compile the IDL source code. Further information
+;; on the IDL software can be found at: https://www.harrisgeospatial.com.
+;; Alternative to using IDL, feel free to recode the IDL source code 
+;; to the programming language of your choice.
+;;
+;; GTB homepage: https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/
+;;
 ;;=======================================================================
 compile_opt idl2
 ;;=======================================================================
@@ -25,42 +34,38 @@ compile_opt idl2
 ;PREF_SET, 'IDL_DLM_PATH', /DEFAULT ,/COMMIT
 
 ;; include required subroutines
-@guidos_progs/idlffdicomexislicensed ;; may no longer be needed on 8.8.2?
-@guidos_progs/idlffdicomex__define ;; may no longer be needed on 8.8.2?
 @guidos_progs/canny
+@guidos_progs/cgerrormsg ;; David Fanning, unmodified;  AS IS 
+@guidos_progs/cgprogressbar__define ;; David Fanning, unmodified;  AS IS 
 @guidos_progs/disp_png
 @guidos_progs/entropy_mspainp
-@guidos_progs/error_message ;; David Fanning  ;;error_message
+@guidos_progs/error_message ;; David Fanning, unmodified; OSI
 @guidos_progs/filter_image
-@guidos_progs/get_kernel
-@guidos_progs/get_marker
-@guidos_progs/cgerrormsg
-@guidos_progs/find_boundary
+@guidos_progs/find_boundary ;; David Fanning, unmodified and including my fix; AS IS 
 @guidos_progs/fmdistg
-@guidos_progs/get_xset
-@guidos_progs/get_xrecode
-@guidos_progs/get_MSPAparams
-@guidos_progs/get_fad
-@guidos_progs/get_fos
-@guidos_progs/get_fgobj
 @guidos_progs/get_CIparams
-@guidos_progs/laplace
-@guidos_progs/sharpen ;; David Fanning
-@guidos_progs/showprogress__define ;; David Fanning
-@guidos_progs/sigma_filter
-@guidos_progs/tvimage ;; David Fanning
-@guidos_progs/tvread ;; David Fanning
-@guidos_progs/undefine ;; David Fanning
-@guidos_progs/xcontrast_roi ;; David Fanning
-@guidos_progs/xmorph_roi
-@guidos_progs/xthreshold_roi ;; David Fanning
-@guidos_progs/graphic ;;
-@guidos_progs/setdefaultvalue
-@guidos_progs/cgprogressbar__define
-@guidos_progs/roimask  ;; David Fanning
-@guidos_progs/get_roires
+@guidos_progs/get_fad
+@guidos_progs/get_fgobj
+@guidos_progs/get_fos
+@guidos_progs/get_kernel
 @guidos_progs/get_lineres
 @guidos_progs/get_locset
+@guidos_progs/get_marker
+@guidos_progs/get_MSPAparams
+@guidos_progs/get_roires
+@guidos_progs/get_xrecode
+@guidos_progs/get_xset
+@guidos_progs/laplace
+@guidos_progs/roimask 
+@guidos_progs/setdefaultvalue  ;; David Fanning, unmodified;  AS IS
+@guidos_progs/sharpen ;; David Fanning, unmodified; OSI
+@guidos_progs/showprogress__define ;; David Fanning, unmodified; OSI
+@guidos_progs/sigma_filter
+@guidos_progs/tvimage ;; David Fanning, unmodified; OSI
+@guidos_progs/tvread ;; David Fanning, unmodified; OSI
+@guidos_progs/xcontrast_roi ;; David Fanning; old; OSI
+@guidos_progs/xmorph_roi
+@guidos_progs/xthreshold_roi ;; David Fanning; old; OSI
 
 FUNCTION UrlBigFileGetCallbackStatus, status, progress, oProgressbar
   IF progress[0] THEN oProgressbar->Update, 100.0*progress[2]/progress[1]
