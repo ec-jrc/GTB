@@ -18,7 +18,7 @@ c) directory: external_sources
 -------
 C-source code of GTB-external programs:
 -   ggeo: https://github.com/ec-jrc/jeolib-miallib/blob/master/core/c/ggeo.c
--   mspa: https://github.com/ec-jrc/jeolib-miallib/blob/master/core/c/mspa.c; requiring miallib: https://github.com/ec-jrc/jeolib-miallib
+-   fsp: directory with source files and instructions needed to compile GTB/GWB-amended version of mspa requiring miallib: https://github.com/ec-jrc/jeolib-miallib
 -   combinelpt: combinelpt28Sept2021.c
 -   recode: recode28Sept2021.c
 -   spatcon: spatcon30Sept2021.c
