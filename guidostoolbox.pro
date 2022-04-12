@@ -1,8 +1,5 @@
 ;;=======================================================================
 ;;=======================================================================
-;; Copyright (C) 2000-2022 European Union (Joint Research Centre)
-;;=======================================================================
-;;=======================================================================
 ;; AUTHOR: Peter Vogt
 ;;
 ;; This file is part of the GTB software package.
@@ -20,7 +17,7 @@
 ;; GTB is written in the IDL language, and you must be the legal owner of
 ;; an IDL licence to compile the IDL source code. Further information
 ;; on the IDL software can be found at: https://www.harrisgeospatial.com.
-;; Alternative to using IDL, feel free to recode the IDL source code 
+;; Alternative to using IDL, feel free to recode the IDL source code
 ;; to the programming language of your choice.
 ;;
 ;; GTB homepage: https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/
@@ -33,15 +30,18 @@ compile_opt idl2
 ;; and ensure there is no modified IDL_DLM_PATH set because this will be imported into the IDLDE, not a good way; instead set them via the IDL preferences
 ;PREF_SET, 'IDL_DLM_PATH', /DEFAULT ,/COMMIT
 
+;; David Fanning list of programs:
+;; http://www.idlcoyote.com/documents/programs.php#ALPHABETICAL_LIST
+
 ;; include required subroutines
 @guidos_progs/canny
 @guidos_progs/cgerrormsg 
 @guidos_progs/cgprogressbar__define 
 @guidos_progs/disp_png
 @guidos_progs/entropy_mspainp
-@guidos_progs/error_message
+@guidos_progs/error_message
 @guidos_progs/filter_image
-@guidos_progs/find_boundary  
+@guidos_progs/find_boundary
 @guidos_progs/fmdistg
 @guidos_progs/get_CIparams
 @guidos_progs/get_fad
@@ -61,47 +61,17 @@ compile_opt idl2
 @guidos_progs/sharpen 
 @guidos_progs/showprogress__define 
 @guidos_progs/sigma_filter
-@guidos_progs/tvimage 
+@guidos_progs/tvimage
 @guidos_progs/tvread 
 @guidos_progs/xcontrast_roi
 @guidos_progs/xmorph_roi
-@guidos_progs/xthreshold_roi 
+@guidos_progs/xthreshold_roi
 
 FUNCTION UrlBigFileGetCallbackStatus, status, progress, oProgressbar
   IF progress[0] THEN oProgressbar->Update, 100.0*progress[2]/progress[1]
   ;print, 'Check for update: '+status
   return, 1
 END
-
-;;=======================================================================
-;;;; below to define the welcome image
-;READ_JPEG,'/guidos_progs/welcomeBG.jpg',image0, / GRAYSCALE
-;s = size(image0) & window, 8, xs = s(1), ys = s(2) & tv, image0
-;xyouts, 250, 400, 'Welcome to', align = 0.5, color = 0, $
-; / device, charsize = 4, charthick = 3
-;xyouts, 250, 300, 'GUIDOS', align = 0.5, color = 0, $
-; / device, charsize = 6, charthick = 5
-;xyouts, 250, 210, "The GUI for the Detection of" , $
-;align = 0.5, color = 0, / device, charsize = 2, charthick = 2
-;xyouts, 250, 160, "Objects and Shapes", $
-;align = 0.5, color = 0, / device, charsize = 2, charthick = 2
-;xyouts, 250, 150, "'File -> Load data' dropdown menu", $
-;align = 0.5, color = 0, / device, charsize = 2, charthick = 2
-; get screen dump, 2-D on 8-bit display, 3-D on 24-bit displays
-;img = tvrd(0, 0, !D.X_size, !D.Y_size)
-;write_jpeg, '/guidos_progs/welcome.jpg', img
-
-
-;;; the PRI image
-;READ_JPEG,'/guidos_progs/welcomeBG.jpg',$
-;image0, / GRAYSCALE
-;s = size(image0) & window, 8, xs = s(1), ys = s(2) & tv, image0
-;xyouts, 250, 250, 'Reading image, please wait...', align = 0.5, $
-; color = 0, $
-; / device, charsize = 2, charthick = 2
-;;; get screen dump, 2-D on 8-bit display, 3-D on 24-bit displays
-;img = tvrd(0, 0, !D.X_size, !D.Y_size)
-;write_jpeg, '/guidos_progs/welcome_PRI.jpg', img
 
 ;;=======================================================================
 ;;=======================================================================
@@ -188,7 +158,7 @@ imsize = (size(image0))[4] / (1024.0^2)
 IF imsize GT immaxsize THEN BEGIN
    msg = 'Input file too large.' + string(10b) + $
          '(Maximum size: ' + strtrim(round(immaxsize), 2) + ' MB)' + $
-         string(10b) + "Try using: File: Batch Process: MSPA Tiling" + string(10b) + 'Returning...'
+         string(10b) + "Try using: Image Analysis: Pattern: Morphological: MSPA Tiling" + string(10b) + 'Returning...'
    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
    GOTO, fin
 ENDIF
@@ -355,7 +325,7 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
   ;; c) when doing LM
   ;;    we must have at least two different non-zero values
   ;; because we do not want to calculate LM/P23 for a map with only 1, or 2, or 3
-  upv = where(histogram( image0, / l64) GT 0)
+  upv = where(histogram( image0, /l64) GT 0)
   
   if ptype eq 'fad' then begin
     q=where(upv eq 2, ct)
@@ -582,7 +552,7 @@ tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
 freq_missing = max(label_region(tt2, / ulong, all_neighbors = 1))
 
 ;; background area; use fconn2 neighborhood rule
-p = where(image0 EQ 0b OR image0 EQ 100b OR image0 EQ 220b, allbackg)
+p = where(image0 EQ 0b OR image0 EQ 100b OR image0 EQ 220b, allbackg, /l64)
 tt = image0 * 0b & tt(p) = 1b
 tt2 = tt2*0b & tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
 freq_backg = max(label_region(tt2, / ulong, all_neighbors = fconn2))
@@ -599,7 +569,7 @@ d_core_opening = '--' & d_border_opening = '--'
 freq_core_opening = 0 & freq_border_opening = 0
 if tintext eq 1 then begin
   ;; border opening
-  p = where(image0 EQ 220b, d_border_opening)
+  p = where(image0 EQ 220b, d_border_opening, /l64)
   IF d_border_opening NE 0 THEN BEGIN
     tt = image0 * 0b & tt(p) = 1b
     tt2 = tt2*0b & tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
@@ -611,7 +581,7 @@ if tintext eq 1 then begin
   IF strlen(d_border_opening) EQ 4 THEN d_border_opening = ' ' + d_border_opening
 
   ;; core opening
-  p = where(image0 EQ 100b, d_core_opening)
+  p = where(image0 EQ 100b, d_core_opening, /l64)
   IF d_core_opening NE 0 THEN BEGIN
     tt = image0 * 0b & tt(p) = 1b
     tt2 = tt2*0b & tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
@@ -633,7 +603,7 @@ core_opening = ulong64(total(image0 EQ 100b))
 opening = border_opening + core_opening
 
 ;; 1. core - green : data/foreground/frequency
-p = where(image0 EQ 17b OR image0 EQ 117b, d_core) & core_pix = d_core
+p = where(image0 EQ 17b OR image0 EQ 117b, d_core, /l64) & core_pix = d_core
 IF d_core NE 0 THEN BEGIN
    tt = image0 * 0b & tt(p) = 1b
    tt2 = tt2*0b & tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
@@ -645,7 +615,7 @@ f_core = d_core * byforeg
 if cg eq 1 then begin
 ;;===============================================
 ;; additional stats for small and large cores  
-  p = where(image0 EQ 16b OR image0 EQ 116b, d_core_small) & core_pix = core_pix + d_core_small
+  p = where(image0 EQ 16b OR image0 EQ 116b, d_core_small, /l64) & core_pix = core_pix + d_core_small
 IF d_core_small NE 0 THEN BEGIN
   tt = image0 * 0b & tt(p) = 1b
   tt2 = tt2*0b & tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
@@ -654,7 +624,7 @@ ENDIF
 d_core_small = 100.0 / d_area * d_core_small
 f_core_small = d_core_small * byforeg
 
-p = where(image0 EQ 18b OR image0 EQ 118b, d_core_large) & core_pix = core_pix + d_core_large
+p = where(image0 EQ 18b OR image0 EQ 118b, d_core_large, /l64) & core_pix = core_pix + d_core_large
 IF d_core_large NE 0 THEN BEGIN
   tt = image0 * 0b & tt(p) = 1b
   tt2 = tt2*0b & tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
@@ -667,7 +637,7 @@ endif
 
 
 ;; 2. islet - brown
-p = where(image0 EQ 9b OR image0 EQ 109b, d_islet)
+p = where(image0 EQ 9b OR image0 EQ 109b, d_islet, /l64)
 IF d_islet NE 0 THEN BEGIN
    tt = image0 * 0b & tt(p) = 1b
    tt2 = tt2*0b & tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
@@ -678,9 +648,9 @@ f_islet = d_islet * byforeg
 
 
 ;; 3. perforation - blue
-p = where(image0 EQ 5b OR image0 EQ 105b, d_perforated)
-p1 = where(image0 EQ 69b OR image0 EQ 169b, d_p1)
-p2 = where(image0 EQ 37b OR image0 EQ 137b, d_p2)
+p = where(image0 EQ 5b OR image0 EQ 105b, d_perforated, /l64)
+p1 = where(image0 EQ 69b OR image0 EQ 169b, d_p1, /l64)
+p2 = where(image0 EQ 37b OR image0 EQ 137b, d_p2, /l64)
 d_perforated = d_perforated + d_p1 + d_p2 & perf_pix = d_perforated
 IF d_perforated NE 0 THEN BEGIN ;; we have perforations
    tt = image0 * 0b & tt(p) = 1b
@@ -694,9 +664,9 @@ f_perforated = d_perforated * byforeg
 
 
 ;; 4. edge - black
-p = where(image0 EQ 3b OR image0 EQ 103b, d_edge)
-p1 = where(image0 EQ 67b OR image0 EQ 167b, d_e1)
-p2 = where(image0 EQ 35b OR image0 EQ 135b, d_e2)
+p = where(image0 EQ 3b OR image0 EQ 103b, d_edge, /l64)
+p1 = where(image0 EQ 67b OR image0 EQ 167b, d_e1, /l64)
+p2 = where(image0 EQ 35b OR image0 EQ 135b, d_e2, /l64)
 d_edge = d_edge + d_e1 + d_e2 & edge_pix = d_edge
 IF d_edge NE 0 THEN BEGIN
    tt = image0 * 0b & tt(p) = 1b
@@ -710,7 +680,7 @@ f_edge = d_edge * byforeg
 
 
 ;; 5. loop - yellow
-p1 =  where(image0 EQ 65b OR image0 EQ 165b, d_loop)
+p1 =  where(image0 EQ 65b OR image0 EQ 165b, d_loop, /l64)
 d_loop = 100.0 / d_area * d_loop
 f_loop = d_loop * byforeg
 IF d_loop GT 0 THEN BEGIN
@@ -722,7 +692,7 @@ ENDIF
 
 
 ;; 6. bridge - red
-p1 =  where(image0 EQ 33b OR image0 EQ 133b, d_bridge)
+p1 =  where(image0 EQ 33b OR image0 EQ 133b, d_bridge, /l64)
 d_bridge = 100.0 / d_area * d_bridge
 f_bridge = d_bridge * byforeg
 IF d_bridge GT 0 THEN BEGIN
@@ -734,7 +704,7 @@ ENDIF
 
 
 ;; 7. branch - orange
-p = where(image0 EQ 1b OR image0 EQ 101b, d_branch)
+p = where(image0 EQ 1b OR image0 EQ 101b, d_branch, /l64)
 IF d_branch NE 0 THEN BEGIN
    tt = image0 * 0b & tt(p) = 1b
    tt2 = tt2*0b & tt2(3:sz(1)+2, 3:sz(2)+2) = temporary(tt)
@@ -2082,12 +2052,12 @@ CASE strlowCase(eventValue) OF
               restore, info.dir_tmp + 'customLCP.sav'
               ;; assign resistance image: FG-1, BG- BG-resist, missing=blocking! image0 = resistance map
               image0 = *info.extra & sz = size(image0)
-              qm = where(image0 EQ 0b, ctqm) ;; missing pixels in original dimensions
+              qm = where(image0 EQ 0b, ctqm, /l64) ;; missing pixels in original dimensions
               image0 = (image0 EQ 2b) * 150b ;; set FG-objects to gray
                             
               resist = *info.extra 
               ;; reassign resistance image: FG-1 for cost analysis
-              q = where(resist eq 2b) & resist[q] = 1b & q = 0
+              q = where(resist eq 2b, /l64) & resist[q] = 1b & q = 0
                            
               tenlinkslength = intarr(2)
               progressBar -> Update, 3
@@ -2141,7 +2111,7 @@ CASE strlowCase(eventValue) OF
               ext = temporary(ext)*0b + 3b
               ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = marker
               ;; use start object only
-              q2b = where(ext eq 2b, ct_q2b)
+              q2b = where(ext eq 2b, ct_q2b, /l64)
               if ct_q2b gt 0 then ext(q2b) = 0b
               write_tiff,'marker1.tif', ext, compression=1
 
@@ -2149,7 +2119,7 @@ CASE strlowCase(eventValue) OF
               ext = temporary(ext)*0b + 3b
               ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = marker
               ;; use target object only
-              q1b = where(ext eq 1b,ct_q1b)
+              q1b = where(ext eq 1b,ct_q1b, /l64)
               if ct_q1b gt 0 then ext(q1b) = 0b
               if ct_q2b gt 0 then ext(q2b) = 1b
               write_tiff,'marker2.tif', ext, compression=1
@@ -2161,7 +2131,7 @@ CASE strlowCase(eventValue) OF
 
               
               ;; get markers in normal dimensions
-              q1b = where(marker eq 1b) & q2b = where(marker eq 2b) & marker = 0            
+              q1b = where(marker eq 1b, /l64) & q2b = where(marker eq 2b, /l64) & marker = 0            
               progressBar -> Update, 10
              
               IF info.my_os EQ 'windows' THEN spawn, 'ggeo.exe', log, / hide ELSE spawn, './ggeo', log
@@ -2190,7 +2160,7 @@ CASE strlowCase(eventValue) OF
               lcp = read_tiff('lcp.tif')
               lcp = lcp[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1]
               ;; get location of restore pixels
-              lcp = where(lcp gt 0b, ct_lcp)
+              lcp = where(lcp gt 0b, ct_lcp, /l64)
               
               ;; set up cost image for display, range 0-100 cost, objects 101, missing 102, lcp 103
               ;; convert ulong to long 32
@@ -2217,7 +2187,7 @@ CASE strlowCase(eventValue) OF
               
               lbl_comp= * info.nw_ids
               h_comp_area = * info.nw_hnw             
-              path = lbl_comp[lcp] & rp = where(path eq 0, restpix) & tenlinkslength[1] = restpix
+              path = lbl_comp[lcp] & rp = where(path eq 0, restpix, /l64) & tenlinkslength[1] = restpix
 
               ;; get accumulated cost of those restore pixels
               ;; use the sum of the resitance values of the restore pixels along the LCP
@@ -3017,7 +2987,7 @@ CASE strlowCase(eventValue) OF
    'thresholding':  BEGIN
       image0 = * info.fr_image
       ;; check if threshold has already been applied before
-      q = where(image0 gt 0b and image0 lt 255b, ct)
+      q = where(image0 gt 0b and image0 lt 255b, ct, /l64)
       IF ct EQ 0 THEN BEGIN
          mess = 'Thresholding was already applied and can only '
          mess = mess + 'be performed once.' + string(10b) + $
@@ -3257,7 +3227,7 @@ CASE strlowCase(eventValue) OF
 ;      if info.is_cost gt 0 then begin
 ;        upv = 'not available for cost analysis'
 ;      endif else begin
-        q = where(histogram( arr, / l64, min=mi) GT 0, nr_upv)
+        q = where(histogram( arr, /l64, min=mi) GT 0, nr_upv)
         upv = strtrim(q(0)+mi, 2)
         IF nr_upv GT 0 THEN FOR i = 1, n_elements(q) - 1 DO $
           upv = upv + ', ' + strtrim(q(i)+mi, 2)
@@ -3393,7 +3363,7 @@ CASE strlowCase(eventValue) OF
       image0 = * info.fr_image & s = size(image0)
       IF s[0] EQ 3 THEN BEGIN ;; 3-dim image
          IF s[1] EQ 3 THEN BEGIN ;; 3 band image
-            dim_pos = where(s EQ 3) & dim_pos = dim_pos(1)
+            dim_pos = where(s EQ 3, /l64) & dim_pos = dim_pos(1)
             ;;remap true color images
             image0 = color_quan(image0, dim_pos, r, g, b, / map_all)
             tvlct, r, g, b & info.disp_colors_id = 12 & info.ctbl = - 1
@@ -3466,7 +3436,7 @@ CASE strlowCase(eventValue) OF
       
       lc_recode:
       tmp = * info.fr_image
-      q = where(histogram(tmp, / l64) GT 0, ct) & upv = byte(transpose([[q],[q]]))
+      q = where(histogram(tmp, /l64) GT 0, ct) & upv = byte(transpose([[q],[q]]))
       cancel = ptr_new(1b) & seltab = ptr_new(1b)
       IF eventValue EQ 'cost_recode' THEN tit = 'Recode: Class -> resistance' else tit = "Recode class values"
       ;; get the selected mapping
@@ -3486,7 +3456,7 @@ CASE strlowCase(eventValue) OF
       ;; check if settings are ok for lc_recode
       IF eventValue EQ 'cost_recode' THEN BEGIN
         tt = reform(psel[0,*]) & msg = ''
-        q = where(tt eq 1b, ctq1) & q = where(tt eq 2b, ctq2) & q = where(tt GT 100b, ctq3)
+        q = where(tt eq 1b, ctq1, /l64) & q = where(tt eq 2b, ctq2, /l64) & q = where(tt GT 100b, ctq3, /l64)
         tit = 'Restoration Planner Setup: assign land cover class specific resistance'
         IF ctq1 GT 0 AND ctq3 GT 0 THEN BEGIN
           msg = 'Resistance values of 1 or larger than 100 are not allowed.'
@@ -3686,7 +3656,7 @@ CASE strlowCase(eventValue) OF
        q = Size(image0, /Dimensions) & ydim = strtrim(q[1],2)
        tit = 'Define ROIs & quit window when done. NOTE: area/length measures are approximate.'
        mask = ROIMask(image0, title=tit, Indices=roiIndices)
-       roi = where(mask eq 1b, ct_roi)
+       roi = where(mask eq 1b, ct_roi, /l64)
        if ct_roi eq 0 then GOTO, fin ;; nothing defined
 
        ;; let the user assign a resistance value for all those rois defined earlier
@@ -3743,7 +3713,7 @@ CASE strlowCase(eventValue) OF
        q = Size(image0, /Dimensions) & ydim = strtrim(q[1],2)
        tit = 'Define ROIs & quit window when done. NOTE: area/length measures are approximate.'
        mask = ROIMask(image0, title=tit, Indices=roiIndices)
-       roi = where(mask eq 1b, ct_roi)
+       roi = where(mask eq 1b, ct_roi, /l64)
        if ct_roi eq 0 then GOTO, fin ;; nothing defined
 
        ;; let the user assign a new value for all those rois defined earlier
@@ -3853,7 +3823,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       ;; we need at least 3 different values else there is no point doing this
-      q = where(histogram( * info.fr_image, / l64) GT 0, ct)
+      q = where(histogram( * info.fr_image, /l64) GT 0, ct)
       IF n_elements(q) LT 3 THEN BEGIN
          mess = 'Image has less than 3 uniq values.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
@@ -3916,7 +3886,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       ;; we need at least 3 different values else there is no point doing this
-      q = where(histogram( * info.fr_image, / l64) GT 0, ct)
+      q = where(histogram( * info.fr_image, /l64) GT 0, ct)
       IF n_elements(q) LT 3 THEN BEGIN
          mess = 'Image has less than 3 uniq values.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
@@ -3940,12 +3910,12 @@ CASE strlowCase(eventValue) OF
          mi = byte(xc_min) & str_mi = strtrim(fix(xc_min),2)
          ma = byte(xc_max) & str_ma = strtrim(fix(xc_max) - 1, 2)
          tt = ['Missing (0b)', 'BG (1b)', 'FG (2b)'] & tt = tt(mask)
-         tmp = * info.process & q = where(tmp GE mi AND tmp LT ma, ct)
+         tmp = * info.process & q = where(tmp GE mi AND tmp LT ma, ct, /l64)
          IF ct GT 0 THEN BEGIN
             tmp(q) = mask & * info.process = temporary(tmp)
          ENDIF
          ;; apply to fullres
-         tmp = * info.fr_image & q = where(tmp GE mi AND tmp LT ma, ct)
+         tmp = * info.fr_image & q = where(tmp GE mi AND tmp LT ma, ct, /l64)
          IF ct GT 0 THEN BEGIN
             tmp(q) = mask & * info.fr_image = temporary(tmp)
             info.autostretch_id = 1
@@ -3986,7 +3956,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q = where(histogram(tmp, / l64) GT 0, ct) & upv = strtrim(q, 2) & selpix = upv(0)
+      q = where(histogram(tmp, /l64) GT 0, ct) & upv = strtrim(q, 2) & selpix = upv(0)
       target = ['Foreground (2b)', 'Background (1b)', 'Missing (0b)'] & seltarg = target(0)
       cancel = ptr_new(1b) & selpix = ptr_new(selpix) & seltarg = ptr_new(seltarg)
       ;; get the selected mapping
@@ -4023,7 +3993,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q2 = where(tmp EQ 2b, ct2) & q1 = where(tmp EQ 1b, ct1)
+      q2 = where(tmp EQ 2b, ct2, /l64) & q1 = where(tmp EQ 1b, ct1, /l64)
       IF ct2 GT 0 THEN tmp(q2) = 1b & q2 = 0b
       IF ct1 GT 0 THEN tmp(q1) = 2b & q1 = 0b
       * info.fr_image = temporary(tmp) & info.add_title = ' (Invert FG/BG)'
@@ -4042,7 +4012,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q2 = where(tmp EQ 2b, ct2) & q0 = where(tmp EQ 0b, ct0)
+      q2 = where(tmp EQ 2b, ct2, /l64) & q0 = where(tmp EQ 0b, ct0, /l64)
       IF ct2 GT 0 THEN tmp(q2) = 0b & q2 = 0b
       IF ct0 GT 0 THEN tmp(q0) = 2b & q0 = 0b
       * info.fr_image = temporary(tmp) & info.add_title = ' (Invert FG/Missing)'
@@ -4061,7 +4031,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q1 = where(tmp EQ 1b, ct1) & q0 = where(tmp EQ 0b, ct0)
+      q1 = where(tmp EQ 1b, ct1, /l64) & q0 = where(tmp EQ 0b, ct0, /l64)
       IF ct1 GT 0 THEN tmp(q1) = 0b & q1 = 0b
       IF ct0 GT 0 THEN tmp(q0) = 1b & q0 = 0b
       * info.fr_image = temporary(tmp) & info.add_title = ' (Invert BG/Missing)'
@@ -4080,7 +4050,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q = where(tmp EQ 2b, ctq)
+      q = where(tmp EQ 2b, ctq, /l64)
       IF ctq GT 0 THEN BEGIN
          tmp(q) = 0b & * info.fr_image = temporary(tmp)
          info.add_title = ' (2b -> Missing (0b))'
@@ -4105,7 +4075,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q = where(tmp EQ 2b, ctq)
+      q = where(tmp EQ 2b, ctq, /l64)
       IF ctq GT 0 THEN BEGIN
          tmp(q) = 1b & * info.fr_image = temporary(tmp)
          info.add_title = ' (2b -> BG (1b))'
@@ -4130,7 +4100,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q = where(tmp EQ 1b, ctq)
+      q = where(tmp EQ 1b, ctq, /l64)
       IF ctq GT 0 THEN BEGIN
          tmp(q) = 0b & * info.fr_image = temporary(tmp)
          info.add_title = ' (1b -> Missing (0b))'
@@ -4155,7 +4125,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q = where(tmp EQ 1b, ctq)
+      q = where(tmp EQ 1b, ctq, /l64)
       IF ctq GT 0 THEN BEGIN
          tmp(q) = 2b & * info.fr_image = temporary(tmp)
          info.add_title = ' (1b -> FG (2b))'
@@ -4180,7 +4150,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q = where(tmp EQ 0b, ctq)
+      q = where(tmp EQ 0b, ctq, /l64)
       IF ctq GT 0 THEN BEGIN
          tmp(q) = 1b & * info.fr_image = temporary(tmp)
          info.add_title = ' (0b -> BG (1b))'
@@ -4205,7 +4175,7 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
-      q = where(tmp EQ 0b, ctq)
+      q = where(tmp EQ 0b, ctq, /l64)
       IF ctq GT 0 THEN BEGIN
          tmp(q) = 2b & * info.fr_image = temporary(tmp)
          info.add_title = ' (0b -> FG (2b))'
@@ -4627,8 +4597,8 @@ CASE strlowCase(eventValue) OF
       
       widget_control, / hourglass
       ;; image properties
-      qmiss = where(image0 eq 0b,ctmiss) & q3b = where(image0 eq 3b, ct3b) & q4b = where(image0 eq 4b, ct4b) 
-      BGmask = where(image0 EQ 1b) & FGmask = where(image0 eq 2b, /l64, fgarea)
+      qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64) 
+      BGmask = where(image0 EQ 1b, /l64) & FGmask = where(image0 eq 2b, /l64, fgarea)
       
       ;; get average patch size and # of patches
       ext1 = lonarr(sz[0] + 2, sz[1] + 2)
@@ -4660,7 +4630,7 @@ CASE strlowCase(eventValue) OF
           ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
           ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
           ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-          q = where(im eq 255b, ct)
+          q = where(im eq 255b, ct, /l64)
           im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
           im = byte(round(temporary(im) * 100.0))
           if ct gt 0 then im[q] = 100b
@@ -5085,8 +5055,8 @@ CASE strlowCase(eventValue) OF
        file_mkdir, outdir
 
        ;; image properties
-       qmiss = where(image0 eq 0b,ctmiss) & q3b = where(image0 eq 3b, ct3b) & q4b = where(image0 eq 4b, ct4b) 
-       BGmask = where(image0 EQ 1b) & FGmask = where(image0 eq 2b, /l64, fgarea)
+       qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64) 
+       BGmask = where(image0 EQ 1b, /l64) & FGmask = where(image0 eq 2b, /l64, fgarea)
        
        ;; get average patch size and # of patches
        ext1 = lonarr(sz[0] + 2, sz[1] + 2)
@@ -5098,7 +5068,7 @@ CASE strlowCase(eventValue) OF
       
        ;; label FG only
        ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
-       if fadg eq 'FAD-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
+       if fadg eq 'FAD-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
        obj_last=max(ext1) & ext1=0
        aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
        z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81      
@@ -5127,7 +5097,7 @@ CASE strlowCase(eventValue) OF
            ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
            ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
            ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-           q = where(im eq 255b, ct)
+           q = where(im eq 255b, ct, /l64)
            im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
            im = byte(round(temporary(im) * 100.0))
            if ct gt 0 then im[q] = 100b
@@ -5510,8 +5480,8 @@ CASE strlowCase(eventValue) OF
 
      
      ;; image properties
-     qmiss = where(image0 eq 0b,ctmiss) & q3b = where(image0 eq 3b, ct3b) & q4b = where(image0 eq 4b, ct4b)
-     BGmask = where(image0 EQ 1b) & qFG = where(image0 eq 2b, /l64, fgarea) & fad_av = -1.0
+     qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
+     BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea) & fad_av = -1.0
 
      ;; get average patch size and # of patches
      ext1 = lonarr(sz[0] + 2, sz[1] + 2)
@@ -5519,8 +5489,8 @@ CASE strlowCase(eventValue) OF
      IF info.mspa_param1_id EQ 1b THEN conn8 = 1 ELSE conn8 = 0
      ;; label FG only
      ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
-     obj_area = histogram(ext1, / l64) 
-     if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
+     obj_area = histogram(ext1, /l64) 
+     if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
      obj_last=max(ext1) & ext1=0
      aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
      z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
@@ -5535,7 +5505,7 @@ CASE strlowCase(eventValue) OF
        ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
        ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
        ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-       q = where(im eq 255b, ct)
+       q = where(im eq 255b, ct, /l64)
        im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
        im = byte(round(temporary(im) * 100.0))
        if ct gt 0 then im[q] = 100b
@@ -5878,8 +5848,8 @@ CASE strlowCase(eventValue) OF
        widget_control, / hourglass
   
        ;; image properties
-       qmiss = where(image0 eq 0b,ctmiss) & q3b = where(image0 eq 3b, ct3b) & q4b = where(image0 eq 4b, ct4b)
-       BGmask = where(image0 EQ 1b) & qFG = where(image0 eq 2b, /l64, fgarea) & fad_av = -1.0
+       qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
+       BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea) & fad_av = -1.0
 
        ;; get average patch size and # of patches
        ext1 = lonarr(sz[0] + 2, sz[1] + 2)
@@ -5901,7 +5871,7 @@ CASE strlowCase(eventValue) OF
          ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
          ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
          ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-         q = where(im eq 255b, ct)
+         q = where(im eq 255b, ct, /l64)
          im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
          im = byte(round(temporary(im) * 100.0))
          if ct gt 0 then im[q] = 100b
@@ -6154,7 +6124,7 @@ CASE strlowCase(eventValue) OF
         GOTO, fin
       ENDIF
       kdim = * selected_kernel & kdim = (size(kdim))[1]
-      qmiss = where(image0 eq 0b,ctmiss)
+      qmiss = where(image0 eq 0b,ctmiss, /l64)
       
       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
       IF kdim ge imgminsize THEN BEGIN
@@ -6164,7 +6134,7 @@ CASE strlowCase(eventValue) OF
       ENDIF
 
       widget_control, / hourglass
-      BGmask = where(image0 EQ 1b) 
+      BGmask = where(image0 EQ 1b, /l64) 
       spatcon, image0, kdim, 'p2', info.dir_tmp, info.my_os, info.resfloat, im
       
       ;; rescale to normalized byte range
@@ -6172,14 +6142,14 @@ CASE strlowCase(eventValue) OF
         ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
         ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
         ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels  
-        q = where(im eq 255b, ct)
+        q = where(im eq 255b, ct, /l64)
         im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
         im = byte(round(temporary(im) * 100.0))
         if ct gt 0 then im[q] = 100b
       endif else begin
         im = byte(round(im*100.0))
       endelse
-      imtmp = im & px_mask = where(imtmp ge 0b)
+      imtmp = im & px_mask = where(imtmp ge 0b, /l64)
      
       ;; start with a background color image
       im = imtmp *0b +101b        
@@ -6368,7 +6338,7 @@ CASE strlowCase(eventValue) OF
 
         ;; now all is ok for processing
         time0 = systime( / sec)
-        qmiss = where(image0 eq 0b,ctmiss) & BGmask = where(image0 EQ 1b)
+        qmiss = where(image0 eq 0b,ctmiss, /l64) & BGmask = where(image0 EQ 1b, /l64)
         widget_control, / hourglass
         spatcon, image0, kdim, 'p2', info.dir_tmp, info.my_os, info.resfloat, im
 
@@ -6377,7 +6347,7 @@ CASE strlowCase(eventValue) OF
          ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
          ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
          ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels  
-         q = where(im eq 255b, ct)
+         q = where(im eq 255b, ct, /l64)
          im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
          im = byte(round(temporary(im) * 100.0))
          if ct gt 0 then im[q] = 100b
@@ -6498,7 +6468,7 @@ CASE strlowCase(eventValue) OF
         GOTO, fin
       ENDIF
       kdim = * selected_kernel & kdim = (size(kdim))[1]
-      qmiss = where(image0 eq 0b,ctmiss)
+      qmiss = where(image0 eq 0b,ctmiss, /l64)
       
       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
       IF kdim ge imgminsize THEN BEGIN
@@ -6508,7 +6478,7 @@ CASE strlowCase(eventValue) OF
       ENDIF
  
       widget_control, / hourglass
-      BGmask = where(image0 EQ 1b)
+      BGmask = where(image0 EQ 1b, /l64)
       spatcon, image0, kdim, 'p22', info.dir_tmp, info.my_os, info.resfloat, im
 
       ;; rescale to normalized byte range
@@ -6516,14 +6486,14 @@ CASE strlowCase(eventValue) OF
         ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
         ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
         ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-        q = where(im eq 255b, ct)
+        q = where(im eq 255b, ct, /l64)
         im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
         im = byte(round(temporary(im) * 100.0))
         if ct gt 0 then im[q] = 100b
       endif else begin
         im = byte(round(im*100.0))
       endelse
-      imtmp = im & px_mask = where(imtmp ge 0b)
+      imtmp = im & px_mask = where(imtmp ge 0b, /l64)
 
       ;; start with a background color image
       im = imtmp *0b +101b
@@ -6714,7 +6684,7 @@ CASE strlowCase(eventValue) OF
 
         ;; now all is ok for processing
         time0 = systime( / sec)
-        qmiss = where(image0 eq 0b,ctmiss) & BGmask = where(image0 EQ 1b)
+        qmiss = where(image0 eq 0b,ctmiss, /l64) & BGmask = where(image0 EQ 1b, /l64)
         widget_control, / hourglass
 
         spatcon, image0, kdim, 'p22', info.dir_tmp, info.my_os, info.resfloat, im
@@ -6724,7 +6694,7 @@ CASE strlowCase(eventValue) OF
           ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
           ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
           ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-          q = where(im eq 255b, ct)
+          q = where(im eq 255b, ct, /l64)
           im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
           im = byte(round(temporary(im) * 100.0))
           if ct gt 0 then im[q] = 100b
@@ -6843,7 +6813,7 @@ CASE strlowCase(eventValue) OF
         GOTO, fin
       ENDIF
       kdim = * selected_kernel & kdim = (size(kdim))[1]
-      qmiss = where(image0 eq 0b,ctmiss)
+      qmiss = where(image0 eq 0b,ctmiss, /l64)
       
       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
       IF kdim ge imgminsize THEN BEGIN
@@ -6853,7 +6823,7 @@ CASE strlowCase(eventValue) OF
       ENDIF
 
       widget_control, / hourglass
-      BGmask = where(image0 EQ 1b)
+      BGmask = where(image0 EQ 1b, /l64)
       spatcon, image0, kdim, 'p23', info.dir_tmp, info.my_os, info.resfloat, im
 
       ;; rescale to normalized byte range
@@ -6861,14 +6831,14 @@ CASE strlowCase(eventValue) OF
         ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
         ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
         ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-        q = where(im eq 255b, ct)
+        q = where(im eq 255b, ct, /l64)
         im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
         im = byte(round(temporary(im) * 100.0))
         if ct gt 0 then im[q] = 100b
       endif else begin
         im = byte(round(im*100.0))
       endelse
-      imtmp = im & px_mask = where(imtmp ge 0b)
+      imtmp = im & px_mask = where(imtmp ge 0b, /l64)
 
       ;; start with a background color image
       im = imtmp *0b +101b
@@ -7054,7 +7024,7 @@ CASE strlowCase(eventValue) OF
 
         ;; now all is ok for processing
         time0 = systime( / sec)
-        qmiss = where(image0 eq 0b,ctmiss) & BGmask = where(image0 EQ 1b)
+        qmiss = where(image0 eq 0b,ctmiss, /l64) & BGmask = where(image0 EQ 1b, /l64)
         widget_control, / hourglass
 
         spatcon, image0, kdim, 'p23', info.dir_tmp, info.my_os, info.resfloat, im
@@ -7064,7 +7034,7 @@ CASE strlowCase(eventValue) OF
           ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
           ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
           ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-          q = where(im eq 255b, ct)
+          q = where(im eq 255b, ct, /l64)
           im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
           im = byte(round(temporary(im) * 100.0))
           if ct gt 0 then im[q] = 100b
@@ -7426,7 +7396,7 @@ CASE strlowCase(eventValue) OF
        GOTO, fin
      ENDIF
      kdim = * selected_kernel & kdim = (size(kdim))[1]
-     qmiss = where(image0 eq 0b,ctmiss) 
+     qmiss = where(image0 eq 0b,ctmiss, /l64) 
      
      q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
      IF kdim ge imgminsize THEN BEGIN
@@ -7444,7 +7414,7 @@ CASE strlowCase(eventValue) OF
        ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
        ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
        ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-       q = where(im eq 255b, ct)
+       q = where(im eq 255b, ct, /l64)
        im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
        im = byte(round(temporary(im) * 100.0))
        if ct gt 0 then im[q] = 100b
@@ -7613,7 +7583,7 @@ CASE strlowCase(eventValue) OF
        ENDIF   
     
        ;; now all is ok for processing
-       qmiss = where(image0 eq 0b,ctmiss)
+       qmiss = where(image0 eq 0b,ctmiss, /l64)
        time0 = systime( / sec)
        widget_control, / hourglass 
        spatcon, image0, kdim, 'sumd', info.dir_tmp, info.my_os, info.resfloat, im
@@ -7623,7 +7593,7 @@ CASE strlowCase(eventValue) OF
          ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
          ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
          ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-         q = where(im eq 255b, ct)
+         q = where(im eq 255b, ct, /l64)
          im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
          im = byte(round(temporary(im) * 100.0))
          if ct gt 0 then im[q] = 100b
@@ -7747,7 +7717,7 @@ CASE strlowCase(eventValue) OF
        GOTO, fin
      ENDIF
      kdim = * selected_kernel & kdim = (size(kdim))[1]
-     qmiss = where(image0 eq 0b,ctmiss) & fg = image0 eq 2b
+     qmiss = where(image0 eq 0b,ctmiss, /l64) & fg = image0 eq 2b
      
      q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
      IF kdim ge imgminsize THEN BEGIN
@@ -7770,7 +7740,7 @@ CASE strlowCase(eventValue) OF
        ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
        ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
        ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-       q = where(im eq 255b, ct)
+       q = where(im eq 255b, ct, /l64)
        im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
        im = byte(round(temporary(im) * 100.0))
        if ct gt 0 then im[q] = 100b
@@ -7937,7 +7907,7 @@ CASE strlowCase(eventValue) OF
      ENDIF
 
      ;; now all is ok for processing
-     qmiss=where(image0 eq 0b,ctmiss)
+     qmiss=where(image0 eq 0b,ctmiss, /l64)
      time0 = systime( / sec)
      widget_control, / hourglass
 
@@ -7948,7 +7918,7 @@ CASE strlowCase(eventValue) OF
        ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
        ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
        ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-       q = where(im eq 255b, ct)
+       q = where(im eq 255b, ct, /l64)
        im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
        im = byte(round(temporary(im) * 100.0))
        if ct gt 0 then im[q] = 100b
@@ -8079,7 +8049,7 @@ CASE strlowCase(eventValue) OF
 
       ;; do the lm now
       widget_control, / hourglass
-      qmiss = where(image0 eq 0b,ctmiss)
+      qmiss = where(image0 eq 0b,ctmiss, /l64)
       spatcon, image0, kdim, 'lm', info.dir_tmp, info.my_os, 0, im  ;; im not defined here, it will be used in heatmap
       
       if ctmiss gt 0 then save, qmiss, filename = info.dir_tmp + 'missing.sav'
@@ -8264,7 +8234,7 @@ CASE strlowCase(eventValue) OF
         ;; now all is ok for processing
         time0 = systime( / sec)
         widget_control, / hourglass
-        qmiss=where(image0 eq 0b,ctmiss)
+        qmiss=where(image0 eq 0b,ctmiss, /l64)
         spatcon, image0, kdim, 'lm', info.dir_tmp, info.my_os, 0, im
         if ctmiss gt 0 then save, qmiss, filename = info.dir_tmp + 'missing.sav'
 
@@ -8392,7 +8362,7 @@ CASE strlowCase(eventValue) OF
 
      ;; loop over 5 observation scales
      kdim = [7, 13, 27, 81, 243] 
-     qmiss=where(image0 eq 0b,ctmiss)
+     qmiss=where(image0 eq 0b,ctmiss, /l64)
 
      ;;widget_control, / hourglass
      ;; calculate LMMS for each of the 5 observation scales
@@ -8613,7 +8583,7 @@ CASE strlowCase(eventValue) OF
        ;; now all is ok for processing
        time0 = systime( / sec)
        widget_control, / hourglass
-       qmiss=where(image0 eq 0b,ctmiss)
+       qmiss=where(image0 eq 0b,ctmiss, /l64)
        
        ;; ===========================================================
        ;; calculate LMMS for each of the 5 observation scales
@@ -8811,7 +8781,7 @@ CASE strlowCase(eventValue) OF
      image0min = min(image0) & ct_qmiss = 0
      if image0min eq 0b then begin
        missing = image0 eq 0b 
-       qmiss = where(missing eq 1b, ct_qmiss)      
+       qmiss = where(missing eq 1b, ct_qmiss, /l64)      
      endif
      area_image = (size(image0))[4]
      area_data = area_image - ct_qmiss
@@ -8864,14 +8834,14 @@ CASE strlowCase(eventValue) OF
      ;; holes must be done on extended BG to ensure the actual background is a hole 
      holes = label_region(1b-cores,/ulong) 
      ;; holes=0 -> FG; holes=1 -> image BG; holes gt 1 = actual holes inside Cores
-     qholes = where(holes gt 1, ct_qholes) & holes = 0
+     qholes = where(holes gt 1, ct_qholes, /l64) & holes = 0
         
      ;; map for display     
      if eventValue2 eq 'spa3' then begin       
        image0 = temporary(cores)*17b
        if ct_qholes gt 0 then image0[qholes] = 100b & qholes = 0
        ;; overplot the margin pixels on top of the holes of Core      
-       qmargin = where(margin eq 1b)
+       qmargin = where(margin eq 1b, /l64)
        image0[qmargin] = 1b & margin = 0 & qmargin = 0
      endif else begin 
        ct_qislets = 0
@@ -8894,7 +8864,7 @@ CASE strlowCase(eventValue) OF
             steps = steps + 1     
           endwhile
           cord = fg - temporary(cord) 
-          qislets = where(cord eq 1b, ct_qislets)
+          qislets = where(cord eq 1b, ct_qislets, /l64)
           cord = 0             
        endif
        
@@ -8905,10 +8875,10 @@ CASE strlowCase(eventValue) OF
        ;; add core-holes
        if ct_qholes gt 0 then image0[qholes] = 100b & qholes = 0
        ;; add core_boundary
-       margin = temporary(margin)-core_boundary & qmargin = where(margin gt 0, ct_qmargin) & margin = 0
+       margin = temporary(margin)-core_boundary & qmargin = where(margin gt 0, ct_qmargin, /l64) & margin = 0
        image0 = temporary(image0) + temporary(core_boundary)*3b      
        ;; assign Perforation
-       q = where(image0 eq 103b, ct)
+       q = where(image0 eq 103b, ct, /l64)
        if ct gt 0 then image0[q] = 5b
        q = 0
        ;; add margin pixels
@@ -9296,7 +9266,7 @@ CASE strlowCase(eventValue) OF
        image0min = min(image0) & ct_qmiss = 0
        if image0min eq 0b then begin
          missing = image0 eq 0b
-         qmiss = where(missing eq 1b, ct_qmiss)
+         qmiss = where(missing eq 1b, ct_qmiss, /l64)
        endif
        area_image = (size(image0))[4]
        area_data = area_image - ct_qmiss
@@ -9349,14 +9319,14 @@ CASE strlowCase(eventValue) OF
        ;; holes must be done on extended BG to ensure the actual background is a hole
        holes = label_region(1b-cores,/ulong)
        ;; holes=0 -> FG; holes=1 -> image BG; holes gt 1 = actual holes inside Cores
-       qholes = where(holes gt 1, ct_qholes) & holes = 0
+       qholes = where(holes gt 1, ct_qholes, /l64) & holes = 0
        
        ;; map for display
        if ev2 eq 'spa3' then begin
          image0 = temporary(cores)*17b
          if ct_qholes gt 0 then image0[qholes] = 100b & qholes = 0
          ;; overplot the margin pixels on top of the holes of Core
-         qmargin = where(margin eq 1b)
+         qmargin = where(margin eq 1b, /l64)
          image0[qmargin] = 1b & margin = 0 & qmargin = 0
        endif else begin
          ct_qislets = 0
@@ -9377,7 +9347,7 @@ CASE strlowCase(eventValue) OF
              steps = steps + 1
            endwhile
            cord = fg - temporary(cord)
-           qislets = where(cord eq 1b, ct_qislets)
+           qislets = where(cord eq 1b, ct_qislets, /l64)
            cord = 0
          endif
 
@@ -9388,10 +9358,10 @@ CASE strlowCase(eventValue) OF
          ;; add core-holes
          if ct_qholes gt 0 then image0[qholes] = 100b & qholes = 0
          ;; add core_boundary
-         margin = temporary(margin)-core_boundary & qmargin = where(margin gt 0, ct_qmargin) & margin = 0
+         margin = temporary(margin)-core_boundary & qmargin = where(margin gt 0, ct_qmargin, /l64) & margin = 0
          image0 = temporary(image0) + temporary(core_boundary)*3b
          ;; assign Perforation
-         q = where(image0 eq 103b, ct)
+         q = where(image0 eq 103b, ct, /l64)
          if ct gt 0 then image0[q] = 5b
          q = 0
          ;; add margin pixels
@@ -10390,7 +10360,7 @@ CASE strlowCase(eventValue) OF
          ext = dilate(lbl_corex, se8, / gray, / ulong) * (lbl_bridgex GT 0)
          ;; the bridgeedge coordinate in lbl_bridge is the label of the bridge
          ;; se8 on this coordinate contains the core it connects to
-         qb = where(ext GT 0, ct_b)
+         qb = where(ext GT 0, ct_b, /l64)
          fn_tmp = info.dir_tmp + 'cs22_tmp.txt'
          openw, 1, fn_tmp
          FOR idx = 0l, ct_b - 1 DO BEGIN
@@ -10408,7 +10378,7 @@ CASE strlowCase(eventValue) OF
          cs_links_file = dir_batch + fn_outbase + '_links_mspa.txt'
          openw, 1, cs_links_file
          FOR idx = 1l, nr_bridge DO BEGIN
-           id = idx + nr_core & q = where(res(0, * ) EQ id, ct)
+           id = idx + nr_core & q = where(res(0, * ) EQ id, ct, /l64)
            IF ct GT 0 THEN BEGIN
              vals = res(1, q) & uvals = vals[uniq(vals, sort(vals))]
              FOR bb = 0l, n_elements(uvals) - 1 DO printf, 1, strtrim(idx,2), -uvals(bb), '     1'
@@ -10419,7 +10389,7 @@ CASE strlowCase(eventValue) OF
        ;;==========================================================================================
        ;;                                Network Components
        ;;==========================================================================================
-         qm = where(ext EQ 129b, ctqm)
+         qm = where(ext EQ 129b, ctqm, /l64)
          cl = byte([1, 5, 9, 17, 33, 65, 80, 150, 176])
          image0 = temporary(ext)
          ;; add ECA info
@@ -10533,7 +10503,7 @@ CASE strlowCase(eventValue) OF
          tmp = dilate(lbl_nodes, se8, / gray, / ulong) * (lbl_links GT 0)
          ;; the bridgeedge coordinate in lbl_bridge is the label of the bridge
          ;; se8 on this coordinate contains the core it connects to
-         qb = where(tmp GT 0, ct_b) & fn_tmp = info.dir_tmp + 'cs22_tmp.txt'
+         qb = where(tmp GT 0, ct_b, /l64) & fn_tmp = info.dir_tmp + 'cs22_tmp.txt'
          openw, 1, fn_tmp
          FOR idx = 0l, ct_b - 1 DO BEGIN
            bridge = lbl_links(qb(idx)) + nr_nodes
@@ -10549,7 +10519,7 @@ CASE strlowCase(eventValue) OF
          openr, 1, fn_tmp & readf, 1, res & close, 1 & file_delete, fn_tmp, / quiet
          openw, 1, fn_tmp
          FOR idx = 1l, nr_links DO BEGIN
-           id = idx + nr_nodes & q = where(res(0, * ) EQ id, ct)
+           id = idx + nr_nodes & q = where(res(0, * ) EQ id, ct, /l64)
            IF ct GT 0 THEN BEGIN
              vals = res(1, q) & uvals = vals[uniq(vals, sort(vals))]
              FOR bb = 0l, n_elements(uvals) - 1 DO $
@@ -10960,11 +10930,20 @@ CASE strlowCase(eventValue) OF
          res = query_tiff(input, tiffinfo, geotiff = geotiffinfo)
          ss = tiffinfo.dimensions & ssct = n_elements(ss) & ss3 = ulong64(ss[0]) * ss[1]  / (1024.0^2)
 
-         IF res EQ 0 or ssct ne 2 or ss3 GT info.immaxsize THEN BEGIN ;;invalid file , wrong dimensions, image too big  
+         IF res EQ 0 or ssct ne 2 THEN BEGIN ;;invalid file, wrong dimensions, image too big  
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
            printf, 9, 'Skipping invalid MSPA input file: ', input
+           close, 9
+           GOTO, skip_batch_mspa  ;; invalid input
+         ENDIF
+
+         IF ss3 GT info.immaxsize THEN BEGIN ;;invalid file , wrong dimensions, image too big
+           openw, 9, fn_logfile, /append
+           printf, 9, ' '
+           printf, 9, '==============   ' + counter + '   =============='
+           printf, 9, 'Skipping invalid MSPA input file (image too big): ', input
            close, 9
            GOTO, skip_batch_mspa  ;; invalid input
          ENDIF
@@ -11210,7 +11189,7 @@ CASE strlowCase(eventValue) OF
       ;; check for minimum image size: > info.immaxsize
       ;;===========================
       imsize = inpinfo.dimensions[0] / (1024.0^2) * inpinfo.dimensions[1]
-      IF imsize LE info.immaxsize THEN BEGIN
+      IF imsize LE (info.immaxsize) THEN BEGIN
          msg = 'Input file can be processed via ' + string(10b) + $
                'File -> Read Image -> GeoTiff' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information) & GOTO, fin
@@ -11479,7 +11458,7 @@ CASE strlowCase(eventValue) OF
          ENDIF
 
          imtmp = read_tiff(list_olt(isub), geotiff = geotiffx)
-         qq = where(imtmp EQ 1b, nr_qq) & qq = 0
+         qq = where(imtmp EQ 1b, nr_qq, /l64) & qq = 0
          
          IF nr_qq EQ 0 THEN BEGIN
             ;; there is only Nodata and FG [0,2]
@@ -11949,19 +11928,19 @@ CASE strlowCase(eventValue) OF
         if c_large gt 0 then image0[qlarge] = 70b
 
         ;; missing pixels
-        q = where(* info.fr_image eq 102b, ct)
+        q = where(* info.fr_image eq 102b, ct, /l64)
         if ct gt 0 then image0[q] = 102b
 
         ;; LCP pixels, make them pink
-        q = where(* info.fr_image eq 103b, ct)
+        q = where(* info.fr_image eq 103b, ct, /l64)
         if ct gt 0 then image0[q] = 103b 
 
         ;; unreachable pixels, make them brown
-        q = where(* info.fr_image EQ 104b, ct)
+        q = where(* info.fr_image EQ 104b, ct, /l64)
         if ct gt 0 then image0[q] = 104b
 
         ;; target object pixels
-        q = where(* info.fr_image eq 101b, ct)
+        q = where(* info.fr_image eq 101b, ct, /l64)
         if ct gt 0 then image0[q]=101b
 
       endif else if info.is_dist eq 1 then begin
@@ -11988,7 +11967,7 @@ CASE strlowCase(eventValue) OF
         if c_large gt 0 then image0[qlarge] = 100b
         
         ;; missing pixels
-        qmiss = where(* info.fr_image eq 0b, ct_miss)
+        qmiss = where(* info.fr_image eq 0b, ct_miss, /l64)
         if ct_miss gt 0 then image0[qmiss]=0b
         q = strpos(info.add_title,': ',/reverse_search)
         info.add_title = strmid(info.add_title, 0, q) + ')'
@@ -12000,8 +11979,8 @@ CASE strlowCase(eventValue) OF
         ;; label Contortion
         ;;=============================================
         ;; label Contortion areas into groups
-        qsmall = where(image0 gt 2 AND * info.contort lt info.label_t1, c_small)
-        qlarge = where(* info.contort gt info.label_t2, c_large)
+        qsmall = where(image0 gt 2 AND * info.contort lt info.label_t1, c_small, /l64)
+        qlarge = where(* info.contort gt info.label_t2, c_large, /l64)
         ;; set all to medium: 110b
         image0 = image0*(image0 lt 3b) + (image0 gt 2b)*110b
         ;; add small and large if present, use contortion color table
@@ -12099,7 +12078,7 @@ CASE strlowCase(eventValue) OF
       ;; cores + bridges, uniq networks and isolated cores
       corex = (ext GE 16b AND ext LE 18b) OR (ext GE 116b AND ext LE 118b)
       bridgex = (ext GT 30b AND ext LT 40b) OR (ext GT 130b AND ext LT 140b)
-      qm = where(ext EQ 129b, ctqm) & ext = 0 ;; missing pixels in enlarged image
+      qm = where(ext EQ 129b, ctqm, /l64) & ext = 0 ;; missing pixels in enlarged image
       cl = byte([1, 5, 9, 17, 33, 65, 80, 150, 176])
       image0 = corex + bridgex * 2b;; the networks
 
@@ -12237,7 +12216,7 @@ CASE strlowCase(eventValue) OF
       tmp = dilate(lbl_nodes, se8, / gray, / ulong) * (lbl_links GT 0)
       ;; the bridgeedge coordinate in lbl_bridge is the label of the bridge
       ;; se8 on this coordinate contains the core it connects to
-      qb = where(tmp GT 0, ct_b) & fn_tmp = info.dir_data + 'cs22_tmp.txt'
+      qb = where(tmp GT 0, ct_b, /l64) & fn_tmp = info.dir_data + 'cs22_tmp.txt'
       openw, 1, fn_tmp
       FOR idx = 0l, ct_b - 1 DO BEGIN
          bridge = lbl_links(qb(idx)) + nr_nodes
@@ -12253,7 +12232,7 @@ CASE strlowCase(eventValue) OF
       openr, 1, fn_tmp & readf, 1, res & close, 1 & file_delete, fn_tmp, / quiet
       openw, 1, fn_tmp
       FOR idx = 1l, nr_links DO BEGIN
-         id = idx + nr_nodes & q = where(res(0, * ) EQ id, ct)
+         id = idx + nr_nodes & q = where(res(0, * ) EQ id, ct, /l64)
          IF ct GT 0 THEN BEGIN
             vals = res(1, q) & uvals = vals[uniq(vals, sort(vals))]
             FOR bb = 0l, n_elements(uvals) - 1 DO $
@@ -12273,7 +12252,7 @@ CASE strlowCase(eventValue) OF
          ;;=============================================
          ;; properties of component sub-arrays
          ;;=============================================
-         qc = where(lbl_comp EQ idc) ;; component pixels
+         qc = where(lbl_comp EQ idc, /l64) ;; component pixels
          x = where(histogram(lbl_links(qc)) GT 0, ct)
          ;; skip calculation for component with no links
          IF ct EQ 1 THEN GOTO, skipit2
@@ -12286,13 +12265,13 @@ CASE strlowCase(eventValue) OF
 
          FOR ilin = 0l, n_lids - 1 DO BEGIN
             ;; this link connects these nodes
-            qn = where(linknodes(0, * ) EQ lids(ilin), ctn)
+            qn = where(linknodes(0, * ) EQ lids(ilin), ctn, /l64)
             nodes = reform(linknodes(1, qn))
             ;; find the seed node
-            x = where(nids EQ nodes(0)) & x = x[0]
+            x = where(nids EQ nodes(0), /l64) & x = x[0]
             ;; get the connected node array indices
             FOR iy = 1l, ctn - 1 DO BEGIN
-               y = where(nids EQ nodes(iy)) & y = y[0]
+               y = where(nids EQ nodes(iy), /l64) & y = y[0]
                ctab(x, y) = lids(ilin)
             ENDFOR
          ENDFOR
@@ -12300,7 +12279,7 @@ CASE strlowCase(eventValue) OF
          ctab = transpose(ctab) + ctab
 
          ;; calculate only those nodes connecting to more than one other node
-         x = where(total(ctab GT 0, 1) gt 1.5, ct, complement = y)
+         x = where(total(ctab GT 0, 1) gt 1.5, ct, complement = y, /l64)
          skipnodes = 0
          IF ct EQ 0 THEN skipnodes = 1 ELSE nidsc = nids(x)
 
@@ -12317,7 +12296,7 @@ CASE strlowCase(eventValue) OF
 
          ;; importance of links
          FOR il = 0l, n_elements(lids) - 1 DO BEGIN
-            tmp = subim & q = where(sub EQ lids(il)) & tmp(q) = 0b
+            tmp = subim & q = where(sub EQ lids(il), /l64) & tmp(q) = 0b
             hca = histogram(label_region(tmp, / all, / ulong) * subl0, / l64)
             pcnew = total(hca(1: * )^2, / double) + hh
             imp = (pcnum - pcnew) / pcnum * 100.0 & subimportance(q) = imp
@@ -12328,7 +12307,7 @@ CASE strlowCase(eventValue) OF
          sub = lbl_nodes[x1:x2, y1:y2] ;* maskcomp
          tmp2 = maskcomp * subl0
          FOR il = 0l, n_elements(nidsc) - 1 DO BEGIN
-            tmp = subim & q = where(sub EQ nidsc(il)) & tmp(q) = 0b
+            tmp = subim & q = where(sub EQ nidsc(il), /l64) & tmp(q) = 0b
             hca = histogram(label_region(tmp, / all, / ulong) * subl0, / l64)
             pcnew1 = total(hca(1: * )^2, / double)
             ;; set removed node area to zero: set node to link
@@ -12350,16 +12329,16 @@ CASE strlowCase(eventValue) OF
       mx_bridge = max(importance) & mx_core = min(importance)
 
       ;; 1% [192b, 208b]
-      htop = mx_bridge * 0.99 & qb01 = where(importance GE htop)
-      htop = mx_core * 0.99 & qc01 = where(importance LE htop)
+      htop = mx_bridge * 0.99 & qb01 = where(importance GE htop, /l64)
+      htop = mx_core * 0.99 & qc01 = where(importance LE htop, /l64)
 
       ;; 5% [194b, 210b]
-      htop = mx_bridge * 0.95 & qb05 = where(importance GE htop)
-      htop = mx_core * 0.95 & qc05 = where(importance LE htop)
+      htop = mx_bridge * 0.95 & qb05 = where(importance GE htop, /l64)
+      htop = mx_core * 0.95 & qc05 = where(importance LE htop, /l64)
 
       ;; 10% [195b, 211b]
-      htop = mx_bridge * 0.9 & qb10 =  where(importance GE htop)
-      htop = mx_core * 0.9 & qc10 = where(importance LE htop)
+      htop = mx_bridge * 0.9 & qb10 =  where(importance GE htop, /l64)
+      htop = mx_core * 0.9 & qc10 = where(importance LE htop, /l64)
 
       ;; build the image for the display
       ;; core in water color and bridges in black:
@@ -12470,7 +12449,7 @@ CASE strlowCase(eventValue) OF
      nw_conns = image0 * 0.0 & cl = byte([1, 5, 9, 17, 33, 65, 80, 150, 176])
      image0 = (image0 GT 0b) * 150b
      FOR i = 1l, 5 DO BEGIN
-       q = where(lbl_comp EQ lcompidx(i - 1)) & image0[q] = cl(i)
+       q = where(lbl_comp EQ lcompidx(i - 1), /l64) & image0[q] = cl(i)
      ENDFOR
 
      ;; prepare temporary output   
@@ -12663,7 +12642,7 @@ CASE strlowCase(eventValue) OF
       image0 = dilate(lbl_corex, se8, / gray, / ulong) * (lbl_bridgex GT 0)
       ;; the bridgeedge coordinate in lbl_bridge is the label of the bridge
       ;; se8 on this coordinate contains the core it connects to
-      qb = where(image0 GT 0, ct_b) 
+      qb = where(image0 GT 0, ct_b, /l64) 
       fn_tmp = info.dir_tmp + 'cs22_tmp.txt'
       openw, 1, fn_tmp
       FOR idx = 0l, ct_b - 1 DO BEGIN
@@ -12682,7 +12661,7 @@ CASE strlowCase(eventValue) OF
 
       openw, 1, cs_links_file
       FOR idx = 1l, nr_bridge DO BEGIN
-         id = idx + nr_core & q = where(res(0, * ) EQ id, ct)
+         id = idx + nr_core & q = where(res(0, * ) EQ id, ct, /l64)
          IF ct GT 0 THEN BEGIN
             vals = res(1, q) & uvals = vals[uniq(vals, sort(vals))]
             FOR bb = 0l, n_elements(uvals) - 1 DO printf, 1, strtrim(idx,2), -uvals(bb), '     1'
@@ -12866,7 +12845,7 @@ CASE strlowCase(eventValue) OF
      ;;====================================================================================
      cat = [cl1, cl2, cl3, cl4, cl5] ;; the defined size category thresholds
      cat_idlast = 0 & cat_arealast = 0
-     q = where(cat GE 1)
+     q = where(cat GE 1, /l64)
      cat = cat[q] & cat = cat(uniq(cat))  ;; remove potential double entries
      nr_cat = n_elements(cat)
      cat_ID = cat*0    ;; # of objects in each cateory
@@ -12875,19 +12854,19 @@ CASE strlowCase(eventValue) OF
      oba = oba[1:*] ;; remove the background
 
      ;; first category
-     q = where(oba LE cat[0], ct)
+     q = where(oba LE cat[0], ct, /l64)
      if ct gt 0 then begin
        cat_id[0] = ct & cat_area[0] = total(oba[q],/double)
      endif
      ;; other categories
      for idx = 1, nr_cat do begin
        if idx lt nr_cat then begin ;; not the last category
-         q = where(oba GT cat[idx-1] and oba LE cat[idx], ct)
+         q = where(oba GT cat[idx-1] and oba LE cat[idx], ct, /l64)
          if ct gt 0 then begin
            cat_id[idx] = ct & cat_area[idx] = total(oba[q],/double)
          endif
        endif else begin ;; the last category
-         q = where(oba GT cat[idx-1], ct)
+         q = where(oba GT cat[idx-1], ct, /l64)
          if ct gt 0 then begin
            cat_idlast = ct & cat_arealast = ulong64(total(oba[q],/double))
          endif
@@ -12964,9 +12943,9 @@ CASE strlowCase(eventValue) OF
      ;; ext = viewport image, assign colors for up to 6 area classes 
      for i_class = 0, nr_cat do begin
        if i_class eq nr_cat then begin
-         qsmall = where(obj_area NE 9000000000000000000,c_small)
+         qsmall = where(obj_area NE 9000000000000000000,c_small, /l64)
        endif else begin
-         qsmall = where(obj_area LE cat(i_class),c_small) ;; where the histogram area is in area class
+         qsmall = where(obj_area LE cat(i_class),c_small, /l64) ;; where the histogram area is in area class
        endelse             
          if c_small gt 0 then begin
            for id = 0, c_small-1 do begin
@@ -12982,7 +12961,7 @@ CASE strlowCase(eventValue) OF
        restore, info.dir_tmp + 'obj_area.sav'
        oba_max1 = oba_max & id_max1 = 0 & oba_max2 = 0 & id_max2 = 0 & oba_max3 = 0 & id_max3 = 0
        ;; the biggest object
-       qsmall = where(obj_area eq oba_max1, c_small)
+       qsmall = where(obj_area eq oba_max1, c_small, /l64)
        if c_small gt 0 then begin
          for id = 0, c_small-1 do begin
            il = qsmall[id] & q = revind[revind[il]:revind[il+1]-1] & ext[q] = 80b
@@ -12996,7 +12975,7 @@ CASE strlowCase(eventValue) OF
        endif
        ;; the second biggest object
        oba_max2 = max((obj_area lt 9000000000000000000)*obj_area)
-       qsmall = where(obj_area eq oba_max2, c_small)
+       qsmall = where(obj_area eq oba_max2, c_small, /l64)
        if c_small gt 0 then begin
          for id = 0, c_small-1 do begin
            il = qsmall[id] & q = revind[revind[il]:revind[il+1]-1] & ext[q] = 80b
@@ -13008,7 +12987,7 @@ CASE strlowCase(eventValue) OF
        endif
        ;; the third biggest object
        oba_max3 = max((obj_area lt 9000000000000000000)*obj_area)
-       qsmall = where(obj_area eq oba_max3, c_small)
+       qsmall = where(obj_area eq oba_max3, c_small, /l64)
        if c_small gt 0 then begin
          for id = 0, c_small-1 do begin
            il = qsmall[id] & q = revind[revind[il]:revind[il+1]-1] & ext[q] = 80b
@@ -13057,19 +13036,19 @@ CASE strlowCase(eventValue) OF
      ext3 = temporary(ext3[5:sz[0]+4,5:sz[1]+4])
           
      ;; put back missing
-     q=where(im eq 0b, ct_q) 
+     q=where(im eq 0b, ct_q, /l64) 
      IF ct_q GT 0 THEN BEGIN
        ext(q) = 129b ; image in viewport
        ext2(q)= -1   ; id of object
        ext3(q)= -1   ; area of object
      ENDIF
-     q = where(im eq 3b, ct_q) ;; water bodies - blue
+     q = where(im eq 3b, ct_q, /l64) ;; water bodies - blue
      IF ct_q GT 0 THEN BEGIN
        ext(q) = 105b ; image in viewport
        ext2(q)= -3   ; id of object
        ext3(q)= -3   ; area of object
      ENDIF
-     q = where(im eq 4b, ct_q) ;; special BG - pale-blue
+     q = where(im eq 4b, ct_q, /l64) ;; special BG - pale-blue
      IF ct_q GT 0 THEN BEGIN
        ext(q) = 176b ; image in viewport
        ext2(q)= -4   ; id of object
@@ -13315,7 +13294,7 @@ CASE strlowCase(eventValue) OF
        ;;====================================================================================
        cat = [cl1, cl2, cl3, cl4, cl5] ;; the defined size category thresholds
        cat_idlast = 0 & cat_arealast = 0
-       q = where(cat GE 1)
+       q = where(cat GE 1, /l64)
        cat = cat[q] & cat = cat(uniq(cat))  ;; remove potential double entries
        nr_cat = n_elements(cat)
        cat_ID = cat*0    ;; # of objects in each cateory
@@ -13324,19 +13303,19 @@ CASE strlowCase(eventValue) OF
        oba = oba[1:*] ;; remove the background
 
        ;; first category
-       q = where(oba LE cat[0], ct)
+       q = where(oba LE cat[0], ct, /l64)
        if ct gt 0 then begin
          cat_id[0] = ct & cat_area[0] = total(oba[q],/double)
        endif
        ;; other categories
        for idx = 1, nr_cat do begin
          if idx lt nr_cat then begin ;; not the last category
-           q = where(oba GT cat[idx-1] and oba LE cat[idx], ct)
+           q = where(oba GT cat[idx-1] and oba LE cat[idx], ct, /l64)
            if ct gt 0 then begin
              cat_id[idx] = ct & cat_area[idx] = total(oba[q],/double)
            endif
          endif else begin ;; the last category
-           q = where(oba GT cat[idx-1], ct)
+           q = where(oba GT cat[idx-1], ct, /l64)
            if ct gt 0 then begin
              cat_idlast = ct & cat_arealast = ulong64(total(oba[q],/double))
            endif
@@ -13412,9 +13391,9 @@ CASE strlowCase(eventValue) OF
        ;; ext = viewport image, assign colors for up to 6 area classes
        for i_class = 0, nr_cat do begin
          if i_class eq nr_cat then begin
-           qsmall = where(obj_area NE 9000000000000000000,c_small)
+           qsmall = where(obj_area NE 9000000000000000000,c_small, /l64)
          endif else begin
-           qsmall = where(obj_area LE cat(i_class),c_small) ;; where the histogram area is in area class
+           qsmall = where(obj_area LE cat(i_class),c_small, /l64) ;; where the histogram area is in area class
          endelse
          if c_small gt 0 then begin
            for id = 0, c_small-1 do begin
@@ -13430,7 +13409,7 @@ CASE strlowCase(eventValue) OF
          restore, info.dir_tmp + 'obj_area.sav'
          oba_max1 = oba_max & id_max1 = 0 & oba_max2 = 0 & id_max2 = 0 & oba_max3 = 0 & id_max3 = 0
          ;; the biggest object
-         qsmall = where(obj_area eq oba_max1, c_small)
+         qsmall = where(obj_area eq oba_max1, c_small, /l64)
          if c_small gt 0 then begin
            for id = 0, c_small-1 do begin
              il = qsmall[id] & q = revind[revind[il]:revind[il+1]-1] & ext[q] = 80b
@@ -13444,7 +13423,7 @@ CASE strlowCase(eventValue) OF
          endif
          ;; the second biggest object
          oba_max2 = max((obj_area lt 9000000000000000000)*obj_area)
-         qsmall = where(obj_area eq oba_max2, c_small)
+         qsmall = where(obj_area eq oba_max2, c_small, /l64)
          if c_small gt 0 then begin
            for id = 0, c_small-1 do begin
              il = qsmall[id] & q = revind[revind[il]:revind[il+1]-1] & ext[q] = 80b
@@ -13456,7 +13435,7 @@ CASE strlowCase(eventValue) OF
          endif
          ;; the third biggest object
          oba_max3 = max((obj_area lt 9000000000000000000)*obj_area)
-         qsmall = where(obj_area eq oba_max3, c_small)
+         qsmall = where(obj_area eq oba_max3, c_small, /l64)
          if c_small gt 0 then begin
            for id = 0, c_small-1 do begin
              il = qsmall[id] & q = revind[revind[il]:revind[il+1]-1] & ext[q] = 80b
@@ -13506,19 +13485,19 @@ CASE strlowCase(eventValue) OF
        ext3 = temporary(ext3[5:sz[0]+4,5:sz[1]+4])
 
        ;; put back missing
-       q=where(im eq 0b, ct_q)
+       q=where(im eq 0b, ct_q, /l64)
        IF ct_q GT 0 THEN BEGIN
          ext(q) = 129b ; image in viewport
          ext2(q)= -1   ; id of object
          ext3(q)= -1   ; area of object
        ENDIF
-       q = where(im eq 3b, ct_q) ;; water bodies - blue
+       q = where(im eq 3b, ct_q, /l64) ;; water bodies - blue
        IF ct_q GT 0 THEN BEGIN
          ext(q) = 105b ; image in viewport
          ext2(q)= -3   ; id of object
          ext3(q)= -3   ; area of object
        ENDIF
-       q = where(im eq 4b, ct_q) ;; special BG -pale-blue
+       q = where(im eq 4b, ct_q, /l64) ;; special BG -pale-blue
        IF ct_q GT 0 THEN BEGIN
          ext(q) = 176b ; image in viewport
          ext2(q)= -4   ; id of object
@@ -13681,7 +13660,7 @@ CASE strlowCase(eventValue) OF
       fo = morph_distance(ext EQ 1b, /background, neighbor = 3) & fo = fo[1:sim_x, 1:sim_y]
       distreal = fo * (image0 eq 2b)
       ;; calculate the average distance to boundary for foreground
-      q = where(distreal gt 0.0) & adf = mean(distreal(q)) & q = 0 & adfmax = max(distreal)
+      q = where(distreal gt 0.0, /l64) & adf = mean(distreal(q)) & q = 0 & adfmax = max(distreal)
       ;; limit the distance to 120 x the pixel size, convert from
       ;; float to byte, and add the offset of 130b
       fo = byte(round(distreal) < 120) + 130b
@@ -13694,7 +13673,7 @@ CASE strlowCase(eventValue) OF
       image0 = temporary(bo) * (temporary(image0) eq 1b)  & adbmax = - max(image0)
       * info.morphdist = temporary(distreal) - image0 
       ;; calculate the average distance to boundary for background
-      q = where(image0 gt 0.0) & adb = mean(image0(q)) & q = 0
+      q = where(image0 gt 0.0, /l64) & adb = mean(image0(q)) & q = 0
       image0 = 130b - byte(round(temporary(image0)) < 120)
       image0 = image0 * (image0 lt 130b)
 
@@ -14161,7 +14140,7 @@ CASE strlowCase(eventValue) OF
        fo = morph_distance(ext EQ 1b, /background, neighbor = 3) & fo = fo[1:sim_x, 1:sim_y]
        distreal = temporary(fo) * (image0 eq 2b)
        ;; calculate the average distance to boundary for foreground
-       q = where(distreal gt 0.0) & adf = mean(distreal(q)) & q = 0 & adfmax = max(distreal)
+       q = where(distreal gt 0.0, /l64) & adf = mean(distreal(q)) & q = 0 & adfmax = max(distreal)
        ;; limit the distance to 120 x the pixel size, convert from
        ;; float to byte, and add the offset of 130b
        fo = byte(round(distreal) < 120) + 130b
@@ -14173,7 +14152,7 @@ CASE strlowCase(eventValue) OF
        image0 = temporary(bo) * (temporary(image0) eq 1b)  & adbmax = - max(image0)
        morphdist = temporary(distreal) - image0
        ;; calculate the average distance to boundary for background
-       q = where(image0 gt 0.0) & adb = mean(image0(q)) & q = 0
+       q = where(image0 gt 0.0, /l64) & adb = mean(image0(q)) & q = 0
        image0 = 130b - byte(round(temporary(image0)) < 120)
        image0 = image0 * (image0 lt 130b)
        ;; combine the foreground and backg distance maps
@@ -14545,13 +14524,13 @@ CASE strlowCase(eventValue) OF
             fo = morph_distance(ext EQ 1b, /background, neighbor = 3) & fo = fo[1:sim_x, 1:sim_y]
             distreal = temporary(fo) * (image0 eq 2b)
             ;; calculate the average distance to boundary for foreground
-            q = where(distreal gt 0.0) & adf = mean(distreal(q)) & q = 0 & adfmax = max(distreal)
+            q = where(distreal gt 0.0, /l64) & adf = mean(distreal(q)) & q = 0 & adfmax = max(distreal)
 
             bo =  morph_distance(ext EQ 2b, / background, neighbor = 3) & bo = bo[1:sim_x, 1:sim_y]
             image0 = temporary(bo) * (temporary(image0) eq 1b)  & adbmax = - max(image0)
             morphdist = temporary(distreal) - image0
             ;; calculate the average distance to boundary for background
-            q = where(image0 gt 0.0) & adb = mean(image0(q)) & q = 0
+            q = where(image0 gt 0.0, /l64) & adb = mean(image0(q)) & q = 0
             
             ;; add barplot of distance distribution
             image0 = round(temporary(morphdist))
@@ -14826,9 +14805,9 @@ CASE strlowCase(eventValue) OF
       if info.label_t1 gt 0 then begin
         ;; info.label_t1  is FG distance to edge = use core zones
         ;build euclidean distance map of foreground and constrain FG areas         
-        qmiss=where(ext eq 0b,ctqmiss) 
+        qmiss=where(ext eq 0b,ctqmiss, /l64) 
         bo = morph_distance(ext EQ 2b, neighbor = 3)
-        z=where(bo lt (info.label_t1 + 0.5) and ext eq 2b,ct)
+        z=where(bo lt (info.label_t1 + 0.5) and ext eq 2b,ct, /l64)
         if ct gt 0 then ext(z)=1b
         if ctqmiss gt 0 then ext(qmiss)=0b
         z=0 & bo=0 & qmiss=0   
@@ -14839,7 +14818,7 @@ CASE strlowCase(eventValue) OF
       ext=(ext eq 2b)
       lx=label_region(ext,all=conn8, /ulong)
       h=histogram(lx) & qthresh=influ_t ;; keep only FGobjects ge 5000 pixels
-      qok=where(h ge qthresh, ctok)
+      qok=where(h ge qthresh, ctok, /l64)
       ;; neglect the first two entries referring to FG and open BG
       if ctok le 1 then begin
         msg = 'The current area threshold is too large. Please insert' + string(10b) + $
@@ -14849,7 +14828,7 @@ CASE strlowCase(eventValue) OF
       endif
       
       ext=ext*0b ;; all background to start with
-      for i=1,ctok-1 do ext(where(lx eq qok(i)))=2b
+      for i=1,ctok-1 do ext(where(lx eq qok(i), /l64))=2b
 
       ;; a) close holes in FG:
       ;; get BG and missing together , then label with 4-conn
@@ -14872,7 +14851,7 @@ CASE strlowCase(eventValue) OF
       ;; we need to do this here ourselves to avoid byte-flipping
       ;; hist_equal could be better when dealing with large distance else use: ws = bytscl(ws)
         ws = hist_equal(ws)  
-        ws = watershed(ws, connectivity=8, /long, nregions=nregions) & qws = where(ws eq 0) 
+        ws = watershed(ws, connectivity=8, /long, nregions=nregions) & qws = where(ws eq 0, /l64) 
         ext(qws)=4b
 ;;;      endif
       
@@ -14880,7 +14859,7 @@ CASE strlowCase(eventValue) OF
       nw_ids = label_region(ext eq 2b, all=conn8, / ulong) ;; nw_ids of FILLED components
       z = nw_ids & z[fg_holes]=0 
       ;;;nw_hnw = histogram(nw_ids, reverse_indices = r, / l64) ;; area of FILLED components
-      nw_hnw = histogram(z, reverse_indices = r, / l64) & z=0 ;; area of non-FILLED components
+      nw_hnw = histogram(z, reverse_indices = r, /l64) & z=0 ;; area of non-FILLED components
       max_nw_ids=max(nw_ids)
 
       ;; assign random color to components, or green in case of proximity
@@ -14894,13 +14873,13 @@ CASE strlowCase(eventValue) OF
       ext2 = temporary(long(nw_ids[5:sz[0]+4,5:sz[1]+4]))
       ext = ext[5:sz[0]+4,5:sz[1]+4]
       ;; get watershed
-      qws=where(ext eq 4b, ct_qws)
+      qws=where(ext eq 4b, ct_qws, /l64)
 
       if eventValue2 eq 'distance_proximity' then nw_conns = nw_conns[5:sz[0]+4,5:sz[1]+4]  
       
       ;; show holes in FG with color 0
-      q_neglect = where( (* info.orig_image eq 2b) and (ext le 2b), ct_neglect) ;; inside & outside
-      q = where( (* info.orig_image eq 1b) and (ext eq 2b), ct_q)
+      q_neglect = where( (* info.orig_image eq 2b) and (ext le 2b), ct_neglect, /l64) ;; inside & outside
+      q = where( (* info.orig_image eq 1b) and (ext eq 2b), ct_q, /l64)
       IF ct_q GT 0 THEN BEGIN
         ext(q) = 0b & ext2(q)= -1 & q = 0
       ENDIF
@@ -14914,7 +14893,7 @@ CASE strlowCase(eventValue) OF
           a1=info.label_t2-0.5 & a2=info.label_t2+0.5
           buff = where(c ge a1 and c lt a2, ct_buff)
           ;; show BG-buffer zone with color 160
-          buff2 = where(c lt a1 and c gt 0.0, ct_buff2)
+          buff2 = where(c lt a1 and c gt 0.0, ct_buff2, /l64)
           if ct_buff2 gt 0 then begin
             ext(buff2)=160b
             ext2(buff2)= -6
@@ -14936,7 +14915,7 @@ CASE strlowCase(eventValue) OF
       
       
       ;; put back missing 
-      q = where(* info.orig_image eq 0b, ct_q)
+      q = where(* info.orig_image eq 0b, ct_q, /l64)
       IF ct_q GT 0 THEN BEGIN
         ext(q) = 129b
         ext2(q)= -4
@@ -14949,14 +14928,14 @@ CASE strlowCase(eventValue) OF
         if eventValue2 eq 'distance_proximity' then begin
           ;; find out closest proximity
           ;;prox = nw_conns[qws] & proxmin = min(prox) & str_proxmin = strtrim(proxmin,2)
-          proxmin = min(nw_conns(where(ext eq 4b))) & str_proxmin = strtrim(proxmin,2)
-          proxmin_p = where((nw_conns eq proxmin) * (ext eq 4b), ct_proxmin_p) & str_ct_proxmin_p = strtrim(ct_proxmin_p,2)
+          proxmin = min(nw_conns(where(ext eq 4b, /l64))) & str_proxmin = strtrim(proxmin,2)
+          proxmin_p = where((nw_conns eq proxmin) * (ext eq 4b), ct_proxmin_p, /l64) & str_ct_proxmin_p = strtrim(ct_proxmin_p,2)
           ;;print,array_indices(nw_conns,proxmin_p)
 
           ;; mark maximum proximity in yellow
           markmax = info.label_t2 > proxmin
           mask = (nw_conns gt 0 and nw_conns le markmax) * (ext eq 4b)
-          q_skin = where(mask gt 0b) 
+          q_skin = where(mask gt 0b, /l64) 
           ext[q_skin] = 165b ;; skin is 59
           
           ;; mark minimum proximity in red
@@ -14966,7 +14945,7 @@ CASE strlowCase(eventValue) OF
           ;;;====================================
           ;; get equivalent area along ws line
           ;sel = replicate(1b, 3, 3) ;; SE
-          ws = ws[5:sz[0]+4,5:sz[1]+4] & qws = where(ws eq 0, ct)
+          ws = ws[5:sz[0]+4,5:sz[1]+4] & qws = where(ws eq 0, ct, /l64)
           ;; buffer around ws showing area value of segments
           ;z = dilate(ws eq 0, sel)*nw_hnw(ws) & z[qws]=0
           ;; buffer around ws showing value of segments
@@ -15053,16 +15032,16 @@ CASE strlowCase(eventValue) OF
           yarr0 = ulonarr(nr_duniq) & yarr1 = yarr0 & yarr2 = yarr0 & yarr3 = yarr0
           e = reform(proxws[4,*]);; the cag entries         
           for ii = 0, nr_duniq -1 do begin
-            q = where(d EQ duniq[ii]) & z = e[q]
+            q = where(d EQ duniq[ii], /l64) & z = e[q]
             a = min(z, max=b) & k = median(z)
             yarr0[ii] = a & yarr1[ii] = b & yarr2[ii]=k & yarr3[ii] = n_elements(z) ;& cagmm[2,ii] = round(mean(z))    
           endfor
           
           ;; show range of min/max cag
-          ymax = max(yarr1) & ymin = min(yarr0(where(yarr0 gt 0)))*0.9 > 0
+          ymax = max(yarr1) & ymin = min(yarr0(where(yarr0 gt 0, /l64)))*0.9 > 0
           xmax = max(duniq)
           ;; location for max CAG (the first of possibly several ones)
-          q = (where(proxws[4,*] eq ymax))[0] & maxstr=''
+          q = (where(proxws[4,*] eq ymax, /l64))[0] & maxstr=''
           if q gt 0 then begin
             xc = proxws[0,q] < sz0
             yc = proxws[1,q] < sz[1]
@@ -15168,7 +15147,7 @@ CASE strlowCase(eventValue) OF
        res = dialog_message(msg, / information, title = tit)
        GOTO, fin
      ENDIF
-     qm = where(image0 eq 0b, ctqm) ;; missing pixels
+     qm = where(image0 eq 0b, ctqm, /l64) ;; missing pixels
      
      ;; ask for fixed BG-reistance     
      target = strtrim(indgen(98)+3,2) + ' - BG' & seltarg = target[0]
@@ -15241,8 +15220,8 @@ CASE strlowCase(eventValue) OF
      image0 = * info.fr_image
 
      ;; calculate Euclidean distance in BG only
-     qm = where(image0 EQ 0b, ctqm)
-     qfg = where(image0 EQ 2b, ctfg)
+     qm = where(image0 EQ 0b, ctqm, /l64)
+     qfg = where(image0 EQ 2b, ctfg, /l64)
      
      ;; image must have FG pixels, if not notify
      if ctfg eq 0 then begin     
@@ -15433,7 +15412,7 @@ CASE strlowCase(eventValue) OF
        q = Size(image0, /Dimensions) & ydim = strtrim(q[1],2)
        tit = 'Define ROIs & quit window when done. NOTE: area/length measures are approximate.'
        mask = ROIMask(image0, title=tit, Indices=roiIndices)
-       roi = where(mask eq 1b, ct_roi)
+       roi = where(mask eq 1b, ct_roi, /l64)
        if ct_roi eq 0 then GOTO, fin ;; nothing defined
        
        ;; let the user assign a resistance value for all those rois defined earlier
@@ -15491,7 +15470,7 @@ CASE strlowCase(eventValue) OF
        q = Size(image0, /Dimensions) & ydim = strtrim(q[1],2)
        tit = 'Define ROIs & quit window when done. NOTE: area/length measures are approximate.'
        mask = ROIMask(image0, title=tit, Indices=roiIndices)
-       roi = where(mask eq 1b, ct_roi)
+       roi = where(mask eq 1b, ct_roi, /l64)
        if ct_roi eq 0 then GOTO, fin ;; nothing defined
 
        ;; let the user assign a resistance value for all those rois defined earlier
@@ -15655,7 +15634,7 @@ CASE strlowCase(eventValue) OF
      printf, 1, 'REP_UNIT, AREA,  RAC[%], NR_OBJ, LARG_OBJ, APS, CNOA, ECA, COH[%], REST_POT[%]'
      input2 = file_basename(info.fname_input)
      ;; check if original image has been modified
-     q = where(*info.orig_image NE *info.fr_image, ct)
+     q = where(*info.orig_image NE *info.fr_image, ct, /l64)
      IF ct GT 0 THEN input2 = 'modified_' + input2
      rowstr = input2 + ',' + strtrim(eca_max,2) + ',' + strtrim(rac_orig,2) + ','  + $
        strtrim(nr_comp,2) + ',' + strtrim(obj_big, 2) + ',' + strtrim(aps, 2) + ',' + strtrim(cnoa, 2) + ',' + $
@@ -15981,7 +15960,7 @@ CASE strlowCase(eventValue) OF
       eew = 2  & eew2 = eew * 2
       ext = bytarr(sz[1] + eew2, sz[2] + eew2)
       ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = image0 eq 2b
-      qm = where(image0 EQ 0b, ctqm) ;; missing pixels in original dimensions
+      qm = where(image0 EQ 0b, ctqm, /l64) ;; missing pixels in original dimensions
       data_area = float(sz[4]) - ctqm
       image0 = ext ;; free up space, note that image0 is now the extended area
 
@@ -16158,7 +16137,7 @@ CASE strlowCase(eventValue) OF
       eew = 2  & eew2 = eew * 2
       ext = bytarr(sz[1] + eew2, sz[2] + eew2)
       ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = image0 eq 2b
-      qm = where(image0 EQ 0b, ctqm) ;; missing pixels in original dimensions    
+      qm = where(image0 EQ 0b, ctqm, /l64) ;; missing pixels in original dimensions    
       data_area = float(sz[4]) - ctqm
       image0 = ext ;; free up space, note that image0 is now the extended area having the FG-objects only
 
@@ -16307,7 +16286,7 @@ CASE strlowCase(eventValue) OF
       ;; backup the resistance image for analysis later in the loop
       resist = image0
       ;; reassign resistance image: FG-1 for cost analysis
-      q = where(resist eq 2b) & resist[q] = 1b & q = 0      
+      q = where(resist eq 2b, /l64) & resist[q] = 1b & q = 0      
       time0 = systime( / sec)
 
       ;; get all components of FG-objects
@@ -16316,7 +16295,7 @@ CASE strlowCase(eventValue) OF
       eew = 2  & eew2 = eew * 2
       ext = bytarr(sz[1] + eew2, sz[2] + eew2)
       ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = image0 eq 2b
-      qm = where(image0 EQ 0b, ctqm) ;; missing pixels in original dimensions
+      qm = where(image0 EQ 0b, ctqm, /l64) ;; missing pixels in original dimensions
       data_area = float(sz[4]) - ctqm
       image0 = ext ;; free up space, note that image0 is now the extended area having the FG-objects only
 
@@ -16367,7 +16346,7 @@ CASE strlowCase(eventValue) OF
       if ctqm gt 0 then imlcp0[qm] = 129b
       ;; color in 5 largest components
       FOR i = 1l, 5 DO BEGIN
-        q = where(lbl_comp EQ lcompidx(i - 1)) & image0[q] = cl(i)
+        q = where(lbl_comp EQ lcompidx(i - 1), /l64) & image0[q] = cl(i)
       ENDFOR
       q = 0
 
@@ -16461,19 +16440,19 @@ CASE strlowCase(eventValue) OF
         ;; setup marker maps
         ;; b) marker1 (linka) with extended frame of missing (3b)
         ext = temporary(ext)*0b + 3b
-        marker = lbl_comp eq linka & q1b = where(marker eq 1b)
+        marker = lbl_comp eq linka & q1b = where(marker eq 1b, /l64)
         if ctqm gt 0 then marker[qm] = 3b
         ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = marker
         write_tiff,'marker1.tif', ext, compression=1
-        qm1 = where(ext eq 1b)
+        qm1 = where(ext eq 1b, /l64)
 
         ;; c) marker2 (linkb) with extended frame of missing (3b)
         ext = temporary(ext)*0b + 3b
-        marker = lbl_comp eq linkb & q2b = where(marker eq 1b)
+        marker = lbl_comp eq linkb & q2b = where(marker eq 1b, /l64)
         if ctqm gt 0 then marker[qm] = 3b
         ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = marker
         write_tiff,'marker2.tif', ext, compression=1
-        qm2 = where(ext eq 1b)
+        qm2 = where(ext eq 1b, /l64)
 
         ;; check if A and B are divided or can not be connected due to a path of missing pixels
         ext[qm1] = 1b
@@ -16511,7 +16490,7 @@ CASE strlowCase(eventValue) OF
         ;; 1) mark LCP in black
         lcp = read_tiff('lcp.tif')
         lcp = lcp[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1]
-        lcp = where(lcp gt 0b, ct_lcp)
+        lcp = where(lcp gt 0b, ct_lcp, /l64)
 ;;;        image0[lcp] = 103b
 
         ;; convert ulong to long 32
@@ -16537,7 +16516,7 @@ CASE strlowCase(eventValue) OF
         ;; get LCP total length restore pixels
         ;; total length is 2 pixels less because it starts/ends in the targets
         tenlinkslength(0, il) = ct_lcp - 2
-        path = lbl_comp[lcp] & rp = where(path eq 0, restpix) & tenlinkslength(1, il) = restpix
+        path = lbl_comp[lcp] & rp = where(path eq 0, restpix, /l64) & tenlinkslength(1, il) = restpix
 
         ;; get accumulated cost of those restore pixels
         ;; use the sum of the resitance values of the restore pixels along the LCP
@@ -16939,7 +16918,7 @@ CASE strlowCase(eventValue) OF
           endif
 
           ;; test for unreachable pixels, i.e., a river cutting off part of the image
-          q = where(cost lt -2, ct)
+          q = where(cost lt -2, ct, /l64)
           ;; set up cost image for display, range 0-100 cost, objects 101, missing 102, lcp 103
           cost = BytScl(cost, min=0, max=maxcost, Top = 100)
           if ct gt 0 then cost[q] = 104b ;; unreachable
@@ -16950,7 +16929,7 @@ CASE strlowCase(eventValue) OF
         'cost_map_ab': begin ;; [0, 1, 2]
           widget_control, / hourglass
           marktmp = marker
-          q1b = where(marktmp eq 1b,ct_q1b)
+          q1b = where(marktmp eq 1b,ct_q1b, /l64)
           if ct_q1b gt 0 then marktmp(q1b) = 0b
           if ct_q2b gt 0 then marktmp(q2b) = 1b
           ;; marker2 with extended frame of missing (3b)
@@ -16997,14 +16976,14 @@ CASE strlowCase(eventValue) OF
 
           ;; get markers and least cost path
           marker=rotate(marker,7)
-          qmarker = where(marker eq 1b)
+          qmarker = where(marker eq 1b, /l64)
           lcp = read_tiff('lcp.tif') 
           lcp = lcp[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1]
-          lcp = where(lcp gt 0b, ct_lcp)
+          lcp = where(lcp gt 0b, ct_lcp, /l64)
 
           ;; test for unreachable pixels, i.e., a river cutting off part of the image
           ;; for long 64: q = where(cost gt maxcost, ct)
-          q = where(cost lt -2, ct)
+          q = where(cost lt -2, ct, /l64)
           ;; set up cost image for display, range 0-100 cost, objects 101, missing 102, lcp 103
           cost = BytScl(cost, min = mincost, max = maxcost, Top = 100)
           cost[lcp] = 103b & cost[qmarker] = 101b & if ctqm gt 0 then cost[qm]= 102b
@@ -17197,7 +17176,7 @@ CASE strlowCase(eventValue) OF
 
       
       ;print, 'fragm proc.time: ', systime( / sec) - time0   
-      qfg = where(image0 eq 2b) & z21=strtrim(mean(entro[qfg]),2)
+      qfg = where(image0 eq 2b, /l64) & z21=strtrim(mean(entro[qfg]),2)
       ;; convert to byte and apply mask
       entro = byte(round(entro)) * (image0 eq 2b)
       z22=strtrim(fix(min(entro[qfg])),2)
@@ -17416,7 +17395,7 @@ CASE strlowCase(eventValue) OF
          ;; scale back to original range
          e_min2=min(entro, max=e_max2) & dy2=e_max2-e_min2
          entro = e_min1+((float(entro)-e_min2)*dy1/dy2)         
-         qfg = where(image0 eq 2b) & z21=strtrim(mean(entro[qfg]),2)
+         qfg = where(image0 eq 2b, /l64) & z21=strtrim(mean(entro[qfg]),2)
          ;; convert to byte and apply mask
          entro = byte(round(entro)) * (image0 eq 2b)
          z22=strtrim(fix(min(entro[qfg])),2)
@@ -17525,9 +17504,9 @@ CASE strlowCase(eventValue) OF
 
    ;; we must process the full resolution image
    im0 = * info.fr_image
-   qfg=where(im0 eq 2b,ctfg) 
-   qbg=where(im0 eq 1b,ctbg)
-   qmiss=where(im0 eq 0b,ctmiss)
+   qfg=where(im0 eq 2b,ctfg, /l64) 
+   qbg=where(im0 eq 1b,ctbg, /l64)
+   qmiss=where(im0 eq 0b,ctmiss, /l64)
    time00 = systime( / sec)
    ;; kernel-dimension
    ;;qqstr = strmid(eventValue2,14,2) & kdim = fix(qqstr)
@@ -17568,7 +17547,7 @@ CASE strlowCase(eventValue) OF
      ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
      ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
      ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-     q = where(im eq 255b, ct)
+     q = where(im eq 255b, ct, /l64)
      im = ((im > 1b) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
      im = byte(round(temporary(im) * 100.0))
      if ct gt 0 then im[q] = 100b
@@ -17735,9 +17714,9 @@ CASE strlowCase(eventValue) OF
        ;; rotate to be compliant with Guidos
        im0=rotate(im0,7)
        ;; we must process the full resolution image
-       qfg=where(im0 eq 2b,ctfg)
-       qbg=where(im0 eq 1b,ctbg)
-       qmiss=where(im0 eq 0b,ctmiss)
+       qfg=where(im0 eq 2b,ctfg, /l64)
+       qbg=where(im0 eq 1b,ctbg, /l64)
+       qmiss=where(im0 eq 0b,ctmiss, /l64)
 
        ;; kernel-dimension
        kdim = 49 ;;fix(boxsize)        
@@ -17759,7 +17738,7 @@ CASE strlowCase(eventValue) OF
          ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
          ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
          ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-         q = where(im eq 255b, ct)
+         q = where(im eq 255b, ct, /l64)
          im = ((im > 1b) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
          im = byte(round(temporary(im) * 100.0))
          if ct gt 0 then im[q] = 100b
@@ -17874,8 +17853,8 @@ CASE strlowCase(eventValue) OF
      ;; we must process the full resolution image
      im0 = * info.fr_image     
      
-     mi = min(im0, / nan) & q = where(histogram(im0, / l64, min=mi) GT 0, nr_classes) & classes = q+mi
-     sz = size(im0) & qmiss=where(im0 eq 0b,ctmiss) & data_area = sz[4]-float(ctmiss)
+     mi = min(im0, / nan) & q = where(histogram(im0, /l64, min=mi) GT 0, nr_classes) & classes = q+mi
+     sz = size(im0) & qmiss=where(im0 eq 0b,ctmiss, /l64) & data_area = sz[4]-float(ctmiss)
      ;; add outside frame of 0 to make label_region work
      ext1 = lonarr(sz(1) + 2, sz(2) + 2) 
      ext1[1:sz(1), 1:sz(2)] = long(temporary(im0))
@@ -17917,7 +17896,7 @@ CASE strlowCase(eventValue) OF
           
      ;; write stuff out to file
      ;; filter out 0-entry (if present) in array
-     q = where(p_vclass eq 0, ct)
+     q = where(p_vclass eq 0, ct, /l64)
      if ct gt 0 then begin
        q=q[0]
        if q eq 0 then begin ;; all class numbers have positive numbers
@@ -18127,8 +18106,8 @@ CASE strlowCase(eventValue) OF
        
        ;; label map for all classes
        ;; get uniq classes
-       mi = min(im0, / nan) & q = where(histogram(im0, / l64, min=mi) GT 0, nr_classes) & classes = q+mi
-       sz = size(im0) & qmiss=where(im0 eq 0b,ctmiss) & data_area = sz[4]-float(ctmiss)
+       mi = min(im0, / nan) & q = where(histogram(im0, /l64, min=mi) GT 0, nr_classes) & classes = q+mi
+       sz = size(im0) & qmiss=where(im0 eq 0b,ctmiss, /l64) & data_area = sz[4]-float(ctmiss)
        ;; add outside frame of 0 to make label_region work
        ext1 = lonarr(sz(1) + 2, sz(2) + 2)
        ext1[1:sz(1), 1:sz(2)] = long(temporary(im0))
@@ -18164,7 +18143,7 @@ CASE strlowCase(eventValue) OF
 
        ;; write stuff out to file
        ;; filter out 0-entry (if present) in array
-       q = where(p_vclass eq 0, ct)
+       q = where(p_vclass eq 0, ct, /l64)
        if ct gt 0 then begin
          q=q[0]
          if q eq 0 then begin ;; all class numbers have positive numbers
@@ -18378,11 +18357,11 @@ CASE strlowCase(eventValue) OF
       IF eventValue2 eq 'change_fad' THEN BEGIN
         ;;; test for original FAD image        
         qq1a = strmid(im1_file,14,/reverse_offset) eq '_fad_mscale.tif'
-        qq2a = strmid(im1_file,19,/reverse_offset) eq '_fad-app5_mscale.tif'
+        qq2a = strmid(im1_file,19,/reverse_offset) eq '_fad-app5_mscale.tif' or strmid(im1_file,19,/reverse_offset) eq '_fad-app2_mscale.tif'
         qq = qq1a + qq2a
         
         IF qq ne 1 THEN BEGIN
-          res = dialog_message('Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5_mscale.tif image.' + string(10b) + 'Returning...', / information)
+          res = dialog_message('Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...', / information)
           GOTO, fin
         ENDIF
         
@@ -18402,8 +18381,20 @@ CASE strlowCase(eventValue) OF
           GOTO, fin
         ENDIF
         
+        ;; check sav-file
+        tt = strmid(im1_file,0, strlen(im1_file)-4)+'.sav'
+        res = file_info(tt)
+        IF res.exists NE 1b THEN BEGIN
+          msg = 'FAD change analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
+            'Please do not modify FAD-created directories.' + string(10b) + 'Returning...'
+          res = dialog_message(msg, / information)
+          GOTO, fin
+        ENDIF
+        im1_sav = tt
+
+        
         ;; check for presence of non-fragm. BG pixels
-        q = where(im1 eq 106b, im1_nfBG) & im1_nfBG=im1_nfBG gt 0
+        q = where(im1 eq 106b, im1_nfBG, /l64) & im1_nfBG=im1_nfBG gt 0
       ENDIF
       
       ;; --------  FOS ---------------
@@ -18436,7 +18427,7 @@ CASE strlowCase(eventValue) OF
         im1_sav = tt
         
         ;; check for presence of non-fragm. BG pixels
-        q = where(im1 eq 106b, im1_nfBG) & im1_nfBG=im1_nfBG gt 0
+        q = where(im1 eq 106b, im1_nfBG, /l64) & im1_nfBG = im1_nfBG gt 0
       ENDIF
    
   
@@ -18484,10 +18475,10 @@ CASE strlowCase(eventValue) OF
       ;; --------  FAD ---------------
       IF eventValue2 eq 'change_fad' THEN BEGIN
         qq1b = strmid(im1_file,14,/reverse_offset) eq '_fad_mscale.tif'
-        qq2b = strmid(im1_file,19,/reverse_offset) eq '_fad-app5_mscale.tif'
+        qq2b = strmid(im1_file,19,/reverse_offset) eq '_fad-app5_mscale.tif' or strmid(im1_file,19,/reverse_offset) eq '_fad-app2_mscale.tif'
         qq = qq1b + qq2b 
         IF qq ne 1 THEN BEGIN
-          res = dialog_message('Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5_mscale.tif image.' + string(10b) + 'Returning...', / information)
+          res = dialog_message('Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...', / information)
           GOTO, fin
         ENDIF
        ;; check that both images have the same FAD type
@@ -18509,9 +18500,21 @@ CASE strlowCase(eventValue) OF
           res = dialog_message('Input image B is not a geotiff or not a GTB-generated' + $
             string(10b) + '*_fad*_mscale.tif image.' + string(10b) + 'Returning...', / information)
           GOTO, fin
-        ENDIF     
+        ENDIF  
+        
+        ;; check sav-file
+        tt = strmid(im2_file,0, strlen(im2_file)-4)+'.sav'
+        res = file_info(tt)
+        IF res.exists NE 1b THEN BEGIN
+          msg = 'FAD change analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
+            'Please do not modify FAD-created directories.' + string(10b) + 'Returning...'
+          res = dialog_message(msg, / information)
+          GOTO, fin
+        ENDIF
+        im2_sav = tt
+   
         ;; check for presence of non-fragm. BG pixels
-        q = where(im2 eq 106b, im2_nfBG) & im2_nfBG=im2_nfBG gt 0
+        q = where(im2 eq 106b, im2_nfBG, /l64) & im2_nfBG = im2_nfBG gt 0
       ENDIF
 
       ;; --------  FOS ---------------
@@ -18532,7 +18535,7 @@ CASE strlowCase(eventValue) OF
           GOTO, fin
         ENDIF
         ;; check for presence of non-fragm. BG pixels
-        q = where(im2 eq 106b, im2_nfBG) & im2_nfBG=im2_nfBG gt 0
+        q = where(im2 eq 106b, im2_nfBG, /l64) & im2_nfBG = im2_nfBG gt 0
       ENDIF    
       IF im1_file EQ im2_file THEN BEGIN
         msg = 'You have selected the same image for Images A and B.' + string(10b) + 'Returning...'
@@ -18557,19 +18560,21 @@ CASE strlowCase(eventValue) OF
       ENDIF
       im2_sav = tt  
       
-      ;; test for same fostype
-      restore, filename=im1_sav & im1_fostype = fostype & s1len = strlen(im1_fostype)
-      restore, filename=im2_sav & im2_fostype = fostype & s2len = strlen(im2_fostype)
+      ;; test for same fostype or same fadtype
+      restore, filename=im1_sav & if (size(fadtype))[1] eq 7 then fostype = fadtype
+      im1_fostype = fostype & s1len = strlen(im1_fostype)
+      restore, filename=im2_sav & if (size(fadtype))[1] eq 7 then fostype = fadtype     
+      im2_fostype = fostype & s2len = strlen(im2_fostype)     
       if (s1len eq 8) and (s2len eq 8) then goto, bothfosapp
       if im1_fostype ne im2_fostype then begin
-        msg = 'FOS change analysis requires comparing files with the same analysis type, which is not the case for the selected files:' + string(10b) + $
+        msg = 'FOS/FAD change analysis requires comparing files with the same analysis type, which is not the case for the selected files:' + string(10b) + $
         'Image A: ' + im1_fostype + string(10b) + 'Image B: ' + im2_fostype + string(10b) + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
         GOTO, fin        
       endif
       bothfosapp:
       
-      q = where(im1 ne im2, ct) & q = 0
+      q = where(im1 ne im2, ct, /l64) & q = 0
       IF ct eq 0 THEN BEGIN
         msg = 'Pixel values of Images A and B are identical.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
@@ -18776,7 +18781,7 @@ CASE strlowCase(eventValue) OF
             GOTO, fin
           ENDIF
           ;; check which resistance we have
-          q = where(histoorig[3:100] gt 0, ct)
+          q = where(histoorig[3:100] gt 0, ct, /l64)
           IF ct EQ 1 THEN c_size = strtrim(q[0]+3,2) ELSE c_size = 'var'
 
           ;; get all components of FG-objects
@@ -18784,7 +18789,7 @@ CASE strlowCase(eventValue) OF
           ;; zeroed boundaries, go back to original dimension later
 
           ;; restore pixels, here only those that were added wrt im1!!
-          restpix = where((im2 eq 2b) and (im1 ne 2b), ct_rp)
+          restpix = where((im2 eq 2b) and (im1 ne 2b), ct_rp, /l64)
           
           ; first for the original image
           im = im1 & iloop = 1 & sz = size(im)
@@ -18792,7 +18797,7 @@ CASE strlowCase(eventValue) OF
           eew = 2  & eew2 = eew * 2
           ext = bytarr(sz[1] + eew2, sz[2] + eew2)
           ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = im eq 2b
-          qm = where(im EQ 0b, ctqm) ;; missing pixels in original dimensions
+          qm = where(im EQ 0b, ctqm, /l64) ;; missing pixels in original dimensions
           data_area = float(sz[4]) - ctqm
           if iloop eq 1 then begin
             ;; build distance map for quality of restore pixels
@@ -18975,13 +18980,13 @@ CASE strlowCase(eventValue) OF
           if fostype eq 'FOS-APP2' then begin
             change = dblarr(3,3) & change0 = change
             ;; exclude missing data from both maps, temporarily set them to 150b
-            q = where(im1 eq 102b or im2 eq 102b, ctmiss)
+            q = where(im1 eq 102b or im2 eq 102b, ctmiss, /l64)
             if ctmiss gt 0 then begin
               im1[q]=150b & im2[q]=150b
             endif
             ;; collapse all background types in im1 and im2
-            q = where(im2 gt 100b and im2 lt 150b, ct) & if ct gt 0 then im2[q]=110b
-            q = where(im1 gt 100b and im1 lt 150b, ct) & if ct gt 0 then im1[q]=110b
+            q = where(im2 gt 100b and im2 lt 150b, ct, /l64) & if ct gt 0 then im2[q]=110b
+            q = where(im1 gt 100b and im1 lt 150b, ct, /l64) & if ct gt 0 then im1[q]=110b
             ch = change0 ; reset change vector
             
             ;; get pixels of each class type in im1 and look what they changed to in im2
@@ -18989,12 +18994,12 @@ CASE strlowCase(eventValue) OF
               h=histogram(im2[q]) & ch = [h[110],total(h[0:39]),total(h[40:100])]
               change[*,0] = ch
             endif
-            ch = ch*0 & q = where(im1 lt 40b, ct)
+            ch = ch*0 & q = where(im1 lt 40b, ct, /l64)
             if ct gt 0 then begin ;; im1 has separated pixels
               h=histogram(im2[q]) & ch = [h[110],total(h[0:39]),total(h[40:100])]
               change[*,1] = ch
             endif
-            ch = ch*0 & q = where(im1 ge 40b and im1 le 100b, ct)
+            ch = ch*0 & q = where(im1 ge 40b and im1 le 100b, ct, /l64)
             if ct gt 0 then begin ;; im1 has continuous pixels
               h=histogram(im2[q]) & ch = [h[110],total(h[0:39]),total(h[40:100])]
               change[*,2] = ch
@@ -19068,13 +19073,13 @@ CASE strlowCase(eventValue) OF
           ;; 1-100, 101-BG, 102-missing, 105-special BG, 106-specialBG non-fragm.
           ;;               
           ;; exclude missing data from both maps, temporarily set them to 150b
-          q = where(im1 eq 102b or im2 eq 102b, ctmiss)
+          q = where(im1 eq 102b or im2 eq 102b, ctmiss, /l64)
           if ctmiss gt 0 then begin
             im1[q]=150b & im2[q]=150b
           endif
           ;; collapse all background types in im1 and im2
-          q = where(im2 gt 100b and im2 lt 150b, ct) & if ct gt 0 then im2[q]=110b
-          q = where(im1 gt 100b and im1 lt 150b, ct) & if ct gt 0 then im1[q]=110b
+          q = where(im2 gt 100b and im2 lt 150b, ct, /l64) & if ct gt 0 then im2[q]=110b
+          q = where(im1 gt 100b and im1 lt 150b, ct, /l64) & if ct gt 0 then im1[q]=110b
           ch = change0 ; reset change vector
 
           ;; get pixels of each class type in im1 and look what they changed to in im2
@@ -19082,32 +19087,32 @@ CASE strlowCase(eventValue) OF
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,0] = ch
           endif
-          ch = ch*0 & q = where(im1 lt 10b, ct)
+          ch = ch*0 & q = where(im1 lt 10b, ct, /l64)
           if ct gt 0 then begin ;; im1 has rare pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,1] = ch
           endif
-          ch = ch*0 & q = where(im1 ge 10b and im1 le 39b, ct)
+          ch = ch*0 & q = where(im1 ge 10b and im1 le 39b, ct, /l64)
           if ct gt 0 then begin ;; im1 has patchy pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,2] = ch
           endif
-          ch = ch*0 & q = where(im1 ge 40b and im1 le 59b, ct)
+          ch = ch*0 & q = where(im1 ge 40b and im1 le 59b, ct, /l64)
           if ct gt 0 then begin ;; im1 has transitional pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,3] = ch
           endif
-          ch = ch*0 & q = where(im1 ge 60b and im1 le 89b, ct)
+          ch = ch*0 & q = where(im1 ge 60b and im1 le 89b, ct, /l64)
           if ct gt 0 then begin ;; im1 has dominant pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,4] = ch
           endif
-          ch = ch*0 & q = where(im1 ge 90b and im1 lt 100b, ct)
+          ch = ch*0 & q = where(im1 ge 90b and im1 lt 100b, ct, /l64)
           if ct gt 0 then begin ;; im1 has interior pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,5] = ch
           endif
-          ch = ch*0 & q = where(im1 eq 100b, ct)
+          ch = ch*0 & q = where(im1 eq 100b, ct, /l64)
           if ct gt 0 then begin ;; im1 has 100-intact pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,6] = ch
@@ -19318,13 +19323,13 @@ CASE strlowCase(eventValue) OF
           ; 1-100, 101-BG, 102-missing, 105-special BG, 106-specialBG non-fragm.
                             
           ;; exclude missing data from both maps, temporarily set them to 150b
-          q = where(im1 eq 102b or im2 eq 102b, ctmiss)
+          q = where(im1 eq 102b or im2 eq 102b, ctmiss, /l64)
           if ctmiss gt 0 then begin
             im1[q]=150b & im2[q]=150b
           endif
           ;; collapse all background types in im1 and im2
-          q = where(im2 gt 100b and im2 lt 150b, ct) & if ct gt 0 then im2[q]=110b
-          q = where(im1 gt 100b and im1 lt 150b, ct) & if ct gt 0 then im1[q]=110b
+          q = where(im2 gt 100b and im2 lt 150b, ct, /l64) & if ct gt 0 then im2[q]=110b
+          q = where(im1 gt 100b and im1 lt 150b, ct, /l64) & if ct gt 0 then im1[q]=110b
                     
 
           ;; get pixels of each class type in im1 and look what they changed to in im2
@@ -19333,32 +19338,32 @@ CASE strlowCase(eventValue) OF
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,0] = ch
           endif
-          ch = ch*0 & q = where(im1 lt 10b, ct)
+          ch = ch*0 & q = where(im1 lt 10b, ct, /l64)
           if ct gt 0 then begin ;; im1 has rare pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,1] = ch
           endif
-          ch = ch*0 & q = where(im1 ge 10b and im1 le 39b, ct)
+          ch = ch*0 & q = where(im1 ge 10b and im1 le 39b, ct, /l64)
           if ct gt 0 then begin ;; im1 has patchy pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,2] = ch
           endif
-          ch = ch*0 & q = where(im1 ge 40b and im1 le 59b, ct)
+          ch = ch*0 & q = where(im1 ge 40b and im1 le 59b, ct, /l64)
           if ct gt 0 then begin ;; im1 has transitional pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,3] = ch
           endif
-          ch = ch*0 & q = where(im1 ge 60b and im1 le 89b, ct)
+          ch = ch*0 & q = where(im1 ge 60b and im1 le 89b, ct, /l64)
           if ct gt 0 then begin ;; im1 has dominant pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,4] = ch
           endif
-          ch = ch*0 & q = where(im1 ge 90b and im1 lt 100b, ct)
+          ch = ch*0 & q = where(im1 ge 90b and im1 lt 100b, ct, /l64)
           if ct gt 0 then begin ;; im1 has interior pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,5] = ch
           endif
-          ch = ch*0 & q = where(im1 eq 100b, ct)
+          ch = ch*0 & q = where(im1 eq 100b, ct, /l64)
           if ct gt 0 then begin ;; im1 has intact pixels
             h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
             change[*,6] = ch
@@ -19705,7 +19710,7 @@ CASE strlowCase(eventValue) OF
       im1com = read_tiff(info.dir_tmp + 'im1com.tif', geotiff=geotiff_com)
       im2com = read_tiff(info.dir_tmp + 'im2com.tif')
       mask1=im1com gt 0b & mask2=im2com gt 0b & tmp=mask1+mask2
-      q=where(tmp eq 2b, ct)
+      q=where(tmp eq 2b, ct, /l64)
       if ct eq 0 then begin
         ;; no overlap in data area
         msg = 'Image A and B do not share a common data area' + string(10b) + 'Returning...'
@@ -19742,8 +19747,8 @@ CASE strlowCase(eventValue) OF
       fmdistg, info.dir_tmp + 'im2com.tif', 2, 2, imdist00
       
       ;; core2core image. 208=coreFG, 192=coreBG
-      loss = where((imdist90 EQ 208b) AND (imdist00 EQ 192b), ctloss)
-      gain = where((imdist90 EQ 192b) AND (imdist00 EQ 208b), ctgain)
+      loss = where((imdist90 EQ 208b) AND (imdist00 EQ 192b), ctloss, /l64)
+      gain = where((imdist90 EQ 192b) AND (imdist00 EQ 208b), ctgain, /l64)
       c2c = imdist90 * 0b
       IF ctloss GT 0 THEN c2c(loss) = 192b
       IF ctgain GT 0 THEN c2c(gain) = 208b
@@ -19755,7 +19760,7 @@ CASE strlowCase(eventValue) OF
         (fm90 EQ 1b AND fm00 EQ 2b) * 12b + $
         (fm90 EQ 2b AND fm00 EQ 1b) * 21b + $
         (fm90 EQ 2b AND fm00 EQ 2b) * 22b
-      q = where(fm90 EQ 3b OR fm90 EQ 0b OR fm00 EQ 3b OR fm00 EQ 0b, ct)
+      q = where(fm90 EQ 3b OR fm90 EQ 0b OR fm00 EQ 3b OR fm00 EQ 0b, ct, /l64)
       IF ct GT 0 THEN difffm(q) = 3b
       
       ;; area at time A and B
@@ -19787,14 +19792,14 @@ CASE strlowCase(eventValue) OF
       diffsim = morph_close(seedgain, sel) * 12b + morph_close(seedloss, sel) * 21b
         
       ;; some pixels are both (12+21) so assign those 33b to 12b
-      q=where(diffsim eq 33b,ct) & if ct gt 0 then diffsim(q)=12b
+      q=where(diffsim eq 33b,ct, /l64) & if ct gt 0 then diffsim(q)=12b
       
       
       ;; test: 196 = 11, 212 = 22, 0
       difffm = (difffm eq 11b)*11b + (difffm eq 22b)*22b + (difffm eq 3b)*255b
-      q = where(diffsim eq 12b,ct) & if ct gt 0 then difffm(q) = 12b
-      q = where(diffsim eq 21b,ct) & if ct gt 0 then difffm(q) = 21b
-      q = where(difffm eq 0b,ct) & if ct gt 0 then difffm(q) = 176b
+      q = where(diffsim eq 12b,ct, /l64) & if ct gt 0 then difffm(q) = 12b
+      q = where(diffsim eq 21b,ct, /l64) & if ct gt 0 then difffm(q) = 21b
+      q = where(difffm eq 0b,ct, /l64) & if ct gt 0 then difffm(q) = 176b
       diffsim = temporary(difffm)
       
       ;; 4) labeling change areas
@@ -19883,7 +19888,7 @@ CASE strlowCase(eventValue) OF
 
       ;; reset both fmaps to the area of land in common
       im1 = temporary(im1) * land & im2 = temporary(im2) * land
-      qmiss = where(im1 eq 0b or im2 eq 0b,ct_qmiss)
+      qmiss = where(im1 eq 0b or im2 eq 0b,ct_qmiss, /l64)
       
       diffsim = (im1 eq 1b) * (im2 eq 1b)*11b ;; 11 - stable nonforest
       tmp = (im1 eq 2b) * (im2 lt 2b)*21b ;; 21 - forest loss
@@ -20575,7 +20580,7 @@ CASE strlowCase(eventValue) OF
           '1':begin
              tt = bytscl(contort1, Min=2, Top=252) + 3b
              ;; add back data array of missing, BG (-1, 0, 1): assign to 0,1,2
-             mask=where(contort1 lt 2l) & tt(mask)=byte(contort1(mask)+1l)
+             mask=where(contort1 lt 2l, /l64) & tt(mask)=byte(contort1(mask)+1l)
              * info.process = temporary(tt)
              * info.contort = temporary(contort1) & mask=0
              info.add_title = ' (Contortion, obj with core >= ' + info.mspa_size_current + $
@@ -21319,12 +21324,12 @@ CASE strlowCase(eventValue) OF
       
       str_about = '      GuidosToolbox ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, March 2022' + string(10b) + string(10b) + $
+                  ' Peter Vogt, EC-JRC, April 2022' + string(10b) + string(10b) + $
                   'On this PC, GuidosToolbox has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
                   '- spatcon, recode (K.Riitters)' + string(10b) + gdd
       ;; add info on image size
-      mspamax = '10000' & mbavail = 'N/A'
+      mspamax = '8000' & mbavail = 'N/A'
       if info.my_os eq 'linux' then begin
         ;; find out how much available RAM (MB) we have: free+buffers+cache
         spawn,"free|awk 'FNR == 2 {print $7}'", mbavail & mbavail = float(mbavail[0])/1024 ;; available
@@ -21340,7 +21345,7 @@ CASE strlowCase(eventValue) OF
         info.immaxsize = uint(mbavail/18) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
       endif 
       str_about = str_about + string(10b) + string(10b) + 'Maximum image dimension [pixels]: ' + string(10b) + $
-        '- GuidosToolbox: 30000 x 30000' + string(10b) + $
+        '- GTB: 30000 x 30000' + string(10b) + $
         '- Contortion/ConeforInputs: 5000 x 5000' + string(10b) + $
         '- MSPA: ' + mspamax + ' x ' + mspamax + string(10b) + $
         '- For MSPA-processing of larger images please use: ' + string(10b) + $
@@ -23016,7 +23021,7 @@ CASE fileaction OF
               geotiff = * info.geotiffinfo, description = desc, compression = 1 else $
               write_tiff, z, image0, geotiff = * info.geotiffinfo, description = desc, compression = 1
               if prefix eq '_reconnect_' then begin ;; add the reconnected path as binary image for MSPA-analysis
-                lcp = where(image0 eq 80b,ct_lcp)
+                lcp = where(image0 eq 80b,ct_lcp, /l64)
                 imt = *info.orig_image & imt = rotate(imt, 7)
                 if ct_lcp gt 0 then imt[lcp] = 2b
                 ztmp = strmid(z,0,strlen(z)-4) + '4MSPA+NW.tif'
@@ -23977,7 +23982,7 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
        fname = strmid(fname,0,strlen(fname)-4) + '_4status.tif'
        image0 = *info.fr_image
        ;; reassign classes to MSPA-compliant setup
-       qm = where(image0 eq 129b, ctqm)
+       qm = where(image0 eq 129b, ctqm, /l64)
        image0 = (image0 EQ 0b) + (image0 GT 0b)*2b
        IF ctqm GT 0 THEN image0[qm] = 0b
        if info.is_geotiff eq 1 then begin
@@ -25716,7 +25721,7 @@ IF NOT condi THEN BEGIN
     ;;========================
     if cpol ne 0b then begin ;; missing data was defined
       q = ext[cobject[0], cobject[1]] ; class value for the missing data
-      q = where(ext eq q, ct)
+      q = where(ext eq q, ct, /l64)
       if ct gt 0 then marker[q] = 3b
     endif
 
@@ -25727,7 +25732,7 @@ IF NOT condi THEN BEGIN
       ;; test for minimum set of required values:
       s = size(marker)
       ;; add missing data if they exist
-      q = where(* info.orig_image eq 0b, ct_q)
+      q = where(* info.orig_image eq 0b, ct_q, /l64)
       IF ct_q GT 0 THEN marker[q] = 3b
       
       marker_vals = where(histogram(marker) gt 0) & n_marker_vals = n_elements(marker_vals)
@@ -25971,10 +25976,10 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
       image0 = *info.fr_image & sz = size(image0)
       ;; missing pixels in original dimensions
       IF info.is_cost EQ 3 THEN BEGIN
-        qm = where(image0 EQ 129b, ctqm) 
+        qm = where(image0 EQ 129b, ctqm, /l64) 
         resist = *info.extra ;; get background resistance 
       ENDIF ELSE BEGIN ;; add custom line (is_cost = 9)
-        qm = where(image0 EQ 0b, ctqm)
+        qm = where(image0 EQ 0b, ctqm, /l64)
       ENDELSE
       data_area = float(sz[4]) - ctqm
       
@@ -25997,7 +26002,7 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
          lcp = image0 * 0b
          for id = 0, np-1 do lcp[shpath[0,id],shpath[1,id]] = 1b
          ;; get LCP path index
-         lcp = where(lcp eq 1b, length) ;; full length of drawn path
+         lcp = where(lcp eq 1b, length, /l64) ;; full length of drawn path
                              
       ENDIF ELSE BEGIN
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -26025,7 +26030,7 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
           skiplcp5:    
         endfor             
         ;; get LCP path index
-        lcp = where(lcp eq 1b, length) ;; full length of drawn path        
+        lcp = where(lcp eq 1b, length, /l64) ;; full length of drawn path        
       ENDELSE               
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;;;;;;;;;     drawline done         ;;;;;;;;;;;
@@ -26082,7 +26087,7 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
             ;; we need to make the line wider
             im = image0 * 0b & im[lcp] = 1b
             w = byte(width + 0) & sel = replicate(1b, w, w)
-            im = dilate(im, sel) & qn = where(im gt 0b) 
+            im = dilate(im, sel) & qn = where(im gt 0b, /l64) 
             ;; assign to image0
             image0[qn] = tt 
           ENDELSE
@@ -26099,7 +26104,7 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
       info.is_cost = 4 & showinf = 1 ;; display statistic info
       lbl_comp= * info.nw_ids
       h_comp_area = * info.nw_hnw
-      path = lbl_comp[lcp] & rp = where(path eq 0, restpix)
+      path = lbl_comp[lcp] & rp = where(path eq 0, restpix, /l64)
       expense = resist[lcp] & expense = long64(total(expense[rp]))
       ;; test for and add intermediate components
       h = histogram(path) & qintcomp = where(h GT 0)
@@ -26119,7 +26124,7 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
       image0[lcp[rp]] = 33b  ;; overplot restore pixels in red in display image, even through missing!
       
       ;; derive new data_area which might be larger than the original one because of potential drawigna line through missing!
-      qm = where(image0 EQ 129b, ctqm)
+      qm = where(image0 EQ 129b, ctqm, /l64)
       data_area = float(sz[4]) - ctqm
       ;rac = ECA_maxnew / data_area * 100.0
       ;delta_rac = rac - RAC_orig
@@ -26330,35 +26335,8 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Group_Leader = group, NColors = ncolors, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
-                 
-;; On Linux when running from source code specify the data-directory               
-;; guidostoolbox,dir_data='/home/pinoc/GuidosSource/data/'
 
-;; disable for final or when compiling the .sav-file!
-;; cd, current=current & if current eq '/home/pinoc/GuidosSource' then dir_data='/home/pinoc/GuidosSource/data/'
-; cd, current=current & if current eq 'C:\GuidosSource' then dir_data='C:\GuidosSource\data'
-;;
-;; 
-;; the naming scheme for the BUGFIX/REVISION release must be:
-;;==============================================================
-;; the string 'GTB_', followed by the program version (without dot), and
-;; followed by 2 digit bugfix/revision version starting with 01
-;; i.e., if the current GTB version is 2.2  and we have the third revision release then: GTB_2203
-;; setup a folder named GTB_2203, which must contain 
-;; a) the 3 installers: installGTB_rev_Linux, installGTB_rev_Mac, installGTB_rev_Windows.cmd
-;; b) the folder "fixes" having all patches that are applied acc. to the instructions inside the installers
-;; c) once setup, zip the folder and upload it to the main website
-;;
-;;
-;; the naming scheme for the PROGRAM VERSION must be:
-;;===================================================
-;; to be 2.203  =  major version (2.2) and 2 digit bugfix release (03), i.e., 2.203
-;; then double underscore, and workshop version increasing from 2015.04 like: 2.203__2015.04 on the server:
-;; https://ies-ows.jrc.ec.europa.eu/gtb/version.txt
-;; and inside the GTB code (next line) use only the first part. i.e., 3.303
-;; current is 3.004__2021.05
-gtb_version = 3.004
-
+gtb_version = 3.005
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if testing on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -26460,7 +26438,7 @@ IF res EQ 0b THEN BEGIN ;; if that file does not exist, go ahead with the proxy 
       ENDIF
     ENDIF
   ENDIF ELSE IF my_os EQ 'apple' THEN BEGIN  
-    ;; todo ? find out proxy configuration if it is not specified as ENV or via proxy.pac
+    ;; find out proxy configuration if it is not specified as ENV or via proxy.pac
     ;; spawn, 'system_profiler SPNetworkDataType|grep proxy', envproxy 
     ;; system_profiler SPNetworkDataType | grep "HTTP Proxy Server" | awk '{print $4}' | head -1
     ;; system_profiler SPNetworkDataType | grep "HTTP Proxy Port" | awk '{print $4}' | head -1
@@ -27064,7 +27042,7 @@ w_labelstr3 = widget_label(w_label, value = ' > large')
 ;;=======================================================================
 ;; do final checks before we realize the widget hierachy 
 ;;=======================================
-;; test for pdf,browser,gdal,wine etc.
+;; test for pdf, browser, gdal etc.
 ;;=======================================
 ;; initialize 
 acroread_exe = '' & html_exe = '' & sysgdal='' & fmanager = '' & linterm='' & ftmp = dir_tmp + 'tmp.txt'
@@ -27074,7 +27052,7 @@ CASE my_os OF
   'windows': BEGIN
     ;;================================================================================================
     ;; maximum image size for MSPA 
-    immaxsize = 101.0
+    immaxsize = 65.0
     fn = dir_guidossub + 'mspa.exe'
     ;; find out how much available RAM (MB) we have
     ;;spawn,'typeperf "\Memory\Available mbytes" -sc 1', res & res = res [2]
@@ -27086,7 +27064,7 @@ CASE my_os OF
     dir_fwtools = dir_guidossub + 'GTBtools\'
     windrive = strmid(dir_fwtools,0,2)
 
-    ;; check to have at least XP
+    ;; check to have at least Win 8.1
     spawn, 'ver', res & res = STRSPLIT(res[1], /EXTRACT, ' ') & res = res[n_elements(res)-1]
     q = strpos(res,'.') & res = float(strmid(res,0,q+2))
     IF res LT 6.3 THEN BEGIN
@@ -27094,6 +27072,7 @@ CASE my_os OF
       Exit
     ENDIF
     ;; lt 10.0 to deprecate Win 8 supported until January 2023; end of Win 10 in October 2025
+    ;; https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions
 
     ;; compare GTB version in use versus OS-version
     res = file_info(dir_guidossub + 'spatcon\spatcon64.exe') & res = res.exists
@@ -27362,9 +27341,7 @@ Widget_Control, TLB, / Realize
 ;; set the initial processed image to the original image
 image0 = welcome
 process = image0
-
 data_min = 0b & data_max = 2b
-
 
 ;; Get the window index number of the draw widget window. Make it active.
 Widget_Control, w_draw, Get_Value = draw_ID
