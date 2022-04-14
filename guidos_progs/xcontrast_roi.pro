@@ -19,7 +19,8 @@
 ;       E-mail: davidf@dfanning.com
 ;       Coyote's Guide to IDL Programming: http://www.dfanning.com
 ;
-;      modified to suite the ROI_GUI program
+;       Peter Vogt: modified to suite the *_roi programs in GTB by
+;       commenting out those lines not needed for GTB (place a ";" at the beginning of a line)
 ;
 ; CATEGORY:
 ;
