@@ -25,14 +25,6 @@
 ;;=======================================================================
 compile_opt idl2
 ;;=======================================================================
-;; reset any existing custom DLM_PATH settings or make sure the system environment variable is not modified
-;;  click on left bottom Windows button: type "environment" then select "Edit the system environment variables", click on "Environment Variables..."
-;; and ensure there is no modified IDL_DLM_PATH set because this will be imported into the IDLDE, not a good way; instead set them via the IDL preferences
-;PREF_SET, 'IDL_DLM_PATH', /DEFAULT ,/COMMIT
-
-;; David Fanning list of programs:
-;; http://www.idlcoyote.com/documents/programs.php#ALPHABETICAL_LIST
-
 ;; include required subroutines
 @guidos_progs/canny
 @guidos_progs/cgerrormsg 
@@ -66,6 +58,14 @@ compile_opt idl2
 @guidos_progs/xcontrast_roi
 @guidos_progs/xmorph_roi
 @guidos_progs/xthreshold_roi
+
+PRO UNDEFINE, varname
+  On_Error, 1
+  IF N_Params() EQ 0 THEN $
+    Message, 'One argument required in call to UNDEFINE'
+  if (n_elements(varname) eq 0) then return ; already undefined
+  tempvar = SIZE(TEMPORARY(varname))
+END
 
 FUNCTION UrlBigFileGetCallbackStatus, status, progress, oProgressbar
   IF progress[0] THEN oProgressbar->Update, 100.0*progress[2]/progress[1]
@@ -9662,7 +9662,7 @@ CASE strlowCase(eventValue) OF
          pushd, info.dir_guidossub
          cmd = 'mspa.exe -graphfg ' + c_FGconn + $
                ' -eew ' + c_size + ' -internal ' + c_intext + $
-               ' -transition ' + c_trans + $
+               ' -disk -transition ' + c_trans + $
                ' -i mspatmp\inputmorph.tif' + $
                ' -o outputmorph.tif -odir mspatmp\'
          time0 = systime( / sec)
@@ -9673,7 +9673,7 @@ CASE strlowCase(eventValue) OF
          pushd, info.dir_tmp
          IF info.my_os EQ 'linux' THEN mspa_os = 'mspa_lin' ELSE mspa_os = 'mspa_mac'
          cmd = info.dir_guidossub + mspa_os + ' -graphfg ' + c_FGconn + $
-               ' -eew ' + c_size + ' -internal ' + c_intext + ' -transition ' + c_trans + $
+               ' -eew ' + c_size + ' -internal ' + c_intext + ' -disk -transition ' + c_trans + $
                ' -i inputmorph.tif -o outputmorph.tif -odir ./'
          time0 = systime( / sec)
          widget_control, / hourglass
@@ -10970,7 +10970,7 @@ CASE strlowCase(eventValue) OF
             pushd, info.dir_guidossub
             cmd = 'mspa.exe -graphfg ' + c_FGconn + $
               ' -eew ' + c_size + ' -internal ' + c_intext + $
-              ' -transition ' + c_trans + $
+              ' -disk -transition ' + c_trans + $
               ' -i mspatmp\inputmorph.tif' + $
               ' -o outputmorph.tif -odir mspatmp\'
             time0 = systime( / sec)
@@ -10983,7 +10983,7 @@ CASE strlowCase(eventValue) OF
              mspa_os = 'mspa_lin' ELSE mspa_os = 'mspa_mac'
             cmd = info.dir_guidossub + mspa_os + ' -graphfg ' + c_FGconn + $
                   ' -eew ' + c_size + ' -internal ' + c_intext + $
-                  ' -transition ' + c_trans + $
+                  ' -disk -transition ' + c_trans + $
                   ' -i inputmorph.tif -o outputmorph.tif -odir ./'
             time0 = systime( / sec)
             widget_control, / hourglass
@@ -11474,7 +11474,7 @@ CASE strlowCase(eventValue) OF
             pushd, info.dir_guidossub
             cmd = 'mspa.exe -graphfg ' + c_FGconn + $
                   ' -eew ' + c_size + ' -internal ' + c_intext + $
-                  ' -transition ' + c_trans + $
+                  ' -disk -transition ' + c_trans + $
                   ' -i mspatmp\' + fbase0 + $
                   ' -o ' + fbase1 + ' -odir mspatmp\'
              spawn, cmd, log, / hide
@@ -11485,7 +11485,7 @@ CASE strlowCase(eventValue) OF
              mspa_os = 'mspa_lin' ELSE mspa_os = 'mspa_mac'
             cmd = info.dir_guidossub + mspa_os + ' -graphfg ' + c_FGconn + $
                   ' -eew ' + c_size + ' -internal ' + c_intext + $
-                  ' -transition ' + c_trans + $
+                  ' -disk -transition ' + c_trans + $
                   ' -i ' + fbase0 + ' -o ' + fbase1 + ' -odir ./'
              spawn, cmd, log
             popd
@@ -16329,12 +16329,27 @@ CASE strlowCase(eventValue) OF
       ;; we can have 10 uniq links between the 5 largest components
       ;; from h_comp_area we exclude the first entry (= background)
       lcompidx = (reverse(sort(h_comp_area[1:*])))+1
-      lcompidx = lcompidx[0:4] ;; these are the top 5 by ID
-
+      max5 = 5    
+      IF nr_comp LT 2 THEN BEGIN
+        msg = 'At least 2 components are needed.' + string(10b) + 'Returning...'
+        res = dialog_message(msg, / information, title = tit)
+        GOTO, fin        
+      ENDIF
+      max5 = nr_comp < max5
+      lcompidx = lcompidx[0:max5-1] ;; these are the top 5 by ID
       ;;lcomparea = h_comp_area[lcompidx]
-      tenlinks = ['1 <-> 2', '1 <-> 3', '1 <-> 4', '1 <-> 5', '2 <-> 3', $
+      IF max5 EQ 5 THEN BEGIN
+        tenlinks = ['1 <-> 2', '1 <-> 3', '1 <-> 4', '1 <-> 5', '2 <-> 3', $
         '2 <-> 4', '2 <-> 5', '3 <-> 4', '3 <-> 5', '4 <-> 5']
-      tenlinksimp = fltarr(10) & tenlinkslength = intarr(2, 10)
+      ENDIF ELSE IF max5 EQ 4 THEN BEGIN
+        tenlinks = ['1 <-> 2', '1 <-> 3', '1 <-> 4', '2 <-> 3', '2 <-> 4', '3 <-> 4']        
+      ENDIF ELSE IF max5 EQ 3 THEN BEGIN
+        tenlinks = ['1 <-> 2', '1 <-> 3', '2 <-> 3']
+      ENDIF ELSE IF max5 EQ 2 THEN BEGIN
+        tenlinks = ['1 <-> 2']
+      ENDIF
+      nrtenlinks = n_elements(tenlinks)
+      tenlinksimp = fltarr(nrtenlinks) & tenlinkslength = intarr(2, nrtenlinks)
 
       ;; prepare image for display
       ;; load the colors-on table
@@ -16345,7 +16360,7 @@ CASE strlowCase(eventValue) OF
       imlcp0 = image0[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] ;; base image to show the individual LCPs
       if ctqm gt 0 then imlcp0[qm] = 129b
       ;; color in 5 largest components
-      FOR i = 1l, 5 DO BEGIN
+      FOR i = 1l, max5 DO BEGIN
         q = where(lbl_comp EQ lcompidx(i - 1), /l64) & image0[q] = cl(i)
       ENDFOR
       q = 0
@@ -16414,7 +16429,7 @@ CASE strlowCase(eventValue) OF
         ', EFFIC, ECA_ORIG, ECA_NEW, DELTA_ECA, COH_ORIG, COH_NEW, DELTA_COH' 
 
       ;; get LCP and importance for these new links
-      nr_connections = 10
+      nr_connections = nrtenlinks
       FOR il = 0, nr_connections - 1 DO BEGIN
         IF progressBar -> CheckCancel() THEN BEGIN
           res = Dialog_Message('Restoration-processing cancelled by user.')
@@ -16622,7 +16637,7 @@ CASE strlowCase(eventValue) OF
       info.autostretch_id = 0
       * info.nw_ids = lbl_comp
       ;; overwrite LCP with component colors
-      FOR i = 1l, 5 DO BEGIN
+      FOR i = 1l, max5 DO BEGIN
         q = where(lbl_comp EQ lcompidx(i - 1)) & image0[q] = cl(i)
       ENDFOR
       q = 0
@@ -16635,7 +16650,7 @@ CASE strlowCase(eventValue) OF
       * info.nw_hnw = h_comp_area
       lbl_comp = 0 & image0 = 0 & h_comp_area = 0
       * info.fr_image = * info.process
-      info.add_title = ' (restoration path between 5 largest objects, BGresist: ' + c_size + '%)'
+      info.add_title = ' (restoration path between ' + strtrim(max5,2) + ' largest objects, BGresist: ' + c_size + '%)'
 
       ;; reset mspa
       info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b
@@ -21322,27 +21337,28 @@ CASE strlowCase(eventValue) OF
       ENDCASE     
       aa = ', Revision '  + strvrev + ' (' + strtrim(!version.memory_bits,2) + ' bit)'
       
-      str_about = '      GuidosToolbox ' + vbase + aa + string(10b) + $
+      str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, April 2022' + string(10b) + string(10b) + $
-                  'On this PC, GuidosToolbox has access to: ' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, May 2022' + string(10b) + $
+                  'GTB is free and open-source software.' + string(10b) + string(10b) + $
+                  'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
                   '- spatcon, recode (K.Riitters)' + string(10b) + gdd
       ;; add info on image size
-      mspamax = '8000' & mbavail = 'N/A'
+      mspamax = '10000' & mbavail = 'N/A'
       if info.my_os eq 'linux' then begin
         ;; find out how much available RAM (MB) we have: free+buffers+cache
         spawn,"free|awk 'FNR == 2 {print $7}'", mbavail & mbavail = float(mbavail[0])/1024 ;; available
         spawn,"free|awk 'FNR == 3 {print $4}'", mbavail2 & mbavail2 = float(mbavail2[0])/1024 ;; swap
         mbavail = mbavail + mbavail2          
-        info.immaxsize = uint(mbavail/18) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
+        info.immaxsize = uint(mbavail/19) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
       endif else if info.my_os eq 'apple' then begin
         spawn, "vm_stat | grep free | awk '{ print $3 }' | sed 's/\.//'",fra & fra=float(fra[0])
         spawn,"vm_stat | grep inactive | awk '{ print $3 }' | sed 's/\.//'", frb & frb=float(frb[0])
         spawn,"vm_stat | grep speculative | awk '{ print $3 }' | sed 's/\.//'", frc & frc=float(frc[0])
         spawn,"vm_stat | grep purgeable | awk '{ print $3 }' | sed 's/\.//'",frd & frd=float(frd[0])
         mbavail = (fra+frb+frc+frd)*4096/1048576
-        info.immaxsize = uint(mbavail/18) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
+        info.immaxsize = uint(mbavail/19) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
       endif 
       str_about = str_about + string(10b) + string(10b) + 'Maximum image dimension [pixels]: ' + string(10b) + $
         '- GTB: 30000 x 30000' + string(10b) + $
@@ -22135,7 +22151,7 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
   ENDIF ELSE IF info.add_title EQ ' (SPA6)' THEN BEGIN
     fname = fname + '_spa6' & is_spa = 6
     desc = 'GTB_SPA, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'   
-  ENDIF ELSE IF strpos(info.add_title,'(restoration path between 5 largest objects,') GT 0 THEN BEGIN ;; Restoration Planner
+  ENDIF ELSE IF strpos(info.add_title,'(restoration path between ') GT 0 THEN BEGIN ;; Restoration Planner
     p = strpos(info.add_title,'BGresist:')
     tt = strmid(info.add_title,p+10)
     p2 = strpos(tt, '%')
@@ -23994,9 +24010,11 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
      IF info.is_cost EQ 2 THEN BEGIN ;; check if we save a optimum (5) path, then add the actual cost image too
        p = strpos(tmpfile2[0],'_AB.tif')
        for i = 0, n_elements(tmpfile2)-1 do begin
-         if p gt 0 then fname = fnbase + strmid(tmpfile2[i],p+3) else $
-           fname = fnbase + strmid(tmpfile2[i],14)
-         file_copy, info.dir_tmp + tmpfile2[i], fname, / overwrite
+         if strlen(tmpfile2[i]) gt 0 then begin
+           if p gt 0 then fname = fnbase + strmid(tmpfile2[i],p+3) else $
+             fname = fnbase + strmid(tmpfile2[i],15)
+           file_copy, info.dir_tmp + tmpfile2[i], fname, / overwrite
+         endif
        endfor      
      ENDIF
        
@@ -26336,7 +26354,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.005
+gtb_version = 3.006
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if testing on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -26482,8 +26500,6 @@ IF res EQ 0b THEN BEGIN ;; if that file does not exist, go ahead with the proxy 
   ENDELSE
 ENDIF
 ;;---------------------------------------------------------------------------------------------------------------------------------
-print, 'proxhost = ' + proxhost
-print, 'proxport = ' + proxport
 
 ;;=======================================================
 ;; automatic test for newer version/bugfix and GWS release
@@ -27052,7 +27068,7 @@ CASE my_os OF
   'windows': BEGIN
     ;;================================================================================================
     ;; maximum image size for MSPA 
-    immaxsize = 65.0
+    immaxsize = 100.0
     fn = dir_guidossub + 'mspa.exe'
     ;; find out how much available RAM (MB) we have
     ;;spawn,'typeperf "\Memory\Available mbytes" -sc 1', res & res = res [2]
@@ -27245,7 +27261,7 @@ CASE my_os OF
     spawn,"free|awk 'FNR == 2 {print $7}'", mbavail & mbavail = float(mbavail[0])/1024 ;; available
     spawn,"free|awk 'FNR == 3 {print $4}'", mbavail2 & mbavail2 = float(mbavail2[0])/1024 ;; swap
     mbavail = mbavail + mbavail2
-    immaxsize = uint(mbavail/18)
+    immaxsize = uint(mbavail/19)
     file_copy, dir_guidos + 'MSPAstandalone/mspa_lin64', fn, / overwrite
 
     ;; find out if nolimits is set
@@ -27288,7 +27304,7 @@ CASE my_os OF
       spawn,"vm_stat | grep speculative | awk '{ print $3 }' | sed 's/\.//'", frc & frc=float(frc[0])
       spawn,"vm_stat | grep purgeable | awk '{ print $3 }' | sed 's/\.//'",frd & frd=float(frd[0])
       mbavail = (fra+frb+frc+frd)*4096/1048576
-    immaxsize = uint(mbavail/18)
+    immaxsize = uint(mbavail/19)
     fn = dir_guidossub + 'mspa_mac'
     file_copy, dir_guidos + 'MSPAstandalone/mspa_mac', fn, / overwrite
     dir_fwtools = '/Library/Frameworks/GDAL.framework/Programs/'
