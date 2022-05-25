@@ -47,3 +47,9 @@ f) Additional documents of the current GTB-version:
 -   changelog: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/changelog.txt
 -   GTB Manual: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/GuidosToolbox_Manual.pdf
 -   MSPA Guide: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/MSPA_Guide.pdf
+
+g) Citing GTB in publications:
+-----
+-   Vogt P., Riitters K. (2017). GuidosToolbox: universal digital image object analysis. European Journal of Remote Sensing, 50, 1, pp. 352-361, doi: [10.1080/22797254.2017.1330650](https://doi.org/10.1080/22797254.2017.1330650)
+-   GuidosToolbox is available for free at the following web site: https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/
+
