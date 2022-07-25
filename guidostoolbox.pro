@@ -21339,7 +21339,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, May 2022' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, July 2022' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -23628,7 +23628,7 @@ IF strmid(fileaction,0,4) EQ 'read' THEN BEGIN
        widget_control, info.w_mspa_param4, set_value = info.mspa_param4_id
        widget_control, info.w_mspa_param2, set_combobox_select = 0, sensitive = 1
        widget_control, info.w_mspa_param2, set_value = [m2,'1','2','3','4','5','6','7','8','9','10']
-       info.mspa_stats_show = 1b & info.is_mspa = 1 & info.mspa_size_current = m2   
+       info.mspa_stats_show = 0b & info.is_mspa = 1 & info.mspa_size_current = m2   
        info.disp_colors_id = 3 & info.ctbl = - 1 & info.autostretch_id = 0 
        IF info.mspa_param3_id EQ 1b THEN $
          restore, info.dir_guidossub + 'mspacolorston.sav' ELSE $
@@ -26354,8 +26354,8 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.006
-isBDAP = 0  ;; default = 0    NOTE: only set to 1 if testing on BDAP! (in directory $HOME/bdap)
+gtb_version = 3.100
+isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
    print, 'Please close your previous application before running a new one'
@@ -26498,6 +26498,54 @@ IF res EQ 0b THEN BEGIN ;; if that file does not exist, go ahead with the proxy 
       proxport = ''
     ENDELSE
   ENDELSE
+ENDIF
+;;---------------------------------------------------------------------------------------------------------------------------------
+;; Linux: test user copy versus system default and update if needed
+;; this is only applicable for non-standard setups like on BDAP
+;; where the %posttrans script of the GTB-spec is not executed
+;;============================================================
+IF my_os EQ 'linux' THEN BEGIN
+  cd, dir_guidos
+  pushd, '../..'
+  cd, current = basedir
+  basedir = basedir + OS_sep
+  popd
+  res = (file_info('/opt/GTB/changelog.txt')).exists ;check if system install exists
+  IF res EQ 1 THEN BEGIN ;; we have a system installation
+    ;; extract and compare system GTB-version versus user GTB-version
+    spawn, "cat /opt/GTB/changelog.txt |grep -m 1 Version| cut -d' ' -f2", sys_version & sys_version = float(sys_version[0])
+    res = (gtb_version - sys_version) LT 0.0
+    curruser = getenv('USER')
+    ;; for all others but myself...
+    IF curruser NE 'pinoc64' AND res EQ 1b THEN BEGIN 
+      ;; sys_version is newer than user version:
+      ;; inform user to run the upgrade script, which will copy over the current GTB sys_version from the system installation
+      ;; we are in dir_guidos, set up a self-destructing script here to update the user's outdated version   
+      pushd, basedir & close, 1
+      openw, 1, 'update_myGTB.sh'
+      printf, 1, "#!/bin/sh "
+      printf, 1, "# update local GTB to system GTB version "
+      printf, 1, " "
+      printf, 1, "topdir=`dirname $0` "
+      printf, 1, 'if (test $topdir = ".") ; then '
+      printf, 1, "   topdir=$PWD; "
+      printf, 1, "fi "
+      printf, 1, "cd $topdir "            
+      printf, 1, "cp -fr /opt/GTB/* . "
+      printf, 1, "echo Please restart GTB"  
+      printf, 1, "rm -f $topdir/update_myGTB.sh "      
+      printf, 1, "exit  "
+      close, 1
+      file_chmod, 'update_myGTB.sh', /A_EXECUTE
+      msg = 'Your local GTB copy is outdated.' + string(10b) + $
+        'Please open a terminal in the directory: ' + basedir + string(10b) + $
+        "and run the script 'update_myGTB.sh' to upgrade your local copy " + string(10b) + $
+        'of GTB to the system-provided version of GTB' + string(10b) + string(10b) + 'Returning...'
+      res = dialog_message(msg,title='GTB startup check:', / error)
+      popd
+      exit
+    ENDIF
+  ENDIF
 ENDIF
 ;;---------------------------------------------------------------------------------------------------------------------------------
 
