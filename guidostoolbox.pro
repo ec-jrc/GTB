@@ -84,8 +84,7 @@ PRO Guidos_Image, image0, autostretch, posx, posy
 Catch, theError
 IF theError NE 0 THEN BEGIN
    Catch, / Cancel
-   ok = Error_Message(!Error_State.Msg + ' Returning...', $
-                      Traceback = Keyword_Set(debug))
+   ok = Error_Message(!Error_State.Msg + ' Returning...', Traceback = Keyword_Set(debug))
    RETURN
 ENDIF
 
@@ -126,7 +125,7 @@ res = query_image(fname, inpinfo)
 ;; check for single image in file
 ;;===========================
 IF inpinfo.num_images GT 1 THEN BEGIN
-   msg = 'MSPA-compliant image required: ' + string(10b) + $
+   msg = 'MSPA-compliant map required: ' + string(10b) + $
          'Input file has more than 1 image.' + string(10b) + 'Returning...'
    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
    GOTO, fin
@@ -135,8 +134,8 @@ ENDIF
 ;; check for single channel image
 ;;===========================
 IF size(image0, / n_dim) NE 2 THEN BEGIN
-   msg = 'MSPA-compliant image required: ' + string(10b) + $
-         'Input image has more than 1 band.' + string(10b) + $
+   msg = 'MSPA-compliant map required: ' + string(10b) + $
+         'Input map has more than 1 band.' + string(10b) + $
          "Try using General Tools: Preprocessing: RGB -> Single Band" + string(10b) + 'Returning...'
    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
    GOTO, fin
@@ -145,49 +144,53 @@ ENDIF
 ;; check for byte array
 ;;===========================
 IF size(image0, / type) NE 1 THEN BEGIN
-   msg = 'MSPA-compliant image required: ' + string(10b) + $
-         'Input image is not of type BYTE.' + string(10b) + $
+   msg = 'MSPA-compliant map required: ' + string(10b) + $
+         'Input map is not of type BYTE.' + string(10b) + $
          "Try using General Tools: Preprocessing: Convert -> Byte"  + string(10b) + 'Returning...'
    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
    GOTO, fin
 ENDIF
 
-;; check for maximum image size
+;; check for maximum map size
 ;;===========================
 imsize = (size(image0))[4] / (1024.0^2)
 IF imsize GT immaxsize THEN BEGIN
-   msg = 'Input file too large.' + string(10b) + $
-         '(Maximum size: ' + strtrim(round(immaxsize), 2) + ' MB)' + $
-         string(10b) + "Try using: Image Analysis: Pattern: Morphological: MSPA Tiling" + string(10b) + 'Returning...'
+   msg = 'Input map dimension in X/Y is too large.' + string(10b) + $
+         'Uncompressed map file size limit: X*Y pixels = ' + strtrim(round(immaxsize), 2) + ' MB' + $
+         string(10b) + 'Maximum supported map dimensions: Help -> About GTB' + $
+         string(10b) + 'Please always use GWB for processing large maps!' + string(10b) + $
+         string(10b) + 'or try: Image Analysis: Pattern: Morphological: MSPA Tiling' + $
+         string(10b) + 'but MSPA Tiling is an approximate and time consuming solution that is not guaranteed to provide correct results as in GWB,' + $
+         string(10b) + 'Returning...'
    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
    GOTO, fin
 ENDIF
 
-;; check min/max value in image
+;; check min/max value in map
 ;;===========================
 mxx = max(image0, min = mii)
 IF mxx GT 2b THEN BEGIN
-   msg = 'MSPA-compliant image required: ' + string(10b) + $
-         'Image maximum is larger than 2 BYTE.' + string(10b) + $
+   msg = 'MSPA-compliant map required: ' + string(10b) + $
+         'map maximum is larger than 2 BYTE.' + string(10b) + $
          "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
    GOTO, fin
 ENDIF ELSE IF mxx LT 2b THEN BEGIN
-   msg = 'MSPA-compliant image required: ' + string(10b) + $
-         'Image has no foreground (2 BYTE).' + string(10b) + $
+   msg = 'MSPA-compliant map required: ' + string(10b) + $
+         'map has no foreground (2 BYTE).' + string(10b) + $
          "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
    GOTO, fin
 ENDIF
 IF mii GT 1b THEN BEGIN
-   msg = 'MSPA-compliant image required: ' + string(10b) + $
-         'Image has no background (1 BYTE).' + string(10b) + $
+   msg = 'MSPA-compliant map required: ' + string(10b) + $
+         'map has no background (1 BYTE).' + string(10b) + $
          "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
    GOTO, fin
 ENDIF
 
-;; if you arrive here the image is MSPA compliant
+;; if you arrive here the map is MSPA compliant
 result = 1
 
 ;;==================================================
@@ -198,7 +201,7 @@ END
 ;;=======================================================================
 ;;=======================================================================
 PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
-  ;; get image info and validate the input for LM processing
+  ;; get map info and validate the input for LM processing
   result = 0
   res = strpos(fname,' ') ge 0
   IF res EQ 1 THEN BEGIN
@@ -213,7 +216,7 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
   ;; check for single image in file
   ;;===========================
   IF inpinfo.num_images GT 1 THEN BEGIN
-    msg = 'LM-compliant image required: ' + string(10b) + $
+    msg = 'LM-compliant map required: ' + string(10b) + $
       'Input file has more than 1 image.' + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
@@ -222,8 +225,8 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
   ;; check for single channel image
   ;;===========================
   IF size(image0, / n_dim) NE 2 THEN BEGIN
-    msg = 'LM-compliant image required: ' + string(10b) + $
-      'Input image has more than 1 band.' + string(10b) + $
+    msg = 'LM-compliant map required: ' + string(10b) + $
+      'Input map has more than 1 band.' + string(10b) + $
       "Try using General Tools: Preprocessing: RGB -> Single Band" + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
@@ -232,63 +235,63 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
   ;; check for byte array
   ;;===========================
   IF size(image0, / type) NE 1 THEN BEGIN
-    msg = 'LM-compliant image required: ' + string(10b) + $
+    msg = 'LM-compliant map required: ' + string(10b) + $
       '(0b missing data, optional) 1, 2, 3 BYTE.' + string(10b) + $
-      'Input image is not of type BYTE.' + string(10b) + $
+      'Input map is not of type BYTE.' + string(10b) + $
       "Try using General Tools: Preprocessing: Convert -> Byte"  + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   ENDIF
 
-  ;; check for maximum image size
+  ;; check for maximum map size
   ;;===========================
   imsize = (size(image0))[4] / (1024.0^2)
   IF imsize GT immaxsize THEN BEGIN
-    msg = 'Input file too large.' + string(10b) + $
-      '(Maximum size: ' + strtrim(round(immaxsize), 2) + ' MB)' + string(10b) + 'Returning...'
+    msg = 'Input map dimensions in X/Y too large.' + string(10b) + $
+      '(Maximum uncompressed map size x*y: ' + strtrim(round(immaxsize), 2) + ' MB)' + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   ENDIF
 
-  ;; check min/max value in image
+  ;; check min/max value in map
   ;;===========================
   mxx = max(image0, min = mii)
   ss='LM'
   if ptype then ss=strupcase(ptype)
   ;; constrain maximum value to 3 or 2
   IF (ss EQ 'LM') AND (mxx GT 3b) THEN BEGIN
-    msg = ss + '-compliant image required: ' + string(10b) + $
+    msg = ss + '-compliant map required: ' + string(10b) + $
       '(0b missing data, optional) 1, 2, 3 BYTE.' + string(10b) + $
-      'Image maximum data value is larger than 3 BYTE.' + string(10b) + $
+      'map maximum data value is larger than 3 BYTE.' + string(10b) + $
       "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   ENDIF 
   IF (ss EQ 'FAD') AND (mxx GT 4b) THEN BEGIN
-    msg = ss + '-compliant image required: ' + string(10b) + $
+    msg = ss + '-compliant map required: ' + string(10b) + $
       '1 Byte - background, 2 Byte - foreground.' + string(10b) + $
       '(0 Byte - missing data, optional)' + string(10b) + $
       '(3 Byte - specific background 1, optional)' + string(10b) + $
       '(4 Byte - specific background 2, optional)' + string(10b) + $
-      'Image maximum data value is larger than 4 BYTE.' + string(10b) + $
+      'map maximum data value is larger than 4 BYTE.' + string(10b) + $
       "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   ENDIF
   IF mxx LT 2b THEN BEGIN
     IF (ss EQ 'LM') THEN BEGIN
-      msg = ss + '-compliant image required: ' + string(10b) + $
+      msg = ss + '-compliant map required: ' + string(10b) + $
         '(0b missing data, optional) 1, 2, 3 BYTE.' + string(10b) + $
-        'Image maximum data value is less than 2 BYTE.' + string(10b) + $
+        'map maximum data value is less than 2 BYTE.' + string(10b) + $
         "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
     ENDIF
     IF (ss EQ 'FAD') THEN BEGIN
-      msg = ss + '-compliant image required: ' + string(10b) + $
+      msg = ss + '-compliant map required: ' + string(10b) + $
         '1 Byte - background, 2 Byte - foreground.' + string(10b) + $
         '(0 Byte - missing data, optional)' + string(10b) + $
         '(3 Byte - specific background 1, optional)' + string(10b) + $
         '(4 Byte - specific background 2, optional)' + string(10b) + $
-        'Image maximum data value is less than 2 BYTE.' + string(10b) + $
+        'map maximum data value is less than 2 BYTE.' + string(10b) + $
         "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
     ENDIF
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
@@ -296,20 +299,20 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
   ENDIF
   ;; now the maxx is 2 or 3, constrain minimum value to 1 or 2
   IF (ss EQ 'LM') AND (mii GT 2b) THEN BEGIN
-    msg = ss + '-compliant image required: ' + string(10b) + $
+    msg = ss + '-compliant map required: ' + string(10b) + $
       '(0b missing data, optional) 1, 2, 3 BYTE.' + string(10b) + $
-      'Image minimum and maximum data value is 3 BYTE.' + string(10b) + $
+      'map minimum and maximum data value is 3 BYTE.' + string(10b) + $
       "Please recode your input to have at least 2 non-zero class values" + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   ENDIF
   IF (ss EQ 'FAD') AND (mii GT 2b) THEN BEGIN
-    msg = ss + '-compliant image required: ' + string(10b) + $
+    msg = ss + '-compliant map required: ' + string(10b) + $
       '1 Byte - background, 2 Byte - foreground.' + string(10b) + $
       '(0 Byte - missing data, optional)' + string(10b) + $
       '(3 Byte - specific background 1, optional)' + string(10b) + $
       '(4 Byte - specific background 2, optional)' + string(10b) + $
-      'Image minimum data value is larger than 2 BYTE.' + string(10b) + $
+      'map minimum data value is larger than 2 BYTE.' + string(10b) + $
       "Please recode your input to have at least 2 non-zero class values" + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
@@ -320,17 +323,15 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
   ;; now we only need to check that 
   ;; a) when doing FAD
   ;;    - we must have foreground pixels (2) and we must have BG-pixels (1)
-  ;; b) when doing P23
-  ;;    - we must have foreground pixels (2) and we must have interesting background (3) 
-  ;; c) when doing LM
+  ;; b) when doing LM
   ;;    we must have at least two different non-zero values
-  ;; because we do not want to calculate LM/P23 for a map with only 1, or 2, or 3
+  ;; because we do not want to calculate LM for a map with only 1, or 2, or 3
   upv = where(histogram( image0, /l64) GT 0)
   
   if ptype eq 'fad' then begin
     q=where(upv eq 2, ct)
     IF ct NE 1 THEN BEGIN
-      msg = 'FAD-compliant image required: ' + string(10b) + $
+      msg = 'FAD-compliant map required: ' + string(10b) + $
         '1 Byte - background, 2 Byte - foreground.' + string(10b) + $
         '(0 Byte - missing data, optional)' + string(10b) + $
         '(3 Byte - specific background 1, optional)' + string(10b) + $
@@ -342,7 +343,7 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
     ENDIF 
     q=where(upv eq 1, ct)
     IF ct NE 1 THEN BEGIN
-      msg = 'FAD-compliant image required: ' + string(10b) + $
+      msg = 'FAD-compliant map required: ' + string(10b) + $
         '1 Byte - background, 2 Byte - foreground.' + string(10b) + $
         '(0 Byte - missing data, optional)' + string(10b) + $
         '(3 Byte - specific background 1, optional)' + string(10b) + $
@@ -354,37 +355,17 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
     ENDIF
   ENDIF
 
-  if ptype eq 'p23' then begin
-    q=where(upv eq 2, ct)
-    IF ct NE 1 THEN BEGIN
-      msg = 'P23-compliant image required: ' + string(10b) + $
-        '(0b missing data, optional) 1, 2, 3 BYTE.' + string(10b) + $
-        'No pixels with mandatory data value 2 BYTE found.' + string(10b) + $
-        "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
-      IF verbose EQ 1 THEN res = dialog_message(msg, / information)
-      GOTO, fin
-    ENDIF 
-    q=where(upv eq 3, ct)
-    IF ct NE 1 THEN BEGIN
-      msg = 'LP23-compliant image required: ' + string(10b) + $
-        '(0b missing data, optional) 1, 2, 3 BYTE.' + string(10b) + $
-        'No pixels with mandatory data value 3 BYTE found.' + string(10b) + $
-        "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
-      IF verbose EQ 1 THEN res = dialog_message(msg, / information)
-      GOTO, fin
-    ENDIF
-  endif 
-  ;; test to have at least two different non-zero classes, good for both, lm and p23
+  ;; test to have at least two different non-zero classes, good for LM 
   q=n_elements(where(upv ne 0))
   if q eq 1 then begin
-    msg = 'LM-compliant image required: ' + string(10b) + $
+    msg = 'LM-compliant map required: ' + string(10b) + $
       '(0b missing data, optional) 1, 2, 3 BYTE.' + string(10b) + $
-      'This image has only 1 non-zero layer.' + string(10b) + $
+      'This map has only 1 non-zero layer.' + string(10b) + $
       "Please recode your input to have at least 2 non-zero class values." + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   endif
-  ;; if we arrive here the image is LM compliant
+  ;; if we arrive here the map is LM compliant
   result = 1
 
   ;;==================================================
@@ -394,7 +375,7 @@ END
 
 ;;=======================================================================
 PRO Labelall_Compliance, fname, image0, immaxsize, verbose, result
-  ;; get image info and validate the input for labelall processing
+  ;; get map info and validate the input for labelall processing
   result = 0
   
   res = strpos(fname,' ') ge 0
@@ -404,21 +385,21 @@ PRO Labelall_Compliance, fname, image0, immaxsize, verbose, result
     GOTO, fin
   ENDIF
 
-  ;; check if input is an image format
+  ;; check if input is an map format
   res = query_image(fname, inpinfo)
 
-  ;; check for single image in file
+  ;; check for single map in file
   ;;===========================
   IF inpinfo.num_images GT 1 THEN BEGIN
-    msg = 'Input file has more than 1 image.' + string(10b) + 'Returning...'
+    msg = 'Input file has more than 1 map.' + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   ENDIF
 
-  ;; check for single channel image
+  ;; check for single channel map
   ;;===========================
   IF size(image0, / n_dim) NE 2 THEN BEGIN
-    msg = 'Input image has more than 1 band.' + string(10b) + $
+    msg = 'Input map has more than 1 band.' + string(10b) + $
       "Try using General Tools: Preprocessing: RGB -> Single Band" + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
@@ -430,39 +411,39 @@ PRO Labelall_Compliance, fname, image0, immaxsize, verbose, result
   ;; byte or integer is one of the bi above
   q = where(tt eq bi, ct)
   IF ct eq 0 THEN BEGIN
-    msg = 'Input image is not of type BYTE or INTEGER.' + string(10b) + $
+    msg = 'Input map is not of type BYTE or INTEGER.' + string(10b) + $
       "Try using General Tools: Preprocessing: Convert -> Byte"  + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   ENDIF
 
-  ;; check for maximum image size
+  ;; check for maximum map size
   ;;===========================
   imsize = (size(image0))[4] / (1024.0^2)
   IF imsize GT immaxsize THEN BEGIN
-    msg = 'Input file too large.' + string(10b) + $
-      '(Maximum size: ' + strtrim(round(immaxsize), 2) + ' MB)' + string(10b) + 'Returning...'
+    msg = 'Input map dimensions in X/Y too large.' + string(10b) + $
+      '(Maximum uncompressed map size x*y: ' + strtrim(round(immaxsize), 2) + ' MB)' + string(10b) + 'Returning...'
     IF verbose EQ 1 THEN res = dialog_message(msg, / information)
     GOTO, fin
   ENDIF
 
-  ;; check min/max value in image
+  ;; check min/max value in map
   ;;===========================
 ;  mxx = max(image0, min = mii)
 ;  IF mxx LT 1b THEN BEGIN
-;    msg = 'Image maximum must be larger than 0 BYTE.' + string(10b) + $
+;    msg = 'map maximum must be larger than 0 BYTE.' + string(10b) + $
 ;      "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
 ;    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
 ;    GOTO, fin
 ;  ENDIF 
 ;  IF mii NE 0b THEN BEGIN
-;    msg = 'Image has no background (0 BYTE).' + string(10b) + $
+;    msg = 'map has no background (0 BYTE).' + string(10b) + $
 ;      "Try an option from General Tools: Preprocessing" + string(10b) + 'Returning...'
 ;    IF verbose EQ 1 THEN res = dialog_message(msg, / information)
 ;    GOTO, fin
 ;  ENDIF
 
-  ;; if you arrive here the image is ok; has 0b for BG and other FG-classes
+  ;; if you arrive here the map is ok; has 0b for BG and other FG-classes
   result = 1
 
   ;;==================================================
@@ -480,9 +461,9 @@ END
 ;;  calculate  simple statistics
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 PRO simplestats, image0, fconn, ttrans, tintext, cg, st
-;; Purpose: calculate simple statistics of a given fullres image
+;; Purpose: calculate simple statistics of a given fullres map
 ;; INPUT:
-;; - image0: the fullres MSPA-image
+;; - image0: the fullres MSPA-map
 ;; - fconn: foreground connectivity
 ;; - ttrans: transition value
 ;; - tintext: Intext value
@@ -862,7 +843,7 @@ PRO heatmap, dir_tmp, dir_guidossub, my_os, kdim_str, ctmiss, im
 pushd, dir_tmp
 ;; 1) get the result from the 103 LM
 file_move, 'scsize.txt', 'recsize.txt', /overwrite
-;; get image dimensions
+;; get map dimensions
 close, 1 & openr,1, 'recsize.txt' & q=''
 readf,1,q & ydim = (strsplit(q,' ',/extract))[1]
 readf,1,q & xdim = (strsplit(q,' ',/extract))[1]
@@ -893,7 +874,7 @@ ENDELSE
 ;; do the recoding from 103 classes to the 19 lm-colors
 IF my_os EQ 'windows' THEN spawn, 'recode.exe', log, / hide ELSE spawn, './recode', log
 
-;; rename the 103 class image for later
+;; rename the 103 class map for later
 file_move, 'recinput', 'lm103class', /overwrite
 
 ;; get result
@@ -1315,7 +1296,7 @@ END
 
 
 PRO spatcon, scinput, kdim, metric, dir_tmp, my_os, resfloat, scoutput
-;; Spatial Convolution metrics by K.Riitters
+;; Spatial Convolution metrics by Kurt Riitters
 ;;
 ;; scinput: MSPA-compliant image
 ;; kdim: selected kernel size 
@@ -1328,14 +1309,12 @@ PRO spatcon, scinput, kdim, metric, dir_tmp, my_os, resfloat, scoutput
 
 pushd, dir_tmp
 
-case strlowCase(metric) of
- 'p2':  mstr='81'
- 'p22': mstr='77' 
- 'p23': mstr='78' ;; pxy
- 'sumd': mstr='74'
- 'shannon': mstr='73'
- 'lm': mstr='7'
- 'lmms': mstr='7'  ; normally would be 6 but we fake a LM-run
+case strlowCase(metric) of ;; Mapping rules, see spatcon 483ff
+ 'pf':  mstr='81' ;; FAD or Pf-Kurt
+ 'pff': mstr='77' ;; Pff-Kurt
+ 'fac': mstr = '76'  ;; FAC or foreground area clustering
+ 'lm': mstr='7' ;; landscape mosaic 103class
+ 'lmms': mstr='7'  ; landscape mosaic, normally would be 6 but we fake a LM-run
 endcase
 
 
@@ -1352,7 +1331,13 @@ printf,1,'w ' + kstr
 printf,1,'r ' + mstr
 printf,1,'a 2'
 printf,1,'h 1'
-if mstr eq '78' then printf,1,'b 3' else printf,1,'b 0'
+if mstr eq '78' then begin
+  printf,1,'b 3' 
+endif else if mstr eq '76' then begin
+  printf,1,'b 2' 
+endif else begin
+   printf,1,'b 0'
+endelse
 printf,1,'m 0'
 if resfloat eq 1 then printf,1,'f 1' else printf,1,'f 0'
 if metric eq 'lmms' then printf,1,'p 1'
@@ -1363,8 +1348,8 @@ close,1
 openw, 1, 'scinput' & writeu,1, scinput & close,1
 
 ;; setup spatcon
-;; if lmms, we need to use the old spatcon (placed in the subdirectory 'orig'),
-;; which outputs the three p2_x.bsq files that are needed by combinelpt
+;; if LMMS, we need to use the old spatcon (placed in the subdirectory 'orig'),
+;; which outputs the three PF_x.bsq files that are needed by combinelpt
 if metric eq 'lmms' then extra = 'orig' + path_sep() else extra = ''
 IF my_os EQ 'windows' THEN BEGIN
   spatcon='..\spatcon\' + extra + 'spatcon64.exe' & file_copy, spatcon, 'spatcon.exe', /overwrite
@@ -1378,10 +1363,10 @@ ENDELSE
 ;; run spatcon in tmp
 IF my_os EQ 'windows' THEN spawn, 'spatcon.exe', log, / hide ELSE spawn, './spatcon', log
 
-;; if NOT lm or lmms then get the result and clean up
+;; if NOT LM or LMMS then get the result and clean up
 ;; when doing LM or LMMS (dominance) the intermediate files are processed further
 if mstr ne '7' then begin
-;;if metric ne 'lmms' then begin
+;;if metric ne 'LMMS' then begin
   ;; get result
   scoutput = bytarr(sz(0),sz(1)) & scinput=0
   if resfloat eq 1 then scoutput=float(scoutput)
@@ -1415,20 +1400,18 @@ PRO guidos_Processing, event
 ;; 'batch_spa':          Batch SPA2/3/5/6
 ;; 'batch_mspa':         Batch MSPA
 ;; 'batch_lm':           Batch Spatcon LM
-;; 'batch_p2':           Batch Spatcon P2
-;; 'batch_p22':          Batch Spatcon P22
-;; 'batch_p23':          Batch Spatcon P23
-;; 'batch_shannon':      Batch Spatcon Shannon
-;; 'batch_sumd':         Batch Spatcon SumD
+;; 'batch_pf':           Batch Spatcon PF
+;; 'batch_pff':          Batch Spatcon PFf (Contagion-Kurt)
+;; 'batch_fac':          Batch Spatcon FAC  (Custering-FAC)
 ;;                  Network
 ;; 'batch_mspanw':       Batch MSPA based NW: 'batch_mspaci', 'batch_nwcomp', 'batch_nlimp'
 ;; 'batch_ci':           Batch ConeforInputs
 ;;                 Fragmentation
 ;; 'batch_ent':          Batch Entropy (Index, Map)
 ;; 'batch_hmc':          Batch HMC (Index)
-;; 'batch_cont':         Batch Contagion (Map)
+;; 'batch_cont':         Batch Contagion (Map);; legacy PFF contagion
 ;; 'batch_fos':          Batch FOS
-;; 'batch_fad':          Batch FAD-Multiscale
+;; 'batch_fadms':        Batch FAD-Multiscale
 ;; 'batch_lmms':         Batch Dominance
 ;;                Distance
 ;; 'batch_eucldist':     Batch Euclidean Distance
@@ -1476,7 +1459,7 @@ PRO guidos_Processing, event
 ;; 'skeleton':             Skeleton
 ;; 'morph':                Morphological playground
 ;; ---- General Tools -> Preprocessing ----------------------------------
-;; 'mspainp_info':         Image Info button
+;; 'mspainp_info':         map Info button
 ;; 'mspainp_c2b':          Convert to Byte
 ;; 'mspainp_c2i':          Convert to Integer
 ;; 'mspainp_c2l':          Convert to LongInteger
@@ -1517,19 +1500,16 @@ PRO guidos_Processing, event
 ;; 'mspa':                 MSPA
 ;; 'mspatile':             MSPA-Tiling
 ;; 'kernel_lm':            Spatcon LM
-;; 'kernel_p2':            Spatcon P2
-;; 'kernel_p22':           Spatcon P22
-;; 'kernel_p23':           Spatcon P23
-;; 'kernel_shannon':       Spatcon Shannon
-;; 'kernel_sumd':          Spatcon SumD
+;; 'kernel_pf':            Spatcon PF
+;; 'kernel_pff':           Spatcon PFF 
+;; 'kernel_fac':           Spatcon FAC
 ;;                  Network
 ;; 'nw_components':        Network components (MSPA core and bridges only)
 ;; 'nw_importance':        Importance of Nodes and Links
-;; 'nw_nwconnect':         Component connectors
 ;; 'nw_cs22':              MSPA ConeforInputs
 ;;                 Fragmentation
 ;; 'frag_entropy':         Fragmentation Entropy (Index and Map)
-;; 'frag_contagion':       Fragmentation Contagion (Map, Spatcon P22)
+;; 'frag_contagion':       Fragmentation Contagion (Map, Spatcon PFF)
 ;; 'frag_hmc' -> 'distance_morph'
 ;; 'frag_fos':             FOS user-selected fragmentation scale
 ;; 'frag_fad':             FAD multiscale
@@ -1654,6 +1634,10 @@ endif
 
 if strlen(ev) eq 12 and strmid(ev,0,8) eq 'homepage' then begin
   eventValue2 = ev & eventValue = 'homepage'
+endif
+
+if strmid(ev,0,9) eq 'overview_' then begin
+  eventValue2 = ev & eventValue = 'overview'
 endif
 
 if ev eq 'installgws' then begin
@@ -1872,29 +1856,29 @@ CASE strlowCase(eventValue) OF
          tvlct, r, g, b
          info.ctbl = - 1 & info.autostretch_id = 0
          END
-         8:BEGIN ;; FAD 6-class
+         8:BEGIN ;; FAD_6class
            restore, info.dir_guidossub + 'fadcolors.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
            ;; change add-title if needed
-           pos = strpos(info.add_title,'(FOS-APP 2-class: ')
-           IF pos EQ 1 THEN info.add_title = ' (FOS-APP 5-class: ' + strmid(info.add_title, 12)
-           pos = strpos(info.add_title,'(FAD-APP 2-class: MultiScale summary)')
-           IF pos EQ 1 THEN info.add_title = ' (FAD-APP 5-class: MultiScale summary)'           
+           pos = strpos(info.add_title,'(FOS-APP_2class: ')
+           IF pos EQ 1 THEN info.add_title = ' (FOS-APP_5class: ' + strmid(info.add_title, 12)
+           pos = strpos(info.add_title,'(FAD-APP_2class: MultiScale summary)')
+           IF pos EQ 1 THEN info.add_title = ' (FAD-APP_5class: MultiScale summary)'           
          END       
-         9:BEGIN ;; FAD 5-class
+         9:BEGIN ;; FAD_5class
            restore, info.dir_guidossub + 'fadcolors5.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         10:BEGIN ;; FAD-2class
+         10:BEGIN ;; FAD_2class
            restore, info.dir_guidossub + 'fe47colors.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
-           pos = strpos(info.add_title,'(FOS-APP 5-class: ')
-           IF pos EQ 1 THEN info.add_title = ' (FOS-APP 2-class: ' + strmid(info.add_title, 12)
-           pos = strpos(info.add_title,'(FAD-APP 5-class: MultiScale summary)')
-           IF pos EQ 1 THEN info.add_title = ' (FAD-APP 2-class: MultiScale summary)'
+           pos = strpos(info.add_title,'(FOS-APP_5class: ')
+           IF pos EQ 1 THEN info.add_title = ' (FOS-APP_2class: ' + strmid(info.add_title, 12)
+           pos = strpos(info.add_title,'(FAD-APP_5class: MultiScale summary)')
+           IF pos EQ 1 THEN info.add_title = ' (FAD-APP_2class: MultiScale summary)'
          END
          11:BEGIN ;; Resistance
            restore, info.dir_guidossub + 'resistcolors.sav'
@@ -2013,13 +1997,13 @@ CASE strlowCase(eventValue) OF
         widget_control, info.w_mspa_param1, set_value = info.mspa_param1_id
                
         IF strpos(info.add_title,'%; tick FGConn to reset)') GT 0 THEN BEGIN 
-          ;; reset to image for customLCP test
+          ;; reset to map for customLCP test
           * info.process = * info.nw_conns
           * info.fr_image = * info.process
           ;; verify that sav-file exists
           res = file_info(info.dir_tmp + 'customLCP.sav')
           IF res.exists EQ 0b THEN BEGIN
-            msg = "Please first setup your image via either:" + string(10b) + $
+            msg = "Please first setup your map via either:" + string(10b) + $
                 "'Add Custom Path' or 'Find Optimum Path'"
             res = dialog_message(msg, / error)
             GOTO, fin           
@@ -2031,7 +2015,7 @@ CASE strlowCase(eventValue) OF
           GOTO, contnormal
         
         ENDIF ELSE IF strpos(info.add_title,'FGConn for Path setup') GT 0 THEN BEGIN                       
-            ;; test if marker image is defined already AND if label_groups is active
+            ;; test if marker map is defined already AND if label_groups is active
             testfile = info.dir_tmp + 'marker.sav' & res=file_info(testfile)
             ;;IF res.exists GT 0 AND info.do_label_groups_id EQ 1 THEN BEGIN
             IF res.exists GT 0 THEN BEGIN
@@ -2044,7 +2028,7 @@ CASE strlowCase(eventValue) OF
               restore, testfile ;; the marker image
               res = file_info(info.dir_tmp + 'customLCP.sav')
               IF res.exists EQ 0b THEN BEGIN
-                msg = "Please first setup your image via either:" + string(10b) + $
+                msg = "Please first setup your map via either:" + string(10b) + $
                   "'Add Custom Path' or 'Find Optimum Path'"
                 res = dialog_message(msg, / error)
                 GOTO, fin
@@ -2146,7 +2130,7 @@ CASE strlowCase(eventValue) OF
               mincost = round(micost/2.0)  ;, /l64)
               maxcost = max(cost)
               if ctqm gt 0 then maxcost=round((max((cost lt maxcost)*cost))/2.0) else maxcost=round(maxcost/2.0)
-              ;; test if image is too large for long 32 processing
+              ;; test if map is too large for long 32 processing
               if maxcost lt 0 then begin
                 msg = 'Image is too large for current implementation.' + string(10b) + 'Returning.'
                 res = dialog_message(msg, / information) & popd 
@@ -2162,7 +2146,7 @@ CASE strlowCase(eventValue) OF
               ;; get location of restore pixels
               lcp = where(lcp gt 0b, ct_lcp, /l64)
               
-              ;; set up cost image for display, range 0-100 cost, objects 101, missing 102, lcp 103
+              ;; set up cost map for display, range 0-100 cost, objects 101, missing 102, lcp 103
               ;; convert ulong to long 32
               cost = round(temporary(cost)/2.0) ;, /l64)
               cost = BytScl(cost, min = mincost, max = maxcost, Top = 100)
@@ -2191,7 +2175,7 @@ CASE strlowCase(eventValue) OF
 
               ;; get accumulated cost of those restore pixels
               ;; use the sum of the resitance values of the restore pixels along the LCP
-              ;; cost image is the sum of A and B, so build the average to get the actual cost for the path
+              ;; cost map is the sum of A and B, so build the average to get the actual cost for the path
               expense = resist[lcp] & expense = long64(total(expense[rp]))
 
               ;; LCP starts in linka and ends in linkb
@@ -2477,7 +2461,7 @@ CASE strlowCase(eventValue) OF
    ;; MSPA - intext
    ;;===================
    'mspa_param4':  BEGIN
-      ;; test for P2, P22, P23
+      ;; test for PF, FAC
       if (info.is_fragm GT 1 and info.is_fragm LT 3) then begin
         ;; switch off label groups so we start from the original spatcon image
         if info.do_label_groups_id eq 1 then begin
@@ -2888,7 +2872,7 @@ CASE strlowCase(eventValue) OF
          sk = size(*selected_kernel,/dim) & skmax = sk[0] > sk[1]
          sim = size(* info.fr_image,/dim) & simax = sim[0] < sim[1]
          if skmax gt simax then begin
-           msg = 'Kernel dimension larger than x or y image dimension.' + string(10b) + 'Returning...'
+           msg = 'Kernel dimension larger than x or y map dimension.' + string(10b) + 'Returning...'
            res = dialog_message(msg, / information)
            ptr_free, cancel & cancel = 0b
            ptr_free, selected_kernel & selected_kernel = 0b
@@ -3234,16 +3218,16 @@ CASE strlowCase(eventValue) OF
         nr_upv = strtrim(nr_upv,2)
 ;      endelse
         
-      zz = 'The *currently* loaded image has these attributes: '
+      zz = 'The *currently* loaded map has these attributes: '
       IF info.is_geotiff then begin
         projinfo = 'Projection name (EPSG code): ' + info.epsgname + ' (EPSG: ' + info.epsg + ')'
-        zz = 'The *currently* loaded GeoTiff image has these attributes: '
+        zz = 'The *currently* loaded GeoTiff map has these attributes: '
       ENDIF
              
       ;; check for IDL or Envi file for which we can not provide gdalinfo
       IF fsuffix EQ 'sav' OR fsuffix EQ 'hdr' THEN BEGIN
          msg = $
-          'A MSPA-compliant input image must be of datatype BYTE' + string(10b) + $
+          'A MSPA-compliant input map must be of datatype BYTE' + string(10b) + $
           'and must have only the following pixel values: ' + string(10b) + $
           'MANDATORY: Foreground: 2 byte, Background: 1 byte' + string(10b) + $
           ' OPTIONAL: Missing data: 0 byte' + string(10b) + ' ' + string(10b) + $
@@ -3276,7 +3260,7 @@ CASE strlowCase(eventValue) OF
       ;; write all info to a text file and then display that
       tmp = info.dir_tmp + 'iminfo.txt'
       openw, 1, tmp
-      printf, 1, 'A MSPA-compliant input image must be of datatype BYTE'
+      printf, 1, 'A MSPA-compliant input map must be of datatype BYTE'
       printf, 1, 'and must have only the following pixel values: '
       printf, 1, 'MANDATORY: Foreground: 2 byte, Background: 1 byte'
       printf, 1, ' OPTIONAL: Missing data: 0 byte'
@@ -3290,16 +3274,16 @@ CASE strlowCase(eventValue) OF
       IF info.is_geotiff then printf, 1, projinfo
       printf, 1, ''
       IF info.is_geotiff then begin
-        printf, 1, 'Details of the *initially loaded* GeoTiff image (gdalinfo -noct): '
+        printf, 1, 'Details of the *initially loaded* GeoTiff map (gdalinfo -noct): '
       ENDIF ELSE BEGIN
-        printf, 1, 'Details of the *initially loaded* image (gdalinfo -noct): '
+        printf, 1, 'Details of the *initially loaded* map (gdalinfo -noct): '
       ENDELSE
       printf, 1, '========================================================='
       FOR i = 0, n_elements(log) - 1 DO printf, 1, log(i)
       close, 1
       if eventValue2 eq 'about_system' then goto, sysinfofiledone
       
-      xdisplayfile, tmp, title = 'Detailed image information (gdalinfo -noct): ', $
+      xdisplayfile, tmp, title = 'Detailed map information (gdalinfo -noct): ', $
                     done_button = 'Close', / block, / modal, group = event.top
       file_delete, tmp, / quiet
       widget_control, info.w_draw, Draw_Motion_Events = 1
@@ -3309,9 +3293,9 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    'mspainp_c2b':  BEGIN
-     ;; get max-value of image and warn if larger than 255 or negative
+     ;; get max-value of map and warn if larger than 255 or negative
      IF (* info.data_max gt 255.0) OR (* info.data_min lt 0.0) THEN BEGIN
-       msg = "Image has negative values or larger than 255, Byte conversion aborted," + $
+       msg = "Map has negative values or larger than 255, Byte conversion aborted," + $
          string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
        GOTO, fin
@@ -3326,9 +3310,9 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    'mspainp_c2i':  BEGIN
-     ;; get max-value of image and warn if larger or smaller than 32768
+     ;; get max-value of map and warn if larger or smaller than 32768
      IF (* info.data_max gt 32768.0) OR (* info.data_min lt -32768.0) THEN BEGIN
-       msg = "Image has values outside of [-32768, 32768]. Integer conversion aborted," + $
+       msg = "Map has values outside of [-32768, 32768]. Integer conversion aborted," + $
          string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
        GOTO, fin
@@ -3343,9 +3327,9 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    'mspainp_c2l':  BEGIN
-     ;; get max-value of image and warn if larger or smaller than 32768
+     ;; get max-value of map and warn if larger or smaller than 32768
      IF (* info.data_max le 32768.0) AND (* info.data_min ge -32768.0) THEN BEGIN
-       msg = "Image has values within [-32768, 32768]. Use Integer conversion instead," + $
+       msg = "Map has values within [-32768, 32768]. Use Integer conversion instead," + $
          string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
        GOTO, fin
@@ -3395,7 +3379,7 @@ CASE strlowCase(eventValue) OF
      ;; the output file must not exist and we must specify the s_srs, at least for this old version of gdalwarp...
      IF (file_info(foutp)).exists EQ 1b THEN file_delete, foutp, / quiet
      
-     msg = "This option will try to reproject the geotiff image file:" + string(10b) + $
+     msg = "This option will try to reproject the geotiff map file:" + string(10b) + $
        finp + string(10b) + 'to EPSG 4326 (WGS84) to be compatible with Google Earth.' 
      res = dialog_message(msg, / information)
      widget_control, / hourglass
@@ -3409,7 +3393,7 @@ CASE strlowCase(eventValue) OF
      ENDELSE
      
      IF (file_info(foutp)).exists EQ 1b THEN BEGIN
-       msg = "The reprojected image was saved to the directory:" + string(10b) + $
+       msg = "The reprojected map was saved to the directory:" + string(10b) + $
          file_dirname(finp) + string(10b) + $
          'with the name: ' + string(10b) + $
          file_basename(foutp)+ string(10b) + string(10b) + $
@@ -3522,7 +3506,27 @@ CASE strlowCase(eventValue) OF
    END
 
    ;;*****************************************************************************************************
+   'setup_recodetable':  BEGIN
+     ;; let the user define a recode table for later use
+     cancel = ptr_new(1b) & seltab = ptr_new(1b)
+     msg = "Define a recode table from scratch or click on 'Restore'" + string(10b) + 'and load/modify an existing GTBrecode_*.sav table' + string(10b) + string(10b)+ $
+        '1) Enter the new value in [0, 255] in the first column, then leave the cell to apply the changed value.' + string(10b) + string(10b) + $
+        '2) ' + "When done, click the 'Save' button to write out your recode table for later use." + string(10b) + string(10b) + $
+        "Note: "  + string(10b) + $
+        "For maximum compatibility, the recode table must cover all possible entries in [0, 255] byte!"
+     result = dialog_message(title = 'Setup Recode', / information, msg)
+     tit = "Setup recode values in [0, 255]"
 
+     ;; get the selected mapping
+     pushd,info.dir_data
+     get_xrecode, upv = upv, batch = 1, tit = tit, cancel = cancel, seltab=seltab, Group_Leader = event.top
+     popd
+     ptr_free, cancel & cancel = 0b
+     ptr_free, seltab & seltab = 0b
+     GOTO, fin
+   END
+
+   ;;*****************************************************************************************************  
    'mspainp_recodepixel':  BEGIN
      ;; this option is only available if the data is in byte format
      tit = 'Recode pixel setup:'
@@ -3795,7 +3799,7 @@ CASE strlowCase(eventValue) OF
      ENDIF
      
      IF info.datatype NE 'byte' THEN BEGIN
-       msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+       msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
        GOTO, fin
      ENDIF
@@ -3810,7 +3814,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_thresh':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -3825,7 +3829,7 @@ CASE strlowCase(eventValue) OF
       ;; we need at least 3 different values else there is no point doing this
       q = where(histogram( * info.fr_image, /l64) GT 0, ct)
       IF n_elements(q) LT 3 THEN BEGIN
-         mess = 'Image has less than 3 uniq values.' + string(10b) + $
+         mess = 'Map has less than 3 uniq values.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
          res = dialog_message(mess, / information)
          GOTO, fin
@@ -3873,7 +3877,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_group':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -3888,7 +3892,7 @@ CASE strlowCase(eventValue) OF
       ;; we need at least 3 different values else there is no point doing this
       q = where(histogram( * info.fr_image, /l64) GT 0, ct)
       IF n_elements(q) LT 3 THEN BEGIN
-         mess = 'Image has less than 3 uniq values.' + string(10b) + $
+         mess = 'Map has less than 3 uniq values.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
          res = dialog_message(mess, / information)
          GOTO, fin
@@ -3943,7 +3947,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_xset':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -3988,7 +3992,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_invert21':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4007,7 +4011,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_invert20':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4026,7 +4030,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_invert10':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4045,7 +4049,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_set20':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4070,7 +4074,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_set21':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4095,7 +4099,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_set10':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4120,7 +4124,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_set12':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4145,7 +4149,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_set01':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4170,7 +4174,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_set02':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4195,7 +4199,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_add1':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4211,7 +4215,7 @@ CASE strlowCase(eventValue) OF
 
    'mspainp_sub1':  BEGIN
       IF info.datatype NE 'byte' THEN BEGIN
-         msg = "Please convert image datatype to 'byte'." + string(10b) + 'Returning...'
+         msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -4370,16 +4374,18 @@ CASE strlowCase(eventValue) OF
         q=log(q) & res=strsplit(q,' ',/extract,count=nx)
         if nx eq 3 then newimis_mspa=res(nx-1)
       endif
-      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_fad = 1
+;      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_fad = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FOS") & q=q[0] & if q gt 0 then newimis_fos = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_SPA") & q=q[0] & if q gt 0 then newimis_spa = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_ACC") & q=q[0] & if q gt 0 then newimis_acc = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_LM,") & q=q[0] & if q gt 0 then newimis_lm = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_EUC") & q=q[0] & if q gt 0 then newimis_dist = 1
-      q=where(strmid(log,0,33) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_P2") & q=q[0] & if q gt 0 then newimis_P222 = 1
       q=where(strmid(log,0,35) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_DRES") & q=q[0] & if q gt 0 then newimis_disres = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_RES") & q=q[0] & if q gt 0 then newimis_res = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_ISO") & q=q[0] & if q gt 0 then newimis_cos = 1
+      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_p222 = 1
+      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAC") & q=q[0] & if q gt 0 then newimis_p222 = 1
+
 
       * info.prezoomprocess = * info.image0
       * info.subimage = * info.image0
@@ -4449,7 +4455,7 @@ CASE strlowCase(eventValue) OF
           info.disp_colors_id = 5 & info.ctbl = - 1 
           restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
         endif
-        if (size(newimis_fad))[2] eq 1 OR (size(newimis_fos))[2] eq 1 then begin
+        if (size(newimis_fadms))[2] eq 1 OR (size(newimis_fos))[2] eq 1 then begin
           info.disp_colors_id = 8 & info.ctbl = - 1 
           restore, info.dir_guidossub + 'fadcolors.sav' & tvlct, r, g, b
         endif
@@ -4558,7 +4564,7 @@ CASE strlowCase(eventValue) OF
       
       sz = size(image0,/dim) & xdim=sz[0] & ydim=sz[1] & imgminsize=(xdim<ydim)
       IF imgminsize LT 250 THEN BEGIN
-        res = dialog_message('FAD requires a minimum image dimension of 250 pixels in x and y image dimension.' + $
+        res = dialog_message('FAD requires a minimum map dimension of 250 pixels in x and y map dimension.' + $
           string(10b) + 'Returning...', / information)
         GOTO, fin
       ENDIF
@@ -4585,9 +4591,9 @@ CASE strlowCase(eventValue) OF
       info.mspa_param1_id = fgconn_str eq '8'
       widget_control, info.w_mspa_param1, set_value = info.mspa_param1_id
      
-      if fadclass eq 'FAD 6-class' then fadtype = 'FAD'
-      if fadclass eq 'FAD-APP 2-class' then fadtype = 'FAD-APP2'
-      if fadclass eq 'FAD-APP 5-class' then fadtype = 'FAD-APP5'
+      if fadclass eq 'FAD_6class' then fadtype = 'FAD'
+      if fadclass eq 'FAD-APP_2class' then fadtype = 'FAD-APP2'
+      if fadclass eq 'FAD-APP_5class' then fadtype = 'FAD-APP5'
       if fadtype eq 'FAD' then fadg = 'FAD' else fadg = 'FAD-APP'
 
       ;; free and delete the temporary pointers
@@ -4623,8 +4629,8 @@ CASE strlowCase(eventValue) OF
       for isc = 0,4 do begin
         image0 = * info.fr_image
         IF ct4b GT 0 THEN image0[q4b] = 0b
-        ;; run spatcon P2
-        spatcon, image0, kdim[isc], 'p2', info.dir_tmp, info.my_os, info.resfloat, im
+        ;; run spatcon PF
+        spatcon, image0, kdim[isc], 'pf', info.dir_tmp, info.my_os, info.resfloat, im
         ;; rescale to normalized byte range
         if info.resfloat eq 0 then begin
           ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
@@ -4664,7 +4670,7 @@ CASE strlowCase(eventValue) OF
           zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
           zz = (im GE 10b) AND (im LT 40b) & patchy(isc) = total(zz)/fgarea*100.0
           zz = (im LT 10b) & rare(isc) = total(zz)/fgarea*100.0 & zz = 0
-        endif else begin ;; output 5-class as well as 2-class
+        endif else begin ;; output 5class as well as 2class
           zz = (im GE 90b) AND (im LE 100b) & interior(isc) = total(zz)/fgarea*100.0
           zz = (im GE 60b) AND (im LT 90b) & dominant(isc) = total(zz)/fgarea*100.0
           zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
@@ -4695,7 +4701,7 @@ CASE strlowCase(eventValue) OF
         zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
         zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
         zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0 & zz = 0        
-      endif else begin ;; output 5-class as well as 2-class
+      endif else begin ;; output 5class as well as 2class
         zz = (im GE 90b) AND (im LE 100b) & interior(5) = total(zz)/fgarea*100.0
         zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
         zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
@@ -4797,13 +4803,13 @@ CASE strlowCase(eventValue) OF
         printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
         printf, 12, format='(a14,6(f11.4))', 'Intact: ', intact       
       endif else begin
-        printf, 12, 'FAD-APP 5-class:'
+        printf, 12, 'FAD-APP_5class:'
         printf, 12, format='(a14,6(f11.4))', 'Rare: ', rare
         printf, 12, format='(a14,6(f11.4))', 'Patchy: ', patchy
         printf, 12, format='(a14,6(f11.4))', 'Transitional: ', transitional
         printf, 12, format='(a14,6(f11.4))', 'Dominant: ', dominant
         printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
-        printf, 12, 'FAD-APP 2-class:'
+        printf, 12, 'FAD-APP_2class:'
         printf, 12, format='(a14,6(f11.4))', 'Separated: ', separated
         printf, 12, format='(a14,6(f11.4))', 'Continuous: ', continuous
       endelse
@@ -4823,13 +4829,13 @@ CASE strlowCase(eventValue) OF
         printf,12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(intact,2)
         printf,12, 'Intact:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]       
       endif else begin
-        printf, 12, 'FAD-APP 5-class:' & z = strtrim(rare,2)
+        printf, 12, 'FAD-AP_5class:' & z = strtrim(rare,2)
         printf, 12, 'Rare:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(patchy,2)
         printf, 12, 'Patchy:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(transitional,2)
         printf, 12, 'Transitional:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(dominant,2)
         printf, 12, 'Dominant:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(interior,2)
         printf, 12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
-        printf, 12, 'FAD-APP 2-class:' & z = strtrim(separated,2)
+        printf, 12, 'FAD-APP_2class:' & z = strtrim(separated,2)
         printf, 12, 'Separated:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(continuous,2)
         printf, 12, 'Continuous:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(fad_av,2)
         printf, 12, 'FAD_av:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
@@ -4876,7 +4882,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'batch_fad':  BEGIN
+   'batch_fadms':  BEGIN
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -4905,10 +4911,10 @@ CASE strlowCase(eventValue) OF
      ;;========================================================================
      ;; reset the front image and block any events
      ;;========================================================================
-     title = 'FAD Batch Processing'
+     title = 'FAD-MS Batch Processing'
      goto, resetfront
 
-     backto_batch_fad:
+     backto_batch_fadms:
      
      ;; define required pointers for FAD
      cancel = ptr_new(1b)
@@ -4932,9 +4938,9 @@ CASE strlowCase(eventValue) OF
      info.mspa_param1_id = fgconn_str eq '8'
      widget_control, info.w_mspa_param1, set_value = info.mspa_param1_id
 
-     if fadclass eq 'FAD 6-class' then fadtype = 'FAD'
-     if fadclass eq 'FAD-APP 2-class' then fadtype = 'FAD-APP2'
-     if fadclass eq 'FAD-APP 5-class' then fadtype = 'FAD-APP5'
+     if fadclass eq 'FAD_6class' then fadtype = 'FAD'
+     if fadclass eq 'FAD-APP_2class' then fadtype = 'FAD-APP2'
+     if fadclass eq 'FAD-APP_5class' then fadtype = 'FAD-APP5'
      if fadtype eq 'FAD' then fadg = 'FAD' else fadg = 'FAD-APP'
 
      ;; free and delete the temporary pointers
@@ -4946,7 +4952,16 @@ CASE strlowCase(eventValue) OF
      ;; test that we can write into the parent directory or if it exists already
      batch_type = 'batch_' + fadtype
      dd = file_dirname(im_file[0], / mark_directory)
+     ;; test if directory is not named like batch type
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+     
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -4963,7 +4978,7 @@ CASE strlowCase(eventValue) OF
        file_mkdir, dir_batch
      endelse
     
-     desc = 'GTB_FAD, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+     desc = 'GTB_FADMS, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
      desc0 = 'GTB, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
      ;; validate and process the images in a loop
      fn_logfile = dir_batch + strlowcase(fadtype) + '.log'
@@ -5000,27 +5015,26 @@ CASE strlowCase(eventValue) OF
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid FAD input (empty space in directory path or input filename): ', input
          close, 9
-         GOTO, skip_batch_fad  ;; invalid input
+         GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
 
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid FAD input (not a TIFF image): ', input
          close, 9
-         GOTO, skip_batch_fad  ;; invalid input
+         GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
-
-       res = query_tiff(input)
-       IF res EQ 0 THEN BEGIN
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )       
+       IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid FAD input file: ', input
          close, 9
-         GOTO, skip_batch_fad  ;; invalid input
+         GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
 
        image0 = read_tiff(input, geotiff = geotiff) & is_geotiff = (size(geotiff))[0] ;; read and check it
@@ -5029,9 +5043,9 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FAD input file (x/y dimension less than 250 pixels): ', input
+         printf, 9, 'Skipping invalid FAD input file (X/Y dimension less than 250 pixels): ', input
          close, 9
-         GOTO, skip_batch_fad  ;; invalid input
+         GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
       
        LM_Compliance, input, image0, 'fad', info.immaxsizeg, 0, result
@@ -5041,7 +5055,7 @@ CASE strlowCase(eventValue) OF
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid FAD input file: ', input
          close, 9
-         GOTO, skip_batch_fad  ;; invalid input
+         GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
 
        ;; now all is ok for processing
@@ -5090,8 +5104,8 @@ CASE strlowCase(eventValue) OF
          IF ct4b GT 0 THEN tmp[q4b] = 0b
          kdim_str = strtrim(kdim[isc],2)
          
-         ;; run spatcon P2
-         spatcon, tmp, kdim[isc], 'p2', info.dir_tmp, info.my_os, info.resfloat, im
+         ;; run spatcon PF
+         spatcon, tmp, kdim[isc], 'pf', info.dir_tmp, info.my_os, info.resfloat, im
          ;; rescale to normalized byte range
          if info.resfloat eq 0 then begin
            ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
@@ -5132,7 +5146,7 @@ CASE strlowCase(eventValue) OF
            zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
            zz = (im GE 10b) AND (im LT 40b) & patchy(isc) = total(zz)/fgarea*100.0
            zz = (im LT 10b) & rare(isc) = total(zz)/fgarea*100.0 & zz = 0
-         endif else begin ;; output 5-class as well as 2-class
+         endif else begin ;; output 5class as well as 2class
            zz = (im GE 90b) AND (im LE 100b) & interior(isc) = total(zz)/fgarea*100.0
            zz = (im GE 60b) AND (im LT 90b) & dominant(isc) = total(zz)/fgarea*100.0
            zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
@@ -5171,7 +5185,7 @@ CASE strlowCase(eventValue) OF
          zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
          zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
          zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0 & zz = 0
-       endif else begin ;; output 5-class as well as 2-class
+       endif else begin ;; output 5class as well as 2class
          zz = (im GE 90b) AND (im LE 100b) & interior(5) = total(zz)/fgarea*100.0
          zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
          zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
@@ -5269,13 +5283,13 @@ CASE strlowCase(eventValue) OF
          printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
          printf, 12, format='(a14,6(f11.4))', 'Intact: ', intact
        endif else begin
-         printf, 12, 'FAD-APP 5-class:'
+         printf, 12, 'FAD-APP_5class:'
          printf, 12, format='(a14,6(f11.4))', 'Rare: ', rare
          printf, 12, format='(a14,6(f11.4))', 'Patchy: ', patchy
          printf, 12, format='(a14,6(f11.4))', 'Transitional: ', transitional
          printf, 12, format='(a14,6(f11.4))', 'Dominant: ', dominant
          printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
-         printf, 12, 'FAD-APP 2-class:'
+         printf, 12, 'FAD-APP_2class:'
          printf, 12, format='(a14,6(f11.4))', 'Separated: ', separated
          printf, 12, format='(a14,6(f11.4))', 'Continuous: ', continuous
        endelse
@@ -5313,13 +5327,13 @@ CASE strlowCase(eventValue) OF
          printf, 12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(intact,2)
          printf, 12, 'Intact:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
        endif else begin
-         printf, 12, 'FAD-APP 5-class:' & z = strtrim(rare,2)
+         printf, 12, 'FAD-APP_5class:' & z = strtrim(rare,2)
          printf, 12, 'Rare:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(patchy,2)
          printf, 12, 'Patchy:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(transitional,2)
          printf, 12, 'Transitional:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(dominant,2)
          printf, 12, 'Dominant:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(interior,2)
          printf, 12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
-         printf, 12, 'FAD-APP 2-class:' & z = strtrim(separated,2)
+         printf, 12, 'FAD-APP_2class:' & z = strtrim(separated,2)
          printf, 12, 'Separated:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(continuous,2)
          printf, 12, 'Continuous:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(fad_av,2)
          printf, 12, 'FAD_av:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
@@ -5334,7 +5348,7 @@ CASE strlowCase(eventValue) OF
        printf, 9, 'FAD comp.time [sec]: ', systime( / sec) - time0
        close, 9
 
-       skip_batch_fad:
+       skip_batch_fadms:
        stepn = (fidx + 1.0)/nr_im_files * 100.0
        progressBar -> Update, stepn
      ENDFOR
@@ -5449,10 +5463,10 @@ CASE strlowCase(eventValue) OF
      fgconn_str = * conn
      fosclass = * ftype
      
-     if fosclass eq 'FOS 5-class' then fostype = 'FOS5'
-     if fosclass eq 'FOS 6-class' then fostype = 'FOS6'
-     if fosclass eq 'FOS-APP 2-class' then fostype = 'FOS-APP2'
-     if fosclass eq 'FOS-APP 5-class' then fostype = 'FOS-APP5'
+     if fosclass eq 'FAD_5class' or fosclass eq 'FAC_5class' then fostype = 'FOS5'
+     if fosclass eq 'FAD_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
+     if fosclass eq 'FAD-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
+     if fosclass eq 'FAD-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
 
      ;; free and delete the temporary pointers
      ptr_free, cancel & cancel = 0b
@@ -5462,7 +5476,7 @@ CASE strlowCase(eventValue) OF
      ptr_free, ftype & ftype = 0b
      
      IF kdim ge imgminsize THEN BEGIN
-       res = dialog_message('Kernel dimension larger than x or y image dimension. ' + $
+       res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
          string(10b) + 'Returning...', / information)
        GOTO, fin
      ENDIF
@@ -5498,8 +5512,9 @@ CASE strlowCase(eventValue) OF
      ;; calculate FAD for the fixed observation scale
      IF ct4b GT 0 THEN image0[q4b] = 0b ;; specialBG-Nf
      
-     ;; run spatcon P2
-     spatcon, image0, kdim, 'p2', info.dir_tmp, info.my_os, info.resfloat, im
+     ;; run spatcon PF or FAC
+     IF strmid(fosclass,0,3) EQ 'FAC' then mtyp='fac' else mtyp='pf'
+     spatcon, image0, kdim, mtyp, info.dir_tmp, info.my_os, info.resfloat, im
      ;; rescale to normalized byte range
      if info.resfloat eq 0 then begin
        ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
@@ -5538,7 +5553,7 @@ CASE strlowCase(eventValue) OF
      patchy = -1 & rare = -1 & separated = -1 & continuous = -1
      if strlen(fostype) eq 4 then begin
        ;; get the 6 fragmentation proportions 
-       if fosclass eq 'FOS 6-class' then begin
+       if (fosclass eq 'FAD_6class') OR (fosclass eq 'FAC_6class') then begin
          zz = (im EQ 100b) & intact = total(zz)/fgarea*100.0
          zz = (im GE 90b) AND (im LT 100b) & interior = total(zz)/fgarea*100.0
        endif else begin
@@ -5549,7 +5564,7 @@ CASE strlowCase(eventValue) OF
        zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
        zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
      endif else begin
-       ;; 5 class or 2-class Forest Europe 4.7
+       ;; 5 class or 2class Forest Europe 4.7
        zz = (im GE 90b) AND (im LE 100b) & interior = total(zz)/fgarea*100.0
        zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
        zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
@@ -5562,69 +5577,96 @@ CASE strlowCase(eventValue) OF
      ;; write statistics out to disk in tmp to be copied later if files are saved
      z = strtrim(ulong64(fgarea),2)
      fx = info.dir_tmp + 'fos.txt' & file_delete,fx,/allow_nonexistent,/quiet
+     method = strmid(fosclass,0,3)   
+     q = stregex(fosclass,'_') & q1 = strmid(fosclass, q+1,1) 
+     repstyle = method + ' at pixel level'
+     IF (strpos(fosclass,'APP') GT 0) then  repstyle = method + ' at patch level (APP: average per patch)'  
+     IF info.mspa_param1_id EQ 1b THEN conn_str = '8-connectivity' ELSE conn_str = '4-connectivity'
+   
      openw,12,fx
-     printf, 12, fostype + ': Fixed Observation Scale summary analysis for image: '
+     printf, 12, 'Fragmentation analysis using Fixed Observation Scale (FOS)'
+     printf, 12, 'Method options: FAC - Foreground Area Clustering; FAD - Foreground Area Density'
+     printf, 12, 'Summary analysis for image: '     
      printf, 12, fname
      printf, 12, '================================================================================'
-     IF info.mspa_param1_id EQ 1b THEN conn_str = '8-conn FG' ELSE conn_str = '4-conn FG'
-     printf, 12, conn_str + ': area, # patches, aps [pixels]: ', z, ', ', z80,', ', z81
-     IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels [4b] in input image'
-     printf, 12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
-     printf, 12, '(Pixel resolution: ' + pixres_str + '[m], Window size: ' + kdim_str + 'x' + kdim_str +')'
+     printf, 12, 'FOS parameter settings:'
+     printf, 12, 'Foreground connectivity: ' + conn_str 
+     printf, 12, 'FOS-type selected: ' + fosclass  
+     printf, 12, 'Method: ' + method 
+     printf, 12, 'Reporting style: ' + repstyle
+     printf, 12, 'Number of reporting classes: ' + q1
+     printf, 12, 'Pixel resolution [m]: ' + pixres_str
+     printf, 12, 'Window size [pixels]: ' + kdim_str 
+     printf, 12, 'Observation scale [(window size * pixel resolution)^2]: ' + hec + ' hectares <-> ' + acr + ' acres'
      printf, 12, '================================================================================'
+     printf, 12, 'Image foreground statistics:'      
+     printf, 12, 'Foreground area [pixels]: ', z
+     printf, 12, 'Number of foreground patches: ',  z80
+     printf, 12, 'Average foreground patch size: ', z81     
+     IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels [4b] in input image'
+     printf, 12, '================================================================================'
+     printf, 12, 'Proportion [%] of foreground area in foreground cover class:'
      if strlen(fostype) eq 4 then begin
-       printf, 12, format='(a14,f11.4)', 'Rare: ', rare
-       printf, 12, format='(a14,f11.4)', 'Patchy: ', patchy
-       printf, 12, format='(a14,f11.4)', 'Transitional: ', transitional
-       printf, 12, format='(a14,f11.4)', 'Dominant: ', dominant
-       printf, 12, format='(a14,f11.4)', 'Interior: ', interior
-       if fosclass eq 'FOS 6-class' then printf, 12, format='(a14,f11.4)', 'Intact: ', intact    
+       printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare ;; bernd
+       printf, 12, format='(a55,f11.4)', 'Patchy (' + method + '-pixel value within: [10 - 39]): ', patchy
+       printf, 12, format='(a55,f11.4)', 'Transitional (' + method + '-pixel value within: [40 - 59]): ', transitional
+       printf, 12, format='(a55,f11.4)', 'Dominant (' + method + '-pixel value within: [60 - 89]): ', dominant
+       if fostype eq 'FOS5' then printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 100]): ', interior 
+       if fostype eq 'FOS6' then begin
+         printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 99]): ', interior
+         printf, 12, format='(a55,f11.4)', 'Intact (' + method + '-pixel value: 100): ', intact    
+       endif 
      endif else begin ;; FOS-APP
-       printf, 12, 'FOS-APP 5-class:'
-       printf, 12, format='(a14,f11.4)', 'Rare: ', rare
-       printf, 12, format='(a14,f11.4)', 'Patchy: ', patchy
-       printf, 12, format='(a14,f11.4)', 'Transitional: ', transitional
-       printf, 12, format='(a14,f11.4)', 'Dominant: ', dominant
-       printf, 12, format='(a14,f11.4)', 'Interior: ', interior
-       printf, 12, 'FOS-APP 2-class:'
-       printf, 12, format='(a14,f11.4)', 'Separated: ', separated
-       printf, 12, format='(a14,f11.4)', 'Continuous: ', continuous
+       printf, 12, ''
+       printf, 12, 'FOS-APP_5class:'
+       printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare
+       printf, 12, format='(a55,f11.4)', 'Patchy (' + method + '-pixel value within: [10 - 39]): ', patchy
+       printf, 12, format='(a55,f11.4)', 'Transitional (' + method + '-pixel value within: [10 - 39]): ', transitional
+       printf, 12, format='(a55,f11.4)', 'Dominant (' + method + '-pixel value within: [60 - 89]): ', dominant
+       printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 100]): ', interior
+       printf, 12, ''
+       printf, 12, 'FOS-APP_2class:'
+       printf, 12, format='(a55,f11.4)', 'Separated  (' + method + '-pixel value within: [0 - 39]): ', separated
+       printf, 12, format='(a55,f11.4)', 'Continuous (' + method + '-pixel value within: [40 - 100]): ', continuous
      endelse
      printf, 12, '================================================================================'
-     printf, 12, format='(a14,f11.4)', 'FOS_av: ', strtrim(fad_av,2)
+     printf, 12, format='(a67,f11.4)', 'Average pixel value across all foreground pixels using ' + method + '-method: ', strtrim(fad_av,2)   ;; bernd
+     printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground connectivity: ', strtrim(fad_av,2)   ;; bernd
+     printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground fragmentation: ', strtrim(100.0-fad_av,2)   ;; bernd
      close, 12
      
      ;; d) write csv output
      fn_out = info.dir_tmp + 'fos.csv'
      openw,12,fn_out
-     printf,12, fostype + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
+     printf,12, fosclass + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
+     q = ' (more details in the txt-file stored in the results directory)'
      if strlen(fostype) eq 4 then begin
-       if fostype eq 'FOS6' then printf, 12, 'FOS 6-class:' else printf, 12, 'FOS 5-class:'
+       if fostype eq 'FOS6' then printf, 12, 'FOS_6class: ' + q else printf, 12, 'FOS_5class: ' + q
        printf,12, 'Rare:, ' + strtrim(rare,2)
        printf,12, 'Patchy:, ' + strtrim(patchy,2)
        printf,12, 'Transitional:, ' + strtrim(transitional,2)
        printf,12, 'Dominant:, ' + strtrim(dominant,2)
        printf,12, 'Interior:, ' + strtrim(interior,2)
-       if fosclass eq 'FOS 6-class' then printf,12, 'Intact:, ' + strtrim(intact,2)
+       if fostype eq 'FOS6' then printf,12, 'Intact:, ' + strtrim(intact,2)
      endif else begin
-       printf,12, 'FOS-APP 5-class:'
+       printf,12, 'FOS-APP_5class: ' + q
        printf,12, 'Rare:, ' + strtrim(rare,2)
        printf,12, 'Patchy:, ' + strtrim(patchy,2)
        printf,12, 'Transitional:, ' + strtrim(transitional,2)
        printf,12, 'Dominant:, ' + strtrim(dominant,2)
        printf,12, 'Interior:, ' + strtrim(interior,2)
-       printf,12, 'FOS-APP 2-class:'
+       printf,12, 'FOS-APP_2class:'
        printf,12, 'Separated:, ' + strtrim(separated,2)
        printf,12, 'Continuous:, ' + strtrim(continuous,2)
      endelse
-     printf, 12, 'FOS_av:, ', strtrim(fad_av,2)
+     printf, 12, method + '_av:, ', strtrim(fad_av,2)
      close,12    
      
      ;; show the summary image statistics
      xdisplayfile, info.dir_tmp + 'fos.txt', title = 'FOS statistics'
 
      ;; save stats summary in idl format for potential change analysis at some later point
-     save, filename=info.dir_tmp + 'fos.sav', fostype, $
+     save, filename=info.dir_tmp + 'fos.sav', fostype, fosclass, $
        xdim, ydim, geotiff_log, rare, patchy, transitional, dominant, interior, intact, separated, continuous, fad_av, fgarea, obj_last, $
        conn_str, pixres_str, kdim_str, hec, acr
        
@@ -5632,16 +5674,16 @@ CASE strlowCase(eventValue) OF
      * info.process = temporary(im)
      * info.fr_image = * info.process
      
-     if fosclass eq 'FOS 6-class' or fosclass eq 'FOS-APP 5-class' then begin
+     if fostype eq 'FOS6' or fostype eq 'FOS-APP5' then begin
        restore, info.dir_guidossub + 'fadcolors.sav' & info.disp_colors_id = 8 ;; FAD colors
-     endif else if fosclass eq 'FOS 5-class' then begin
+     endif else if fostype eq 'FOS5' then begin
        restore, info.dir_guidossub + 'fadcolors5.sav' & info.disp_colors_id = 9 ;; FAD colors
-     endif else if fosclass eq 'FOS-APP 2-class' then begin
-       restore, info.dir_guidossub + 'fe47colors.sav' & info.disp_colors_id = 10 ;; FAD 2-class colors (Forest Europe 4.7)
+     endif else if fostype eq 'FOS-APP2' then begin
+       restore, info.dir_guidossub + 'fe47colors.sav' & info.disp_colors_id = 10 ;; FAD_2class colors (Forest Europe 4.7)
      endif
      tvlct, r, g, b
      info.ctbl = - 1 & info.autostretch_id = 0 
-     info.add_title = ' (' + fosclass + ': ' + kdim_str + 'x' + kdim_str + ': ' + hec + ' hectares/' + acr + ' acres)'
+     info.add_title = ' (FOS-' + fosclass + ': ' + kdim_str + 'x' + kdim_str + ': ' + hec + ' hectares/' + acr + ' acres)'
 
      ;; reset mspa and use info.is_fragm also for FAD
      info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 3 & info.is_contort = 0
@@ -5715,10 +5757,10 @@ CASE strlowCase(eventValue) OF
      fgconn_str = * conn
      fosclass = * ftype
 
-     if fosclass eq 'FOS 5-class' then fostype = 'FOS5'
-     if fosclass eq 'FOS 6-class' then fostype = 'FOS6'
-     if fosclass eq 'FOS-APP 2-class' then fostype = 'FOS-APP2'
-     if fosclass eq 'FOS-APP 5-class' then fostype = 'FOS-APP5'
+     if fosclass eq 'FAD_5class' or fosclass eq 'FAC_5class' then fostype = 'FOS5'
+     if fosclass eq 'FAD_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
+     if fosclass eq 'FAD-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
+     if fosclass eq 'FAD-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
 
 
      hec = ((pixres * kdim)^2) / 10000.0
@@ -5734,13 +5776,17 @@ CASE strlowCase(eventValue) OF
      ptr_free, ftype & ftype = 0b
      
      ;; test that we can write into the parent directory or if it exists already
-     if fosclass eq 'FOS 5-class' then batch_type = 'batch_FOS5'
-     if fosclass eq 'FOS 6-class' then batch_type = 'batch_FOS6'
-     if fosclass eq 'FOS-APP 2-class' then batch_type = 'batch_FOS-APP2'
-     if fosclass eq 'FOS-APP 5-class' then batch_type = 'batch_FOS-APP5'
-     
+     batch_type = 'batch_fos-' + strlowcase(fosclass)
      dd = file_dirname(im_file[0], / mark_directory)
-     dir_batch = file_dirname(dd, / mark_directory) + batch_type + '_' + kdim_str + info.os_sep
+     dir_batch = file_dirname(dd, / mark_directory) + batch_type + '_' + kdim_str + info.os_sep     
+     ;; test if directory is not named like batch type
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+   
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -5758,19 +5804,19 @@ CASE strlowCase(eventValue) OF
      endelse    
 
      ;; validate and process the images in a loop
-     fn_logfile = dir_batch + strlowcase(strmid(batch_type,6)) + '_' + kdim_str + '.log'
+     fn_logfile = dir_batch + 'fos-' + strlowcase(fosclass) + '_' + kdim_str + '.log'
      nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
      IF info.mspa_param1_id EQ 1b THEN conn_str = '8-conn FG: ' ELSE conn_str = '4-conn FG: '
      openw, 9, fn_logfile
-     printf, 9, fostype + ' batch processing logfile: ', systime()
+     printf, 9, fosclass + ' batch processing logfile: ', systime()
      printf, 9, strmid(conn_str,0,9) + ', Pixel resolution: ' + pixres_str + $
-      '[m], Window size: ' + kdim_str + 'x' + kdim_str
+      '[m], Window size: ' + kdim_str 
      printf, 9, 'Observation scale: ' + hec + ' hectares/' + acr + ' acres'
      printf, 9, 'Number of files to be processed: ', nr_im_files
      printf, 9, '==============================================='
      close, 9
 
-     msg = 'Processing selected images for ' + fostype +', please wait...'
+     msg = 'Processing selected images for ' + fosclass +', please wait...'
      progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
      progressBar -> Start
 
@@ -5798,9 +5844,9 @@ CASE strlowCase(eventValue) OF
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
        ENDIF
-
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -5808,9 +5854,8 @@ CASE strlowCase(eventValue) OF
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
        ENDIF
-
-       res = query_tiff(input, geotiff = geotiffinfo)
-       IF res EQ 0 THEN BEGIN
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )       
+       IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -5826,7 +5871,7 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FOS input file (Kernel dimension larger than x or y image dimension.): ', input
+         printf, 9, 'Skipping invalid FOS input file (Kernel dimension larger than x or y map dimension.): ', input
          printf, 9, ' ' , input
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
@@ -5857,15 +5902,17 @@ CASE strlowCase(eventValue) OF
        conn8 = fgconn_str eq '8'
        ;; label FG only
        ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
-       if strmid(fosclass,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
+       if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
        obj_last=max(ext1) & ext1 = 0
        aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
        z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
 
        ;; calculate FAD for the fixed observation scale
        IF ct4b GT 0 THEN image0[q4b] = 0b
-       ;; run spatcon P2
-       spatcon, image0, kdim, 'p2', info.dir_tmp, info.my_os, info.resfloat, im
+       
+       ;; run spatcon PF or FAC
+       IF strmid(fosclass,0,3) EQ 'FAC' then mtyp='fac' else mtyp='pf'
+       spatcon, image0, kdim, mtyp, info.dir_tmp, info.my_os, info.resfloat, im
        ;; rescale to normalized byte range
        if info.resfloat eq 0 then begin
          ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
@@ -5882,7 +5929,7 @@ CASE strlowCase(eventValue) OF
        fad_av = mean(im(qFG)) & qFG = 0
        
        ;; do we want APP?
-       if strmid(fosclass,0,7) eq 'FOS-APP' then begin
+       if strmid(fostype,0,7) eq 'FOS-APP' then begin
          extim = bytarr(sz[0] + 2, sz[1] + 2)
          extim[1:sz[0], 1:sz[1]] = im
          FOR i = 1l, obj_last DO BEGIN
@@ -5902,44 +5949,48 @@ CASE strlowCase(eventValue) OF
        ;; the statistics, first initialize
        intact = -1 & interior = -1 & dominant = -1 & transitional = -1
        patchy = -1 & rare = -1 & separated = -1 & continuous = -1
-       if fosclass eq 'FOS 6-class' then begin
-         ;; get the 6 fragmentation proportions 
+        if strlen(fostype) eq 4 then begin
+       ;; get the 6 fragmentation proportions 
+       if (fosclass eq 'FAD_6class') OR (fosclass eq 'FAC_6class') then begin
          zz = (im EQ 100b) & intact = total(zz)/fgarea*100.0
          zz = (im GE 90b) AND (im LT 100b) & interior = total(zz)/fgarea*100.0
-         zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
-         zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
-         zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
-         zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
        endif else begin
-         ;; 5-class or 2-class Forest Europe 4.7
          zz = (im GE 90b) AND (im LE 100b) & interior = total(zz)/fgarea*100.0
-         zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
-         zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
-         zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
-         zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
-         zz = (im GE 40b) AND (im LE 100b) & continuous = total(zz)/fgarea*100.0
-         zz = (im LT 40b) & separated = total(zz)/fgarea*100.0 & zz = 0
-       endelse    
+       endelse     
+       zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
+       zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
+       zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
+       zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
+     endif else begin
+       ;; 5 class or 2class Forest Europe 4.7
+       zz = (im GE 90b) AND (im LE 100b) & interior = total(zz)/fgarea*100.0
+       zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
+       zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
+       zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
+       zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
+       zz = (im GE 40b) AND (im LE 100b) & continuous = total(zz)/fgarea*100.0
+       zz = (im LT 40b) & separated = total(zz)/fgarea*100.0 & zz = 0
+     endelse
        
        ;; write the final result to the initial input dir
        fbn = file_basename(input, '.tif')
-       outdir = dir_batch + fbn + '_' + strlowcase(fostype) + '_' + kdim_str
+       outdir = dir_batch + fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str
 
        ;; setup the output directory for the current image file
        file_mkdir, outdir
        pushd, outdir
-       if fosclass eq 'FOS 6-class' or fosclass eq 'FOS-APP 5-class' then begin
-         restore, info.dir_guidossub + 'fadcolors.sav'  ;; FAD colors
-       endif else if fosclass eq 'FOS-APP 2-class' then begin
-         restore, info.dir_guidossub + 'fe47colors.sav' ;; FAD 2-class colors (Forest Europe 4.7)
-       endif else if fosclass eq 'FOS 5-class' then begin
-         restore, info.dir_guidossub + 'fadcolors5.sav'
+       if fostype eq 'FOS6' or fostype eq 'FOS-APP5' then begin
+         restore, info.dir_guidossub + 'fadcolors.sav' & info.disp_colors_id = 8 ;; FAD colors
+       endif else if fostype eq 'FOS5' then begin
+         restore, info.dir_guidossub + 'fadcolors5.sav' & info.disp_colors_id = 9 ;; FAD colors
+       endif else if fostype eq 'FOS-APP2' then begin
+         restore, info.dir_guidossub + 'fe47colors.sav' & info.disp_colors_id = 10 ;; FAD_2class colors (Forest Europe 4.7)
        endif
        tvlct, r, g, b
 
        ;; a) the fullres classified summary image
        ;; first save the visual summary result
-       fn_out = fbn + '_' + strlowcase(fostype) + '_' + kdim_str + '.tif'
+       fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.tif'
        ;; add the geotiff info if available
        IF (size(geotiffinfo))[0] gt 0 THEN BEGIN
          write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1
@@ -5949,41 +6000,66 @@ CASE strlowCase(eventValue) OF
        im = 0
 
        ;; b) the statistics       
-       fn_out = fbn + '_' + strlowcase(fostype) + '_' + kdim_str + '.txt'
+       fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.txt'
        ;; write statistics out to disk in tmp to be copied later if files are saved
        z = strtrim(ulong64(fgarea),2)
+       method = strmid(fosclass,0,3)   
+       q = stregex(fosclass,'_') & q1 = strmid(fosclass, q+1,1)
+       repstyle = method + ' at pixel level'
+       IF (strpos(fosclass,'APP') GT 0) then  repstyle = method + ' at patch level (APP: average per patch)'
+
        openw,12,fn_out
-       printf, 12, fostype + ': Fixed Observation Scale summary analysis for image: '
+       printf, 12, 'Fragmentation analysis using Fixed Observation Scale (FOS)'
+       printf, 12, 'Method options: FAC: Foreground Area Clustering; FAD: Foreground Area Density'
+       printf, 12, 'Summary analysis for image: '
        printf, 12, input
        printf, 12, '================================================================================'
-       printf, 12, conn_str + 'area, # patches, aps [pixels]: ', z, ', ', z80,', ', z81
-       IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels [4b] in input image'
-       printf, 12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
-       printf, 12, '(Pixel resolution: ' + pixres_str + '[m], Window size: ' + kdim_str + 'x' + kdim_str +')'
+       printf, 12, 'FOS parameter settings:'
+       printf, 12, 'Foreground connectivity: ' + conn_str
+       printf, 12, 'FOS-type selected: ' + fosclass
+       printf, 12, 'Method: ' + method
+       printf, 12, 'Reporting style: ' + repstyle
+       printf, 12, 'Number of reporting classes: ' + q1
+       printf, 12, 'Pixel resolution [m]: ' + pixres_str
+       printf, 12, 'Window size [pixels]: ' + kdim_str
+       printf, 12, 'Observation scale [(window size * pixel resolution)^2]: ' + hec + ' hectares <-> ' + acr + ' acres'
        printf, 12, '================================================================================'
-       if fosclass eq 'FOS 6-class' or fosclass eq 'FOS 5-class' then begin
-         printf, 12, fosclass + ':'
-         printf, 12, format='(a14,f11.4)', 'Rare: ', rare
-         printf, 12, format='(a14,f11.4)', 'Patchy: ', patchy
-         printf, 12, format='(a14,f11.4)', 'Transitional: ', transitional
-         printf, 12, format='(a14,f11.4)', 'Dominant: ', dominant
-         printf, 12, format='(a14,f11.4)', 'Interior: ', interior
-         if fosclass eq 'FOS 6-class' then printf, 12, format='(a14,f11.4)', 'Intact: ', intact
-       endif else begin
-         printf, 12, 'FOS-APP 5-class:'
-         printf, 12, format='(a14,f11.4)', 'Rare: ', rare
-         printf, 12, format='(a14,f11.4)', 'Patchy: ', patchy
-         printf, 12, format='(a14,f11.4)', 'Transitional: ', transitional
-         printf, 12, format='(a14,f11.4)', 'Dominant: ', dominant
-         printf, 12, format='(a14,f11.4)', 'Interior: ', interior
-         printf, 12, 'FOS-APP 2-class:'
-         printf, 12, format='(a14,f11.4)', 'Separated: ', separated
-         printf, 12, format='(a14,f11.4)', 'Continuous: ', continuous
+       printf, 12, 'Image foreground statistics:'
+       printf, 12, 'Foreground area [pixels]: ', z
+       printf, 12, 'Number of foreground patches: ',  z80
+       printf, 12, 'Average foreground patch size: ', z81
+       IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels [4b] in input image'
+       printf, 12, '================================================================================'
+       printf, 12, 'Proportion [%] of foreground area in foreground cover class:'
+       if strlen(fostype) eq 4 then begin
+         printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare ;; bernd
+         printf, 12, format='(a55,f11.4)', 'Patchy (' + method + '-pixel value within: [10 - 39]): ', patchy
+         printf, 12, format='(a55,f11.4)', 'Transitional (' + method + '-pixel value within: [40 - 59]): ', transitional
+         printf, 12, format='(a55,f11.4)', 'Dominant (' + method + '-pixel value within: [60 - 89]): ', dominant
+         if fostype eq 'FOS5' then printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 100]): ', interior
+         if fostype eq 'FOS6' then begin
+           printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 99]): ', interior
+           printf, 12, format='(a55,f11.4)', 'Intact (' + method + '-pixel value: 100): ', intact
+         endif
+       endif else begin ;; FOS-APP
+         printf, 12, ''
+         printf, 12, 'FOS-APP_5class:'
+         printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare
+         printf, 12, format='(a55,f11.4)', 'Patchy (' + method + '-pixel value within: [10 - 39]): ', patchy
+         printf, 12, format='(a55,f11.4)', 'Transitional (' + method + '-pixel value within: [10 - 39]): ', transitional
+         printf, 12, format='(a55,f11.4)', 'Dominant (' + method + '-pixel value within: [60 - 89]): ', dominant
+         printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 100]): ', interior
+         printf, 12, ''
+         printf, 12, 'FOS-APP_2class:'
+         printf, 12, format='(a55,f11.4)', 'Separated  (' + method + '-pixel value within: [0 - 39]): ', separated
+         printf, 12, format='(a55,f11.4)', 'Continuous (' + method + '-pixel value within: [40 - 100]): ', continuous
        endelse
        printf, 12, '================================================================================'
-       printf, 12, format='(a14,f11.4)', 'FOS_av: ', strtrim(fad_av,2)
+       printf, 12, format='(a67,f11.4)', 'Average pixel value across all foreground pixels using ' + method + '-method: ', strtrim(fad_av,2)   ;; bernd
+       printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground connectivity: ', strtrim(fad_av,2)   ;; bernd
+       printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground fragmentation: ', strtrim(100.0-fad_av,2)   ;; bernd
        close, 12
-       
+
        ;; c) the sav-file
        ;; check if we have a geotiff image
        geotiff_log = '' ;; gdal geotiff-information
@@ -5998,34 +6074,36 @@ CASE strlowCase(eventValue) OF
          IF info.my_os EQ 'windows' THEN spawn, cmd, geotiff_log, / hide ELSE spawn, cmd, geotiff_log
        endif       
        
-       fn_out = fbn + '_' + strlowcase(fostype) + '_' + kdim_str + '.sav'
-       save, filename = fn_out, fostype, $
+       fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.sav'
+       save, filename = fn_out, fostype, fosclass, $
          xdim, ydim, geotiff_log, rare, patchy, transitional, dominant, interior, intact, separated, continuous, fad_av, fgarea, obj_last, $
          conn_str, pixres_str, kdim_str, hec, acr       
          
        ;; d) write csv output
-       fn_out = fbn + '_' + strlowcase(fostype) + '_' + kdim_str + '.csv'
+       fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.csv'     ;; bernd
        openw,12,fn_out
-       printf,12, fostype + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
-       if fosclass eq 'FOS 6-class' or fosclass eq 'FOS 5-class'  then begin
+       printf,12, fosclass + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
+       q = ' (more details in the txt-file stored in the results directory)'
+       if strlen(fostype) eq 4 then begin
+         if fostype eq 'FOS6' then printf, 12, 'FOS_6class: ' + q else printf, 12, 'FOS_5class: ' + q
          printf,12, 'Rare:, ' + strtrim(rare,2)
          printf,12, 'Patchy:, ' + strtrim(patchy,2)
          printf,12, 'Transitional:, ' + strtrim(transitional,2)
          printf,12, 'Dominant:, ' + strtrim(dominant,2)
          printf,12, 'Interior:, ' + strtrim(interior,2)
-         if fosclass eq 'FOS 6-class' then printf,12, 'Intact:, ' + strtrim(intact,2)
+         if fostype eq 'FOS6' then printf,12, 'Intact:, ' + strtrim(intact,2)
        endif else begin
-         printf,12, 'FOS-APP 5-class:'
+         printf,12, 'FOS-APP_5class: ' + q
          printf,12, 'Rare:, ' + strtrim(rare,2)
          printf,12, 'Patchy:, ' + strtrim(patchy,2)
          printf,12, 'Transitional:, ' + strtrim(transitional,2)
          printf,12, 'Dominant:, ' + strtrim(dominant,2)
          printf,12, 'Interior:, ' + strtrim(interior,2)
-         printf,12, 'FOS-APP 2-class:'
+         printf,12, 'FOS-APP_2class:'
          printf,12, 'Separated:, ' + strtrim(separated,2)
          printf,12, 'Continuous:, ' + strtrim(continuous,2)
        endelse
-       printf, 12, 'FOS_av:, ', strtrim(fad_av,2)
+       printf, 12, method + '_av:, ', strtrim(fad_av,2)
        close,12
 
        okfile = okfile + 1
@@ -6036,7 +6114,7 @@ CASE strlowCase(eventValue) OF
        printf, 9, ' '
        printf, 9, '==============   ' + counter + '   =============='
        printf, 9, 'File: ' + input
-       printf, 9, fostype + ' comp.time [sec]: ', systime( / sec) - time0
+       printf, 9, fosclass + ' comp.time [sec]: ', systime( / sec) - time0
        close, 9
 
        skip_batch_fos:
@@ -6060,12 +6138,12 @@ CASE strlowCase(eventValue) OF
      openw, 9, fn_logfile, /append
      printf, 9, ''
      printf, 9, '==============================================='
-     printf, 9, fostype + ' Batch Processing total comp.time: ', proctstr
+     printf, 9, fosclass + ' Batch Processing total comp.time: ', proctstr
      printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
      printf, 9, '==============================================='
      close, 9
 
-     msg = fostype + ' Batch Processing finished.' + string(10b) + $
+     msg = fosclass + ' Batch Processing finished.' + string(10b) + $
        'Total computation time: ' + proctstr + string(10b) + $
        'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
        'More information can be found in the logfile: ' + string(10b) + fn_logfile
@@ -6077,7 +6155,7 @@ CASE strlowCase(eventValue) OF
   
    ;;*****************************************************************************************************
 
-   'kernel_p2':  BEGIN
+   'kernel_pf':  BEGIN
       ;; check for input compliance:
       ;; 1) if already a mspa image then quit
       IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
@@ -6128,14 +6206,14 @@ CASE strlowCase(eventValue) OF
       
       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
       IF kdim ge imgminsize THEN BEGIN
-        res = dialog_message('Kernel dimension larger than x or y image dimension. ' + $
+        res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
           string(10b) + 'Returning...', / information)
         GOTO, fin
       ENDIF
 
       widget_control, / hourglass
       BGmask = where(image0 EQ 1b, /l64) 
-      spatcon, image0, kdim, 'p2', info.dir_tmp, info.my_os, info.resfloat, im
+      spatcon, image0, kdim, 'pf', info.dir_tmp, info.my_os, info.resfloat, im
       
       ;; rescale to normalized byte range
       if info.resfloat eq 0 then begin
@@ -6168,13 +6246,13 @@ CASE strlowCase(eventValue) OF
       ;; free and delete the temporary pointers
       ptr_free, cancel & cancel = 0b
       ptr_free, selected_kernel & selected_kernel = 0b
-      zz = '; tick Divide for new P2 range settings; Intext for FG masking'
-      info.add_title = ' (P2: FG density, kdim=' + strtrim(kdim, 2) + zz + ')'
+      zz = '; tick Divide for new density range settings; Intext for FG masking'
+      info.add_title = ' (Density, kdim=' + strtrim(kdim, 2) + zz + ')'
       ;; set Intext to off
       info.mspa_param4_id = 0b
       widget_control, info.w_mspa_param4, set_value = info.mspa_param4_id
       
-      ;; reset mspa and use info.is_fragm also for P2
+      ;; reset mspa and use info.is_fragm also for PF
       info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 2 & info.is_contort = 0
       info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
       info.do_label_groups_id = 0
@@ -6190,7 +6268,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'batch_p2':  BEGIN
+   'batch_pf':  BEGIN
       tit = 'Select (Geo-)Tif-files'
       im_file = $
         dialog_pickfile(Title = tit, get_path = path2file, $
@@ -6199,7 +6277,7 @@ CASE strlowCase(eventValue) OF
                         / must_exist, $
                         / multiple_files, filter = ['*.tif', '*.tiff'])
       IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
-      
+            
       ;; test that the directory of the selected files has no sub-directories
       ;; this will also ensure no output file is opened in excel or thelike
       pushd, path2file
@@ -6208,8 +6286,8 @@ CASE strlowCase(eventValue) OF
         q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
       endfor
       IF nr_dir GT 0 THEN BEGIN
-        msg = 'The directory of your Batch P2 input files contains sub-directories.'  +  string(10b) +  string(10b) + $
-          'Please set up a new directory having Batch P2 input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
+        msg = 'The directory of your Density input files contains sub-directories.'  +  string(10b) +  string(10b) + $
+          'Please set up a new directory having Density input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
         GOTO, fin
       ENDIF
@@ -6232,12 +6310,19 @@ CASE strlowCase(eventValue) OF
         GOTO, fin
       ENDIF
       kdim = * selected_kernel & kdim = (size(kdim))[1] & kdim_str = strtrim(kdim, 2)
-
       
       ;; test that we can write into the parent directory or if it exists already
-      batch_type = 'batch_P2'
+      batch_type = 'batch_density'
       dd = file_dirname(im_file[0], / mark_directory)
-      dir_batch = file_dirname(dd, / mark_directory) + batch_type + '_' + kdim_str + info.os_sep
+      dir_batch = file_dirname(dd, / mark_directory) + batch_type + '_' + kdim_str + info.os_sep      
+      ;; test if directory is not named like batch type
+      if file_basename(path2file) eq file_basename(dir_batch) then begin
+        msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+          "Please rename the directory to any other name."
+        res = dialog_message(msg, / information)
+        GOTO, fin
+      endif
+    
       res = file_test(dir_batch, /directory, /write)
       if res eq 1 then begin ;; dir_batch already exists
         msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -6260,21 +6345,21 @@ CASE strlowCase(eventValue) OF
       ;;========================================================================
       ;; reset the front image and block any events
       ;;========================================================================
-      title = 'P2 Batch Processing'
+      title = 'Density Batch Processing'
       goto, resetfront
 
-      backto_batch_p2:
+      backto_batch_pf:
 
       ;; validate and process the images in a loop
       fn_logfile = dir_batch + batch_type + '_' + kdim_str  + '.log'
       nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
 
       openw, 9, fn_logfile
-      printf, 9, 'P2 batch processing logfile: ', systime()
+      printf, 9, 'Density batch processing logfile: ', systime()
       printf, 9, 'Number of files to be processed: ', nr_im_files
       printf, 9, '==============================================='
       close, 9
-      msg = 'Processing selected images for P2, please wait...'
+      msg = 'Processing selected images for Density, please wait...'
       progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
       progressBar -> Start
 
@@ -6299,29 +6384,28 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P2 input (empty space in directory path or input filename): ', input
+          printf, 9, 'Skipping invalid Density input (empty space in directory path or input filename): ', input
           close, 9
-          GOTO, skip_batch_p2  ;; invalid input
+          GOTO, skip_batch_pf  ;; invalid input
         ENDIF
 
-        type = '' & res = query_image(input, type=type)
-        IF type NE 'TIFF' THEN BEGIN
+        res = query_tiff(input, qtres, geotiff = geotiffinfo)
+        IF qtres.type NE 'TIFF' THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P2 input (not a TIFF image): ', input
+          printf, 9, 'Skipping invalid Density input (not a TIFF image): ', input
           close, 9
-          GOTO, skip_batch_p2  ;; invalid input
+          GOTO, skip_batch_pf  ;; invalid input
         ENDIF
-
-        res = query_tiff(input, geotiff = geotiffinfo)
-        IF res EQ 0 THEN BEGIN
+        res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+        IF res NE 0 THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P2 input file: ', input
+          printf, 9, 'Skipping invalid Density input file: ', input
           close, 9
-          GOTO, skip_batch_p2  ;; invalid input
+          GOTO, skip_batch_pf  ;; invalid input
         ENDIF
 
         image0 = read_tiff(input)  ;; read and check it
@@ -6331,16 +6415,16 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P2 input file: ', input
+          printf, 9, 'Skipping invalid Density input file: ', input
           close, 9
-          GOTO, skip_batch_p2  ;; invalid input
+          GOTO, skip_batch_pf  ;; invalid input
         ENDIF
 
         ;; now all is ok for processing
         time0 = systime( / sec)
         qmiss = where(image0 eq 0b,ctmiss, /l64) & BGmask = where(image0 EQ 1b, /l64)
         widget_control, / hourglass
-        spatcon, image0, kdim, 'p2', info.dir_tmp, info.my_os, info.resfloat, im
+        spatcon, image0, kdim, 'pf', info.dir_tmp, info.my_os, info.resfloat, im
 
         ;; rescale to normalized byte range
         if info.resfloat eq 0 then begin
@@ -6361,11 +6445,11 @@ CASE strlowCase(eventValue) OF
 
         ;; write the final result to the initial input dir
         res = file_basename(input, '.tif')
-        fn_out = dir_batch + res + '_p2_' + kdim_str + '.tif'
+        fn_out = dir_batch + res + '_density_' + kdim_str + '.tif'
         restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
         
         ;; add the geotiff info if available
-        desc = 'GTB_P2, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+        desc = 'GTB_FAD, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
         IF (size(geotiffinfo))[0] gt 0 THEN $
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, geotiff = geotiffinfo, compression = 1 ELSE $
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
@@ -6375,10 +6459,10 @@ CASE strlowCase(eventValue) OF
         printf, 9, ' '
         printf, 9, '==============   ' + counter + '   =============='
         printf, 9, 'File: ' + input
-        printf, 9, 'P2 comp.time [sec]: ', systime( / sec) - time0
+        printf, 9, 'Density comp.time [sec]: ', systime( / sec) - time0
         close, 9
 
-        skip_batch_p2:
+        skip_batch_pf:
         stepn = (fidx + 1.0)/nr_im_files * 100.0
         progressBar -> Update, stepn
       ENDFOR
@@ -6399,12 +6483,12 @@ CASE strlowCase(eventValue) OF
       openw, 9, fn_logfile, /append
       printf, 9, ''
       printf, 9, '==============================================='
-      printf, 9, 'P2 Batch Processing total comp.time: ', proctstr
+      printf, 9, 'Density Batch Processing total comp.time: ', proctstr
       printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
       printf, 9, '==============================================='
       close, 9
 
-      msg = 'P2 Batch Processing finished.' + string(10b) + $
+      msg = 'Density Batch Processing finished.' + string(10b) + $
         'Total computation time: ' + proctstr + string(10b) + $
         'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
         'More information can be found in the logfile: ' + string(10b) + fn_logfile
@@ -6420,8 +6504,8 @@ CASE strlowCase(eventValue) OF
 
 
    ;;*****************************************************************************************************
-
-   'kernel_p22':  BEGIN
+   ;; moving window PFF
+   'kernel_pff':  BEGIN
       ;; check for input compliance:
       ;; 1) if already a mspa image then quit
       IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
@@ -6472,14 +6556,14 @@ CASE strlowCase(eventValue) OF
       
       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
       IF kdim ge imgminsize THEN BEGIN
-        res = dialog_message('Kernel dimension larger than x or y image dimension. ' + $
+        res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
           string(10b) + 'Returning...', / information)
         GOTO, fin
       ENDIF
  
       widget_control, / hourglass
       BGmask = where(image0 EQ 1b, /l64)
-      spatcon, image0, kdim, 'p22', info.dir_tmp, info.my_os, info.resfloat, im
+      spatcon, image0, kdim, 'pff', info.dir_tmp, info.my_os, info.resfloat, im
 
       ;; rescale to normalized byte range
       if info.resfloat eq 0 then begin
@@ -6512,13 +6596,13 @@ CASE strlowCase(eventValue) OF
       ;; free and delete the temporary pointers
       ptr_free, cancel & cancel = 0b
       ptr_free, selected_kernel & selected_kernel = 0b
-      zz = '; tick Divide for new P22 range settings; Intext for FG masking'
-      info.add_title = ' (P22: FG contagion, kdim=' + strtrim(kdim, 2) + zz + ')'
+      zz = '; tick Divide for new contagion range settings; Intext for FG masking'
+      info.add_title = ' (Contagion, kdim=' + strtrim(kdim, 2) + zz + ')'
       ;; set Intext to off
       info.mspa_param4_id = 0b
       widget_control, info.w_mspa_param4, set_value = info.mspa_param4_id
 
-      ;; reset mspa and use info.is_fragm also for P22
+      ;; reset mspa and use info.is_fragm also for PFF
       info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 2 & info.is_contort = 0
       info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
       info.do_label_groups_id = 0
@@ -6534,8 +6618,8 @@ CASE strlowCase(eventValue) OF
 
 
    ;;*****************************************************************************************************
-
-   'batch_p22':  BEGIN
+   ;; moving window PFF
+   'batch_pff':  BEGIN
       tit = 'Select (Geo-)Tif-files'
       im_file = $
         dialog_pickfile(Title = tit, get_path = path2file, $
@@ -6544,7 +6628,7 @@ CASE strlowCase(eventValue) OF
                         / must_exist, $
                         / multiple_files, filter = ['*.tif', '*.tiff'])
       IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
-      
+ 
       ;; test that the directory of the selected files has no sub-directories
       ;; this will also ensure no output file is opened in excel or thelike
       pushd, path2file
@@ -6553,8 +6637,8 @@ CASE strlowCase(eventValue) OF
         q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
       endfor
       IF nr_dir GT 0 THEN BEGIN
-        msg = 'The directory of your Batch P22 input files contains sub-directories.'  +  string(10b) +  string(10b) + $
-          'Please set up a new directory having Batch P22 input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
+        msg = 'The directory of your contagion input files contains sub-directories.'  +  string(10b) +  string(10b) + $
+          'Please set up a new directory having contagion input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
         GOTO, fin
       ENDIF
@@ -6580,9 +6664,17 @@ CASE strlowCase(eventValue) OF
 
       
       ;; test that we can write into the parent directory or if it exists already
-      batch_type = 'batch_P22'
+      batch_type = 'batch_contagion'
       dd = file_dirname(im_file[0], / mark_directory)
       dir_batch = file_dirname(dd, / mark_directory) + batch_type + '_' + kdim_str + info.os_sep
+      ;; test if directory is not named like dir_batch
+      if file_basename(path2file) eq file_basename(dir_batch) then begin
+        msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+          "Please rename the directory to any other name."
+        res = dialog_message(msg, / information)
+        GOTO, fin
+      endif
+
       res = file_test(dir_batch, /directory, /write)
       if res eq 1 then begin ;; dir_batch already exists
         msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -6604,10 +6696,10 @@ CASE strlowCase(eventValue) OF
       ;;========================================================================
       ;; reset the front image and block any events
       ;;========================================================================
-      title = 'P22 Batch Processing'
+      title = 'Contagion Batch Processing'
       goto, resetfront
 
-      backto_batch_p22:
+      backto_batch_pff:
 
       ;; do the loop processing now
       ;; validate and process the images in a loop
@@ -6616,11 +6708,11 @@ CASE strlowCase(eventValue) OF
       fn_logfile = dir_batch + batch_type + '_' + kdim_str + '.log'
       nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
       openw, 9, fn_logfile
-      printf, 9, 'P22 batch processing logfile: ', systime()
+      printf, 9, 'Contagion batch processing logfile: ', systime()
       printf, 9, 'Number of files to be processed: ', nr_im_files
       printf, 9, '==============================================='
       close, 9
-      msg = 'Processing selected images for P22, please wait...'
+      msg = 'Processing selected images for Contagion, please wait...'
       progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
       progressBar -> Start
 
@@ -6645,29 +6737,28 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P22 input (empty space in directory path or input filename): ', input
+          printf, 9, 'Skipping invalid Contagion input (empty space in directory path or input filename): ', input
           close, 9
-          GOTO, skip_batch_p22  ;; invalid input
+          GOTO, skip_batch_pff  ;; invalid input
         ENDIF
         
-        type = '' & res = query_image(input, type=type)
-        IF type NE 'TIFF' THEN BEGIN
+        res = query_tiff(input, qtres, geotiff = geotiffinfo)
+        IF qtres.type NE 'TIFF' THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P22 input (not a TIFF image): ', input
+          printf, 9, 'Skipping invalid Contagion input (not a TIFF image): ', input
           close, 9
-          GOTO, skip_batch_p22  ;; invalid input
-        ENDIF
-
-        res = query_tiff(input, geotiff = geotiffinfo)
-        IF res EQ 0 THEN BEGIN
+          GOTO, skip_batch_pff  ;; invalid input
+        ENDIF        
+        res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+        IF res NE 0 THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P22 input file: ', input
+          printf, 9, 'Skipping invalid Contagion input file: ', input
           close, 9
-          GOTO, skip_batch_p22  ;; invalid p22 input
+          GOTO, skip_batch_pff  
         ENDIF
 
         image0 = read_tiff(input)  ;; read and check it
@@ -6677,9 +6768,9 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P22 input file: ', input
+          printf, 9, 'Skipping invalid Contagion input file: ', input
           close, 9
-          GOTO, skip_batch_p22  ;; invalid p22 input
+          GOTO, skip_batch_pff  ;; invalid input
         ENDIF
 
         ;; now all is ok for processing
@@ -6687,7 +6778,7 @@ CASE strlowCase(eventValue) OF
         qmiss = where(image0 eq 0b,ctmiss, /l64) & BGmask = where(image0 EQ 1b, /l64)
         widget_control, / hourglass
 
-        spatcon, image0, kdim, 'p22', info.dir_tmp, info.my_os, info.resfloat, im
+        spatcon, image0, kdim, 'pff', info.dir_tmp, info.my_os, info.resfloat, im
         
         ;; rescale to normalized byte range
         if info.resfloat eq 0 then begin
@@ -6708,11 +6799,11 @@ CASE strlowCase(eventValue) OF
 
         ;; write the final result to the initial input dir
         res = file_basename(input, '.tif')
-        fn_out = dir_batch + res + '_p22_' + kdim_str + '.tif'
+        fn_out = dir_batch + res + '_contagion_' + kdim_str + '.tif'
         restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
 
         ;; add the geotiff info if available
-        desc = 'GTB_P22, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+        desc = 'GTB_CON, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
         IF (size(geotiffinfo))[0] gt 0 THEN $
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, geotiff = geotiffinfo, compression = 1 ELSE $
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
@@ -6722,10 +6813,10 @@ CASE strlowCase(eventValue) OF
         printf, 9, ' '
         printf, 9, '==============   ' + counter + '   =============='
         printf, 9, 'File: ' + input
-        printf, 9, 'P22 comp.time [sec]: ', systime( / sec) - time0
+        printf, 9, 'Contagion comp.time [sec]: ', systime( / sec) - time0
         close, 9
 
-        skip_batch_p22:
+        skip_batch_pff:
         stepn = (fidx + 1.0)/nr_im_files * 100.0
         progressBar -> Update, stepn
       ENDFOR
@@ -6746,12 +6837,12 @@ CASE strlowCase(eventValue) OF
       openw, 9, fn_logfile, /append
       printf, 9, ''
       printf, 9, '==============================================='
-      printf, 9, 'P22 Batch Processing total comp.time: ', proctstr
+      printf, 9, 'Contagion Batch Processing total comp.time: ', proctstr
       printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
       printf, 9, '==============================================='
       close, 9
 
-      msg = 'P22 Batch Processing finished.' + string(10b) + $
+      msg = 'Contagion Batch Processing finished.' + string(10b) + $
         'Total computation time: ' + proctstr + string(10b) + $
         'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
         'More information can be found in the logfile: ' + string(10b) + fn_logfile
@@ -6767,356 +6858,130 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'kernel_p23':  BEGIN
-      ;; check for input compliance:
-      ;; 1) if already a mspa image then quit
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
-        res = dialog_message(info.wronginput, / information)
-        GOTO, fin
-      ENDIF
+   'kernel_fac':  BEGIN
+     ;; check for input compliance:
+     ;; 1) if already a mspa image then quit
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+       res = dialog_message(info.wronginput, / information)
+       GOTO, fin
+     ENDIF
 
-      ;; 2) if in zoom mode, quit zoom mode
-      IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
-        info.selsubregion_id = 0
-        ;; deactivate zoomfactor selector
-        widget_control, info.w_zoomfac, sensitive = 1
-        widget_control, info.w_selsubregion, $
-          set_value = 'Zoom Mode'
-        ;; restore the prezoomed process image
-        * info.process = * info.prezoomprocess
-        ;; disable button and enable motion events in w_draw
-        widget_control, info.w_draw, Draw_Motion_Events = 1
-        widget_control, info.w_draw, Draw_Button_Events = 0
-        info.set_zoom = 0 & info.scroll_x = 0 & info.scroll_y = 0
-      ENDIF
+     ;; 2) if in zoom mode, quit zoom mode
+     IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
+       info.selsubregion_id = 0
+       ;; deactivate zoomfactor selector
+       widget_control, info.w_zoomfac, sensitive = 1
+       widget_control, info.w_selsubregion, $
+         set_value = 'Zoom Mode'
+       ;; restore the prezoomed process image
+       * info.process = * info.prezoomprocess
+       ;; disable button and enable motion events in w_draw
+       widget_control, info.w_draw, Draw_Motion_Events = 1
+       widget_control, info.w_draw, Draw_Button_Events = 0
+       info.set_zoom = 0 & info.scroll_x = 0 & info.scroll_y = 0
+     ENDIF
 
-      ;; 3) check input compliance
-      LM_Compliance, info.fname_input, * info.fr_image, 'p23', info.immaxsizeg, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
+     ;; 3) check input compliance
+     MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, $
+       1, result
+     IF result EQ 0 THEN GOTO, fin  ;; invalid input
 
-      ;; assign the full resolution image
-      image0 = * info.fr_image
+     ;; assign the full resolution image
+     image0 = * info.fr_image
 
-      ;; define a pointer to the default kernel, 5 x 5
-      kdim = 5 & def_kernel = replicate(1, kdim, kdim)
-      cancel = ptr_new(1b)
-      selected_kernel = ptr_new(def_kernel)
-      ;; get the kernel settings, make square & binary
-      get_kernel, selected_kernel = selected_kernel, $
-        cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
-        title = 'Select kernel dimension'
-      ;; check if cancel was selected then do nothing else apply the
-      ;; default or new kernel
-      IF * cancel NE 0b THEN BEGIN
-        ptr_free, cancel & cancel = 0b
-        ptr_free, selected_kernel & selected_kernel = 0b
-        GOTO, fin
-      ENDIF
-      kdim = * selected_kernel & kdim = (size(kdim))[1]
-      qmiss = where(image0 eq 0b,ctmiss, /l64)
-      
-      q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
-      IF kdim ge imgminsize THEN BEGIN
-        res = dialog_message('Kernel dimension larger than x or y image dimension. ' + $
-          string(10b) + 'Returning...', / information)
-        GOTO, fin
-      ENDIF
+     ;; define a pointer to the default kernel, 5 x 5
+     kdim = 5 & def_kernel = replicate(1, kdim, kdim)
+     cancel = ptr_new(1b)
+     selected_kernel = ptr_new(def_kernel)
+     ;; get the kernel settings, make square & binary
+     get_kernel, selected_kernel = selected_kernel, $
+       cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
+       title = 'Select kernel dimension'
+     ;; check if cancel was selected then do nothing else apply the
+     ;; default or new kernel
+     IF * cancel NE 0b THEN BEGIN
+       ptr_free, cancel & cancel = 0b
+       ptr_free, selected_kernel & selected_kernel = 0b
+       GOTO, fin
+     ENDIF
+     kdim = * selected_kernel & kdim = (size(kdim))[1]
+     qmiss = where(image0 eq 0b,ctmiss, /l64)
 
-      widget_control, / hourglass
-      BGmask = where(image0 EQ 1b, /l64)
-      spatcon, image0, kdim, 'p23', info.dir_tmp, info.my_os, info.resfloat, im
+     q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
+     IF kdim ge imgminsize THEN BEGIN
+       res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
+         string(10b) + 'Returning...', / information)
+       GOTO, fin
+     ENDIF
 
-      ;; rescale to normalized byte range
-      if info.resfloat eq 0 then begin
-        ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
-        ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
-        ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-        q = where(im eq 255b, ct, /l64)
-        im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
-        im = byte(round(temporary(im) * 100.0))
-        if ct gt 0 then im[q] = 100b
-      endif else begin
-        im = byte(round(im*100.0))
-      endelse
-      imtmp = im & px_mask = where(imtmp ge 0b, /l64)
+     widget_control, / hourglass
+     BGmask = where(image0 EQ 1b, /l64)
+     spatcon, image0, kdim, 'fac', info.dir_tmp, info.my_os, info.resfloat, im
 
-      ;; start with a background color image
-      im = imtmp *0b +101b
-      ;; add FG and Missing(102b)
-      im[px_mask] = imtmp[px_mask] & imtmp=0 & px_mask=0
-      if ctmiss gt 0 then im[qmiss] = 102b
-     
-      ;; backup original image for doing the FG-masking
-      save, BGmask, im, ctmiss, qmiss, filename = info.dir_tmp + 'mask.sav',/compress & BGmask = 0
-      * info.nw_ids = im
-      * info.process = temporary(im)
-      * info.fr_image = * info.process
-      restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
-      info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 5 ;; entropy
+     ;; rescale to normalized byte range
+     if info.resfloat eq 0 then begin
+       ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
+       ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
+       ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
+       q = where(im eq 255b, ct, /l64)
+       im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
+       im = byte(round(temporary(im) * 100.0))
+       if ct gt 0 then im[q] = 100b
+     endif else begin
+       im = byte(round(im*100.0))
+     endelse
+     imtmp = im & px_mask = where(imtmp ge 0b, /l64)
 
-      ;; free and delete the temporary pointers
-      ptr_free, cancel & cancel = 0b
-      ptr_free, selected_kernel & selected_kernel = 0b
-      zz = '; tick Divide for new P23 range settings; Intext for FG masking'
-      info.add_title = ' (P23: FG/interesting BG edges, kdim=' + strtrim(kdim, 2) + zz + ')'
-      ;; set Intext to off
-      info.mspa_param4_id = 0b
-      widget_control, info.w_mspa_param4, set_value = info.mspa_param4_id
+     ;; start with a background color image
+     im = imtmp *0b +101b
+     ;; add FG and Missing(102b)
+     im[px_mask] = imtmp[px_mask] & imtmp=0 & px_mask=0
+     if ctmiss gt 0 then im[qmiss] = 102b
 
-      ;; reset mspa and use info.is_fragm also for P23
-      info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 2 & info.is_contort = 0
-      info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
-      info.do_label_groups_id = 0
+     ;; backup original image for doing the FG-masking
+     save, BGmask, im, ctmiss, qmiss, filename = info.dir_tmp + 'mask.sav',/compress & BGmask = 0
+     * info.nw_ids = im
+     * info.process = temporary(im)
+     * info.fr_image = * info.process
+     restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
+     info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 5 ;; entropy
 
-      ;Divide panel settings
-      widget_control, info.w_labelstr, set_value = 'P23 range: '
-      widget_control, info.w_label_t1, set_value = ['X','10','30','50']
-      widget_control, info.w_label_t2, set_value = ['X','60','70','80']
-      widget_control, info.w_label_t1, set_combobox_select = 1 & info.label_t1 = 10
-      widget_control, info.w_label_t2, set_combobox_select = 1 & info.label_t2 = 60    
-      
-    END
-    
-    ;;*****************************************************************************************************
+     ;; free and delete the temporary pointers
+     ptr_free, cancel & cancel = 0b
+     ptr_free, selected_kernel & selected_kernel = 0b
+     zz = '; tick Divide for new clustering range settings; Intext for FG masking'
+     info.add_title = ' (Clustering, kdim=' + strtrim(kdim, 2) + zz + ')'
+     ;; set Intext to off
+     info.mspa_param4_id = 0b
+     widget_control, info.w_mspa_param4, set_value = info.mspa_param4_id
 
-    'batch_p23':  BEGIN
-      tit = 'Select (Geo-)Tif-files'
-      im_file = $
-        dialog_pickfile(Title = tit, get_path = path2file, $
-        path = info.dir_data, $
-        default_extension = 'tif', / fix_filter, $
-        / must_exist, / multiple_files, filter = ['*.tif', '*.tiff'])
-      IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
-      
-      ;; test that the directory of the selected files has no sub-directories
-      ;; this will also ensure no output file is opened in excel or thelike
-      pushd, path2file
-      list = file_search() & nl = n_elements(list) & nr_dir = 0
-      for idx = 0, nl-1 do begin
-        q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
-      endfor
-      IF nr_dir GT 0 THEN BEGIN
-        msg = 'The directory of your Batch P23 input files contains sub-directories.'  +  string(10b) +  string(10b) + $
-          'Please set up a new directory having Batch P23 input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
-        res = dialog_message(msg, / information)
-        GOTO, fin
-      ENDIF
-      popd
-      
-      ;; define a pointer to the default kernel, 5 x 5
-      kdim = 5 & def_kernel = replicate(1, kdim, kdim)
-      cancel = ptr_new(1b)
-      selected_kernel = ptr_new(def_kernel)
-      ;; get the kernel settings, make square & binary
-      get_kernel, selected_kernel = selected_kernel, $
-        cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
-        title = 'Select kernel dimension'
-      ;; check if cancel was selected then do nothing else apply the
-      ;; default or new kernel
+     ;; reset mspa and use info.is_fragm also for FAC
+     info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 2 & info.is_contort = 0
+     info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
+     info.do_label_groups_id = 0
 
-      IF * cancel NE 0b THEN BEGIN
-        ptr_free, cancel & cancel = 0b
-        ptr_free, selected_kernel & selected_kernel = 0b
-        GOTO, fin
-      ENDIF
-      kdim = * selected_kernel & kdim = (size(kdim))[1] & kdim_str = strtrim(kdim, 2)
-      
-      ;; test that we can write into the parent directory or if it exists already
-      batch_type = 'batch_P23'
-      dd = file_dirname(im_file[0], / mark_directory)
-      dir_batch = file_dirname(dd, / mark_directory) + batch_type + '_' + kdim_str + info.os_sep
-      res = file_test(dir_batch, /directory, /write)
-      if res eq 1 then begin ;; dir_batch already exists
-        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
-          'already exists. All previous content will be erased before we continue.'+ string(10b) + $
-          "Please click 'Yes' to confirm or 'No' to exit"
-        res = dialog_message(msg,/question)
-        If res eq 'No' then goto, fin
-        ;; empty it
-        pushd, dir_batch
-        list = file_search() & nl = n_elements(list)
-        if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
-        popd
-      endif else begin ;; does not exist yet, create it
-        file_mkdir, dir_batch
-      endelse
+     ;Divide panel settings
+     widget_control, info.w_labelstr, set_value = 'Clustering range: '
+     widget_control, info.w_label_t1, set_value = ['X','10','30','50']
+     widget_control, info.w_label_t2, set_value = ['X','60','70','80']
+     widget_control, info.w_label_t1, set_combobox_select = 1 & info.label_t1 = 10
+     widget_control, info.w_label_t2, set_combobox_select = 1 & info.label_t2 = 60
 
-      ;; files are now selected, reset the GUI
-      ;;========================================================================
-      ;; reset the front image and block any events
-      ;;========================================================================
-      title = 'P23 Batch Processing'
-      goto, resetfront
- 
-      backto_batch_p23:
-
-      ;; do the loop processing now
-      ;; validate and process the images in a loop
-      ;; do the loop processing now
-      ;; validate and process the images in a loop
-      fn_logfile = dir_batch + batch_type + '_' + kdim_str + '.log'
-      nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
-      openw, 9, fn_logfile
-      printf, 9, 'P23 batch processing logfile: ', systime()
-      printf, 9, 'Number of files to be processed: ', nr_im_files
-      printf, 9, '==============================================='
-      close, 9
-      msg = 'Processing selected images for P23, please wait...'
-      progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
-      progressBar -> Start
-   
-      FOR fidx = 0, nr_im_files - 1 DO BEGIN
-        counter = strtrim(fidx + 1, 2) + '/' + strtrim(nr_im_files, 2)
-        ;; validate the input, if not skip it without message
-        IF progressBar -> CheckCancel() THEN BEGIN
-          res = Dialog_Message('Batch-processing cancelled by user.')
-          openw, 9, fn_logfile, /append
-          printf, 9, 'Batch-processing cancelled by user.'
-          close, 9
-          progressBar -> Destroy
-          Obj_Destroy, progressBar
-          tvlct, rini, gini, bini
-          GOTO, fin
-        ENDIF
-
-        input = im_file(fidx)
-        res = strpos(input,' ') ge 0
-        IF res EQ 1 THEN BEGIN
-          openw, 9, fn_logfile, /append
-          printf, 9, ' '
-          printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P23 input (empty space in directory path or input filename): ', input
-          close, 9
-          GOTO, skip_batch_p23  ;; invalid input
-        ENDIF
-        
-        type = '' & res = query_image(input, type=type)
-        IF type NE 'TIFF' THEN BEGIN
-          openw, 9, fn_logfile, /append
-          printf, 9, ' '
-          printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P23 input (not a TIFF image): ', input
-          close, 9
-          GOTO, skip_batch_p23  ;; invalid input
-        ENDIF
-
-        res = query_tiff(input, geotiff = geotiffinfo)
-        IF res EQ 0 THEN BEGIN
-          openw, 9, fn_logfile, /append
-          printf, 9, ' '
-          printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P23 input file: ', input
-          close, 9
-          GOTO, skip_batch_p23  ;; invalid P23 input
-        ENDIF
-
-        image0 = read_tiff(input)  ;; read and check it
-        LM_Compliance, input, image0, 'p23', info.immaxsizeg * 10, 0, result
-        q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
-        IF result EQ 0 OR kdim ge imgminsize THEN BEGIN
-          openw, 9, fn_logfile, /append
-          printf, 9, ' '
-          printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid P23 input file: ', input
-          close, 9
-          GOTO, skip_batch_p23  ;; invalid P23 input
-        ENDIF
-
-        ;; now all is ok for processing
-        time0 = systime( / sec)
-        qmiss = where(image0 eq 0b,ctmiss, /l64) & BGmask = where(image0 EQ 1b, /l64)
-        widget_control, / hourglass
-
-        spatcon, image0, kdim, 'p23', info.dir_tmp, info.my_os, info.resfloat, im
-
-        ;; rescale to normalized byte range
-        if info.resfloat eq 0 then begin
-          ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
-          ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
-          ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-          q = where(im eq 255b, ct, /l64)
-          im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
-          im = byte(round(temporary(im) * 100.0))
-          if ct gt 0 then im[q] = 100b
-        endif else begin
-          im = byte(round(im*100.0))
-        endelse
-
-        ;; apply FG-mask and add Missing
-        im[BGmask] = 101b
-        if ctmiss gt 0 then im[qmiss] = 102b
-
-        ;; write the final result to the initial input dir
-        res = file_basename(input, '.tif')
-        fn_out = dir_batch + res + '_p23_' + kdim_str + '.tif'
-         restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
-
-        ;; add the geotiff info if available
-        desc = 'GTB_P23, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
-        IF (size(geotiffinfo))[0] gt 0 THEN $
-          write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, geotiff = geotiffinfo, compression = 1 ELSE $
-          write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
-        im = 0
-        okfile = okfile + 1
-        openw, 9, fn_logfile, /append
-        printf, 9, ' '
-        printf, 9, '==============   ' + counter + '   =============='
-        printf, 9, 'File: ' + input
-        printf, 9, 'P23 comp.time [sec]: ', systime( / sec) - time0
-        close, 9
-
-        skip_batch_p23:
-        stepn = (fidx + 1.0)/nr_im_files * 100.0
-        progressBar -> Update, stepn
-    ENDFOR
-    progressBar -> Destroy
-    Obj_Destroy, progressBar
-
-
-    ;; inform that batch is done
-    proct = systime( / sec) - time00
-    IF proct GT 3600.0 THEN BEGIN
-      proct2 = proct - ulong(proct/3600)*3600
-      proctstr = strtrim(ulong(proct/3600.),2) + ' hrs, ' + strtrim(ulong(proct2/60.),2) + $
-        ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
-    ENDIF ELSE BEGIN
-      proctstr = strtrim(ulong(proct/60.),2) + $
-        ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
-    ENDELSE
-    IF proct LT 60.0 THEN proctstr = strtrim(ulong(proct),2) + ' secs'
-    openw, 9, fn_logfile, /append
-    printf, 9, ''
-    printf, 9, '==============================================='
-    printf, 9, 'P23 Batch Processing total comp.time: ', proctstr
-    printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
-    printf, 9, '==============================================='
-    close, 9
-
-    msg = 'P23 Batch Processing finished.' + string(10b) + $
-      'Total computation time: ' + proctstr + string(10b) + $
-      'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
-      'More information can be found in the logfile: ' + string(10b) + fn_logfile
-    res = dialog_message(msg, / information)
-    ;; reset the colortable to the settings before the batch processing
-    tvlct, rini, gini, bini
-
-    ;; free and delete the temporary pointers
-    ptr_free, cancel & cancel = 0b
-    ptr_free, selected_kernel & selected_kernel = 0b
-    GOTO, fin
    END
-   
+
+
    ;;*****************************************************************************************************
 
-   'batch_recode':  BEGIN
-     ;; 0) use sample file for batch recode setup    
-     tit = 'Select a (Geo-)Tif-file to setup recoding'
-     input = $
+   'batch_fac':  BEGIN
+     tit = 'Select (Geo-)Tif-files'
+     im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
-       path = info.dir_data, default_extension = 'tif', / fix_filter, $
-       / must_exist, filter = ['*.tif', '*.tiff'])
-     IF input EQ '' THEN GOTO, fin ;; 'cancel' selected
-     
+       path = info.dir_data, $
+       default_extension = 'tif', / fix_filter, $
+       / must_exist, $
+       / multiple_files, filter = ['*.tif', '*.tiff'])
+     IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
+
      ;; test that the directory of the selected files has no sub-directories
      ;; this will also ensure no output file is opened in excel or thelike
      pushd, path2file
@@ -7125,19 +6990,238 @@ CASE strlowCase(eventValue) OF
        q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
      endfor
      IF nr_dir GT 0 THEN BEGIN
-       msg = 'The directory of your Batch Recode input files contains sub-directories.'  +  string(10b) +  string(10b) + $
-         'Please set up a new directory having Batch Recode input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
+       msg = 'The directory of your clustering input files contains sub-directories.'  +  string(10b) +  string(10b) + $
+         'Please set up a new directory having clustering input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
        GOTO, fin
      ENDIF
      popd
-       
-     ;; in batch mode recode must use an array with all possible byte values, (set in get_xrecode)
+
+     ;; define a pointer to the default kernel, 5 x 5
+     kdim = 5 & def_kernel = replicate(1, kdim, kdim)
+     cancel = ptr_new(1b)
+     selected_kernel = ptr_new(def_kernel)
+     ;; get the kernel settings, make square & binary
+     get_kernel, selected_kernel = selected_kernel, $
+       cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
+       title = 'Select kernel dimension'
+     ;; check if cancel was selected then do nothing else apply the
+     ;; default or new kernel
+
+     IF * cancel NE 0b THEN BEGIN
+       ptr_free, cancel & cancel = 0b
+       ptr_free, selected_kernel & selected_kernel = 0b
+       GOTO, fin
+     ENDIF
+     kdim = * selected_kernel & kdim = (size(kdim))[1] & kdim_str = strtrim(kdim, 2)
+
+
+     ;; test that we can write into the parent directory or if it exists already
+     batch_type = 'batch_clustering'
+     dd = file_dirname(im_file[0], / mark_directory)
+     dir_batch = file_dirname(dd, / mark_directory) + batch_type + '_' + kdim_str + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
+     res = file_test(dir_batch, /directory, /write)
+     if res eq 1 then begin ;; dir_batch already exists
+       msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
+         'already exists. All previous content will be erased before we continue.'+ string(10b) + $
+         "Please click 'Yes' to confirm or 'No' to exit"
+       res = dialog_message(msg,/question)
+       If res eq 'No' then goto, fin
+       ;; empty it
+       pushd, dir_batch
+       list = file_search() & nl = n_elements(list)
+       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+       popd
+     endif else begin ;; does not exist yet, create it
+       file_mkdir, dir_batch
+     endelse
+
+
+     ;; files are now selected, reset the GUI
+     ;;========================================================================
+     ;; reset the front image and block any events
+     ;;========================================================================
+     title = 'Clustering Batch Processing'
+     goto, resetfront
+
+     backto_batch_fac:
+
+     ;; do the loop processing now
+     ;; validate and process the images in a loop
+     ;; do the loop processing now
+     ;; validate and process the images in a loop
+     fn_logfile = dir_batch + batch_type + '_' + kdim_str + '.log'
+     nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
+     openw, 9, fn_logfile
+     printf, 9, 'Clustering batch processing logfile: ', systime()
+     printf, 9, 'Number of files to be processed: ', nr_im_files
+     printf, 9, '==============================================='
+     close, 9
+     msg = 'Processing selected images for clustering, please wait...'
+     progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
+     progressBar -> Start
+
+
+     FOR fidx = 0, nr_im_files - 1 DO BEGIN
+       counter = strtrim(fidx + 1, 2) + '/' + strtrim(nr_im_files, 2)
+       ;; validate the input, if not skip it without message
+       IF progressBar -> CheckCancel() THEN BEGIN
+         res = Dialog_Message('Batch-processing cancelled by user.')
+         openw, 9, fn_logfile, /append
+         printf, 9, 'Batch-processing cancelled by user.'
+         close, 9
+         progressBar -> Destroy
+         Obj_Destroy, progressBar
+         tvlct, rini, gini, bini
+         GOTO, fin
+       ENDIF
+
+       input = im_file(fidx)
+       res = strpos(input,' ') ge 0
+       IF res EQ 1 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid clustering input (empty space in directory path or input filename): ', input
+         close, 9
+         GOTO, skip_batch_fac  ;; invalid input
+       ENDIF
+
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid clustering input (not a TIFF image): ', input
+         close, 9
+         GOTO, skip_batch_fac  ;; invalid input
+       ENDIF
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )       
+       IF res NE 0 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid clustering input file: ', input
+         close, 9
+         GOTO, skip_batch_fac  ;; invalid input
+       ENDIF
+
+       image0 = read_tiff(input)  ;; read and check it
+       MSPA_Compliance, input, image0, info.immaxsizeg * 10, 0, result
+       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
+       IF result EQ 0 OR kdim ge imgminsize THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid clustering input file: ', input
+         close, 9
+         GOTO, skip_batch_fac  ;; invalid input
+       ENDIF
+
+       ;; now all is ok for processing
+       time0 = systime( / sec)
+       qmiss = where(image0 eq 0b,ctmiss, /l64) & BGmask = where(image0 EQ 1b, /l64)
+       widget_control, / hourglass
+
+       spatcon, image0, kdim, 'fac', info.dir_tmp, info.my_os, info.resfloat, im
+
+       ;; rescale to normalized byte range
+       if info.resfloat eq 0 then begin
+         ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
+         ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
+         ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
+         q = where(im eq 255b, ct, /l64)
+         im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
+         im = byte(round(temporary(im) * 100.0))
+         if ct gt 0 then im[q] = 100b
+       endif else begin
+         im = byte(round(im*100.0))
+       endelse
+
+       ;; apply FG-mask and add Missing
+       im[BGmask] = 101b
+       if ctmiss gt 0 then im[qmiss] = 102b
+
+       ;; write the final result to the initial input dir
+       res = file_basename(input, '.tif')
+       fn_out = dir_batch + res + '_clustering_' + kdim_str + '.tif'
+       restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
+
+       ;; add the geotiff info if available
+       desc = 'GTB_FAC, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+       IF (size(geotiffinfo))[0] gt 0 THEN $
+         write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, geotiff = geotiffinfo, compression = 1 ELSE $
+         write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
+       im = 0
+       okfile = okfile + 1
+       openw, 9, fn_logfile, /append
+       printf, 9, ' '
+       printf, 9, '==============   ' + counter + '   =============='
+       printf, 9, 'File: ' + input
+       printf, 9, 'Clustering comp.time [sec]: ', systime( / sec) - time0
+       close, 9
+
+       skip_batch_fac:
+       stepn = (fidx + 1.0)/nr_im_files * 100.0
+       progressBar -> Update, stepn
+     ENDFOR
+     progressBar -> Destroy
+     Obj_Destroy, progressBar
+
+     ;; inform that batch is done
+     proct = systime( / sec) - time00
+     IF proct GT 3600.0 THEN BEGIN
+       proct2 = proct - ulong(proct/3600)*3600
+       proctstr = strtrim(ulong(proct/3600.),2) + ' hrs, ' + strtrim(ulong(proct2/60.),2) + $
+         ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
+     ENDIF ELSE BEGIN
+       proctstr = strtrim(ulong(proct/60.),2) + $
+         ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
+     ENDELSE
+     IF proct LT 60.0 THEN proctstr = strtrim(ulong(proct),2) + ' secs'
+     openw, 9, fn_logfile, /append
+     printf, 9, ''
+     printf, 9, '==============================================='
+     printf, 9, 'Clustering Batch Processing total comp.time: ', proctstr
+     printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
+     printf, 9, '==============================================='
+     close, 9
+
+     msg = 'Clustering Batch Processing finished.' + string(10b) + $
+       'Total computation time: ' + proctstr + string(10b) + $
+       'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
+       'More information can be found in the logfile: ' + string(10b) + fn_logfile
+     res = dialog_message(msg, / information)
+     ;; reset the colortable to the settings before the batch processing
+     tvlct, rini, gini, bini
+
+     ;; free and delete the temporary pointers
+     ptr_free, cancel & cancel = 0b
+     ptr_free, selected_kernel & selected_kernel = 0b
+     GOTO, fin
+   END
+   
+   ;;*****************************************************************************************************
+
+   'batch_recode':  BEGIN    
+     ;; in batch mode recode we must use an array with all possible byte values, (set in get_xrecode)
      ;; to ensure it will work on all possible values in the input images
      cancel = ptr_new(1b) & seltab = ptr_new(1b)    
-     msg = "Define a recode table from scratch or click on 'Restore'" + string(10b) + 'and load/modify an existing GTBrecode*.sav table'
+     msg = "Define a recode table from scratch or click on 'Restore'" + string(10b) + 'and load/modify an existing GTBrecode_*.sav table' + string(10b) + string(10b)+ $
+       '1) Enter the new value in [0, 255] in the first column, then leave the cell to apply the changed value.' + string(10b) + string(10b) + $
+       '2) ' + "When done, click the 'Accept' button to use your recode table for batch-processing." + $
+       string(10b) + string(10b) + 'Note: '  + string(10b) + $
+       'For maximum compatibility, the recode table must cover all possible entries in [0, 255] byte!'
      result = dialog_message(title = 'Batch Recode', / information, msg)
-     tit = "Recode class values"
+     tit = "Recode class values in [0, 255]"
 
      ;; get the selected mapping
      pushd,info.dir_data
@@ -7161,9 +7245,32 @@ CASE strlowCase(eventValue) OF
        / must_exist, / multiple_files, filter = ['*.tif', '*.tiff'])
      IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
      
-     ;; test that we can write into the parent directory or if it exists already
      batch_type = 'batch_Recode'
      dd = file_dirname(im_file[0], / mark_directory)
+     ;; test if directory is not named like batch type
+     if file_basename(path2file) eq batch_type then begin
+       msg = "The directory name '" + batch_type + "' is reserved for the output files." + string(10b) + string(10b) + $
+        "Please rename the directory to any other name."
+      res = dialog_message(msg, / information)
+      GOTO, fin
+     endif
+ 
+     ;; test that the directory of the selected files has no sub-directories
+     ;; this will also ensure no output file is opened in excel or thelike
+     pushd, path2file
+     list = file_search() & nl = n_elements(list) & nr_dir = 0
+     for idx = 0, nl-1 do begin
+       q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
+     endfor
+     IF nr_dir GT 0 THEN BEGIN
+       msg = 'The directory of your Batch Recode input files contains sub-directories.'  + string(10b) + string(10b) + $
+         'Please set up a new directory having Batch Recode input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     ENDIF
+     popd
+     
+     ;; test that we can write into the parent directory or if it exists already     
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
@@ -7230,23 +7337,21 @@ CASE strlowCase(eventValue) OF
          GOTO, skip_batch_recode  ;; invalid input
        ENDIF
        
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid batch recode input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid recode input (not a TIFF image): ', input
          close, 9
          GOTO, skip_batch_recode  ;; invalid input
-       ENDIF
-
-       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       ENDIF              
        res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
        IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid batch recode input file: ', input
+         printf, 9, 'Skipping invalid recode input file: ', input
          close, 9
          GOTO, skip_batch_recode  ;; invalid input
        ENDIF
@@ -7344,651 +7449,6 @@ CASE strlowCase(eventValue) OF
      GOTO, fin
    END
 
-   ;;*****************************************************************************************************
-
-   'kernel_sumd':  BEGIN
-     ;; check for input compliance:
-     ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
-       res = dialog_message(info.wronginput, / information)
-       GOTO, fin
-     ENDIF
-     
-     ;; 2) if in zoom mode, quit zoom mode
-     IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
-       info.selsubregion_id = 0
-       ;; deactivate zoomfactor selector
-       widget_control, info.w_zoomfac, sensitive = 1
-       widget_control, info.w_selsubregion, $
-         set_value = 'Zoom Mode'
-       ;; restore the prezoomed process image
-       * info.process = * info.prezoomprocess
-       ;; disable button and enable motion events in w_draw
-       widget_control, info.w_draw, Draw_Motion_Events = 1
-       widget_control, info.w_draw, Draw_Button_Events = 0
-       info.set_zoom = 0 & info.scroll_x = 0 & info.scroll_y = 0
-     ENDIF
-     
-     ;; assign the full resolution image
-     image0 = * info.fr_image
-
-     ;; 3) check input compliance, image must be byte
-     IF size(image0, / type) NE 1 THEN BEGIN
-       msg = 'Input image is not of type BYTE.' + string(10b) + $
-         "Try using General Tools: Preprocessing: Convert -> Byte"  + string(10b) + 'Returning...'
-       res = dialog_message(msg, / information)
-       GOTO, fin
-     ENDIF
-
-     ;; define a pointer to the default kernel, 7 x 7
-     kdim = 7 & def_kernel = replicate(1, kdim, kdim)
-     cancel = ptr_new(1b)
-     selected_kernel = ptr_new(def_kernel)
-     ;; get the kernel settings, make square & binary
-     get_kernel, selected_kernel = selected_kernel, $
-       cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
-       title = 'Select kernel dimension'
-     ;; check if cancel was selected then do nothing else apply the
-     ;; default or new kernel
-     IF * cancel NE 0b THEN BEGIN
-       ptr_free, cancel & cancel = 0b
-       ptr_free, selected_kernel & selected_kernel = 0b
-       GOTO, fin
-     ENDIF
-     kdim = * selected_kernel & kdim = (size(kdim))[1]
-     qmiss = where(image0 eq 0b,ctmiss, /l64) 
-     
-     q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
-     IF kdim ge imgminsize THEN BEGIN
-       res = dialog_message('Kernel dimension larger than x or y image dimension. ' + $
-         string(10b) + 'Returning...', / information)
-       GOTO, fin
-     ENDIF
-
-     
-     widget_control, / hourglass
-     spatcon, image0, kdim, 'sumd', info.dir_tmp, info.my_os, info.resfloat, im
-
-     ;; rescale to normalized byte range
-     if info.resfloat eq 0 then begin
-       ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
-       ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
-       ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-       q = where(im eq 255b, ct, /l64)
-       im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
-       im = byte(round(temporary(im) * 100.0))
-       if ct gt 0 then im[q] = 100b
-     endif else begin
-       im = byte(round(im*100.0))
-     endelse
-
-     ;; add Missing(102b)
-     if ctmiss gt 0 then im[qmiss] = 102b           
-     * info.process = temporary(im)
-     restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
-     info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 5 ;; entropy
-
-     ;; free and delete the temporary pointers
-     ptr_free, cancel & cancel = 0b
-     ptr_free, selected_kernel & selected_kernel = 0b
-     * info.fr_image = * info.process
-     info.add_title = ' (SumD: overall contagion, kdim=' + strtrim(kdim, 2) + ')'
-   END
-   
-   ;;*****************************************************************************************************
-
-   'batch_sumd':  BEGIN
-     tit = 'Select (Geo-)Tif-files'
-     im_file = $
-       dialog_pickfile(Title = tit, get_path = path2file, $
-       path = info.dir_data, $
-       default_extension = 'tif', / fix_filter, $
-       / must_exist, / multiple_files, filter = ['*.tif', '*.tiff'])
-     IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
-     
-     ;; test that the directory of the selected files has no sub-directories
-     ;; this will also ensure no output file is opened in excel or thelike
-     pushd, path2file
-     list = file_search() & nl = n_elements(list) & nr_dir = 0
-     for idx = 0, nl-1 do begin
-       q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
-     endfor
-     IF nr_dir GT 0 THEN BEGIN
-       msg = 'The directory of your Batch SumD input files contains sub-directories.'  +  string(10b) +  string(10b) + $
-         'Please set up a new directory having Batch SumD input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
-       res = dialog_message(msg, / information)
-       GOTO, fin
-     ENDIF
-     popd
-     
-     ;; test that we can write into the parent directory or if it exists already
-     batch_type = 'batch_SumD'
-     dd = file_dirname(im_file[0], / mark_directory)
-     dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
-     res = file_test(dir_batch, /directory, /write)
-     if res eq 1 then begin ;; dir_batch already exists
-       msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
-          'already exists. All previous content will be erased before we continue.'+ string(10b) + $
-          "Please click 'Yes' to confirm or 'No' to exit"
-       res = dialog_message(msg,/question)
-       If res eq 'No' then goto, fin
-       ;; empty it
-       pushd, dir_batch
-       list = file_search() & nl = n_elements(list)
-       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
-       popd
-     endif else begin ;; does not exist yet, create it
-       file_mkdir, dir_batch
-     endelse
-
-
-    
-     ;; define a pointer to the default kernel, 5 x 5
-     kdim = 7 & def_kernel = replicate(1, kdim, kdim)
-     cancel = ptr_new(1b)
-     selected_kernel = ptr_new(def_kernel)
-     ;; get the kernel settings, make square & binary
-     get_kernel, selected_kernel = selected_kernel, $
-       cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
-       title = 'Select kernel dimension'
-     ;; check if cancel was selected then do nothing else apply the
-     ;; default or new kernel
-    
-     IF * cancel NE 0b THEN BEGIN
-       ptr_free, cancel & cancel = 0b
-       ptr_free, selected_kernel & selected_kernel = 0b
-       GOTO, fin
-     ENDIF
-    
-     kdim = * selected_kernel & kdim = (size(kdim))[1]
-    
-     ;; files are now selected, reset the GUI
-     ;;========================================================================
-     ;; reset the front image and block any events
-     ;;========================================================================
-     title = 'SumD Batch Processing'
-     goto, resetfront
-
-     backto_batch_sumd:
-    
-     ;; do the loop processing now
-     ;; validate and process the images in a loop
-     ;; do the loop processing now
-     ;; validate and process the images in a loop
-     fn_logfile = dir_batch + batch_type + '.log'
-     nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
-     openw, 9, fn_logfile
-     printf, 9, 'SumD batch processing logfile: ', systime()
-     printf, 9, 'Number of files to be processed: ', nr_im_files
-     printf, 9, '==============================================='
-     close, 9
-     msg = 'Processing selected images for SumD, please wait...'
-     progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
-     progressBar -> Start
-    
-     FOR fidx = 0, nr_im_files - 1 DO BEGIN
-       counter = strtrim(fidx + 1, 2) + '/' + strtrim(nr_im_files, 2)
-       ;; validate the input, if not skip it without message
-       IF progressBar -> CheckCancel() THEN BEGIN
-         res = Dialog_Message('Batch-processing cancelled by user.')
-         openw, 9, fn_logfile, /append
-         printf, 9, 'Batch-processing cancelled by user.'
-         close, 9
-         progressBar -> Destroy
-         Obj_Destroy, progressBar
-         tvlct, rini, gini, bini
-         GOTO, fin
-       ENDIF
-    
-       input = im_file(fidx)
-       res = strpos(input,' ') ge 0
-       IF res EQ 1 THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid SumD input (empty space in directory path or input filename): ', input
-         close, 9
-         GOTO, skip_batch_sumd  ;; invalid input
-       ENDIF
-       
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid SumD input (not a TIFF image): ', input
-         close, 9
-         GOTO, skip_batch_sumd  ;; invalid input
-       ENDIF
-
-       res = query_tiff(input, geotiff = geotiffinfo)
-       IF res EQ 0 THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid SumD input file: ', input
-         close, 9
-         GOTO, skip_batch_sumd  ;; invalid sumd input
-       ENDIF
-    
-       image0 = read_tiff(input)  ;; read and check it
-       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)      
-       IF size(image0, / type) NE 1 OR kdim ge imgminsize THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid sumd input file: ', input
-         close, 9
-         GOTO, skip_batch_sumd  ;; invalid sumd input
-       ENDIF   
-    
-       ;; now all is ok for processing
-       qmiss = where(image0 eq 0b,ctmiss, /l64)
-       time0 = systime( / sec)
-       widget_control, / hourglass 
-       spatcon, image0, kdim, 'sumd', info.dir_tmp, info.my_os, info.resfloat, im
-    
-       ;; rescale to normalized byte range
-       if info.resfloat eq 0 then begin
-         ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
-         ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
-         ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-         q = where(im eq 255b, ct, /l64)
-         im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
-         im = byte(round(temporary(im) * 100.0))
-         if ct gt 0 then im[q] = 100b
-       endif else begin
-         im = byte(round(im*100.0))
-       endelse
-    
-       ;; add Missing(102b)
-       if ctmiss gt 0 then im[qmiss] = 102b
-       ;; write the final result to the initial input dir
-       res = file_basename(input, '.tif')
-       fn_out = dir_batch + res + '_sumd_' + strtrim(kdim, 2) + '.tif'
-       ;; get the correct colortable
-       ;if okfile eq 0 then begin
-         restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
-       ;endif
-    
-       ;; add the geotiff info if available
-       IF (size(geotiffinfo))[0] gt 0 THEN $
-         write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiffinfo, compression = 1 ELSE $
-         write_tiff, fn_out, im, red = r, green = g, blue = b, compression = 1
-       im = 0
-       okfile = okfile + 1
-       openw, 9, fn_logfile, /append
-       printf, 9, ' '
-       printf, 9, '==============   ' + counter + '   =============='
-       printf, 9, 'File: ' + input
-       printf, 9, 'SumD comp.time [sec]: ', systime( / sec) - time0
-       close, 9
-    
-       skip_batch_sumd:
-       stepn = (fidx + 1.0)/nr_im_files * 100.0
-       progressBar -> Update, stepn       
-     ENDFOR
-     progressBar -> Destroy
-     Obj_Destroy, progressBar
-    
-     ;; inform that batch is done
-     proct = systime( / sec) - time00
-     IF proct GT 3600.0 THEN BEGIN
-       proct2 = proct - ulong(proct/3600)*3600
-       proctstr = strtrim(ulong(proct/3600.),2) + ' hrs, ' + strtrim(ulong(proct2/60.),2) + $
-         ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
-     ENDIF ELSE BEGIN
-       proctstr = strtrim(ulong(proct/60.),2) + $
-         ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
-     ENDELSE
-     IF proct LT 60.0 THEN proctstr = strtrim(ulong(proct),2) + ' secs'
-     openw, 9, fn_logfile, /append
-     printf, 9, ''
-     printf, 9, '==============================================='
-     printf, 9, 'SumD Batch Processing total comp.time: ', proctstr
-     printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
-     printf, 9, '==============================================='
-     close, 9
-    
-     msg = 'SumD Batch Processing finished.' + string(10b) + $
-       'Total computation time: ' + proctstr + string(10b) + $
-       'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
-       'More information can be found in the logfile: ' + string(10b) + fn_logfile
-     res = dialog_message(msg, / information)
-     ;; reset the colortable to the settings before the batch processing
-     tvlct, rini, gini, bini
-    
-     ;; free and delete the temporary pointers
-     ptr_free, cancel & cancel = 0b
-     ptr_free, selected_kernel & selected_kernel = 0b
-     GOTO, fin
-     END
-
-     ;;*****************************************************************************************************
-
-     'kernel_shannon':  BEGIN
-     widget_control, / hourglass
-     ;; check for input compliance:
-     ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
-       res = dialog_message(info.wronginput, / information)
-       GOTO, fin
-     ENDIF
-
-     ;; 2) if in zoom mode, quit zoom mode
-     IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
-       info.selsubregion_id = 0
-       ;; deactivate zoomfactor selector
-       widget_control, info.w_zoomfac, sensitive = 1
-       widget_control, info.w_selsubregion, $
-         set_value = 'Zoom Mode'
-       ;; restore the prezoomed process image
-       * info.process = * info.prezoomprocess
-       ;; disable button and enable motion events in w_draw
-       widget_control, info.w_draw, Draw_Motion_Events = 1
-       widget_control, info.w_draw, Draw_Button_Events = 0
-       info.set_zoom = 0 & info.scroll_x = 0 & info.scroll_y = 0
-     ENDIF
-
-     ;; assign the full resolution image
-     image0 = * info.fr_image
-     
-     ;; 3) check input compliance, image must be byte
-     IF size(image0, / type) NE 1 THEN BEGIN
-       msg = 'Input image is not of type BYTE.' + string(10b) + $
-         "Try using General Tools: Preprocessing: Convert -> Byte"  + string(10b) + 'Returning...'
-       res = dialog_message(msg, / information)
-       GOTO, fin
-     ENDIF
-
-     ;; define a pointer to the default kernel, 7 x 7
-     kdim = 7 & def_kernel = replicate(1, kdim, kdim)
-     cancel = ptr_new(1b)
-     selected_kernel = ptr_new(def_kernel)
-     ;; get the kernel settings, make square & binary
-     get_kernel, selected_kernel = selected_kernel, $
-       cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
-       title = 'Select kernel dimension'
-     ;; check if cancel was selected then do nothing else apply the
-     ;; default or new kernel
-     IF * cancel NE 0b THEN BEGIN
-       ptr_free, cancel & cancel = 0b
-       ptr_free, selected_kernel & selected_kernel = 0b
-       GOTO, fin
-     ENDIF
-     kdim = * selected_kernel & kdim = (size(kdim))[1]
-     qmiss = where(image0 eq 0b,ctmiss, /l64) & fg = image0 eq 2b
-     
-     q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
-     IF kdim ge imgminsize THEN BEGIN
-       res = dialog_message('Kernel dimension larger than x or y image dimension. ' + $
-         string(10b) + 'Returning...', / information)
-       GOTO, fin
-     ENDIF
-
-     ;; reset mspa
-     info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 0 & info.is_contort = 0
-     info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
-     info.do_label_groups_id = 0 & info.selsubregion_id = 0
-     widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
-     
-     widget_control, / hourglass
-     spatcon, image0, kdim, 'shannon', info.dir_tmp, info.my_os, info.resfloat, im
-
-     ;; rescale to normalized byte range
-     if info.resfloat eq 0 then begin
-       ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
-       ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
-       ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-       q = where(im eq 255b, ct, /l64)
-       im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
-       im = byte(round(temporary(im) * 100.0))
-       if ct gt 0 then im[q] = 100b
-     endif else begin
-       im = byte(round(im*100.0))
-     endelse
-
-     ;; add Missing(102b)
-     if ctmiss gt 0 then im[qmiss] = 102b & * info.process = temporary(im)
-     restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
-     info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 5 ;; entropy
-
-     ;; free and delete the temporary pointers
-     ptr_free, cancel & cancel = 0b
-     ptr_free, selected_kernel & selected_kernel = 0b
-     * info.fr_image = * info.process
-     info.add_title = ' (Shannon edge-type evenness: kdim=' + strtrim(kdim, 2) + ')'
-
-   END
-   
-   ;;*****************************************************************************************************
-
-   'batch_shannon':  BEGIN
-     tit = 'Select (Geo-)Tif-files'
-     im_file = $
-       dialog_pickfile(Title = tit, get_path = path2file, $
-       path = info.dir_data, $
-       default_extension = 'tif', / fix_filter, $
-       / must_exist, / multiple_files, filter = ['*.tif', '*.tiff'])
-     IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
-     
-     ;; test that the directory of the selected files has no sub-directories
-     ;; this will also ensure no output file is opened in excel or thelike
-     pushd, path2file
-     list = file_search() & nl = n_elements(list) & nr_dir = 0
-     for idx = 0, nl-1 do begin
-       q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
-     endfor
-     IF nr_dir GT 0 THEN BEGIN
-       msg = 'The directory of your Batch Shannon input files contains sub-directories.'  +  string(10b) +  string(10b) + $
-         'Please set up a new directory having Batch Shannon input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
-       res = dialog_message(msg, / information)
-       GOTO, fin
-     ENDIF
-     popd
-     
-     ;; test that we can write into the parent directory or if it exists already
-     batch_type = 'batch_Shannon'
-     dd = file_dirname(im_file[0], / mark_directory)
-     dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
-     res = file_test(dir_batch, /directory, /write)
-     if res eq 1 then begin ;; dir_batch already exists
-       msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
-         'already exists. All previous content will be erased before we continue.'+ string(10b) + $
-         "Please click 'Yes' to confirm or 'No' to exit"
-       res = dialog_message(msg,/question)
-       If res eq 'No' then goto, fin
-       ;; empty it
-       pushd, dir_batch
-       list = file_search() & nl = n_elements(list)
-       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
-       popd
-     endif else begin ;; does not exist yet, create it
-       file_mkdir, dir_batch
-     endelse
-  
-     ;; define a pointer to the default kernel, 5 x 5
-     kdim = 7 & def_kernel = replicate(1, kdim, kdim)
-     cancel = ptr_new(1b)
-     selected_kernel = ptr_new(def_kernel)
-     ;; get the kernel settings, make square & binary
-     get_kernel, selected_kernel = selected_kernel, $
-       cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
-       title = 'Select kernel dimension'
-     ;; check if cancel was selected then do nothing else apply the
-     ;; default or new kernel
-  
-     IF * cancel NE 0b THEN BEGIN
-       ptr_free, cancel & cancel = 0b
-       ptr_free, selected_kernel & selected_kernel = 0b
-       GOTO, fin
-     ENDIF
-  
-     kdim = * selected_kernel & kdim = (size(kdim))[1]
-  
-     ;; files are now selected, reset the GUI
-     ;;========================================================================
-     ;; reset the front image and block any events
-     ;;========================================================================
-     title = 'Shannon Batch Processing'
-     goto, resetfront
-
-     backto_batch_shannon:
-  
-     ;; do the loop processing now
-     ;; validate and process the images in a loop
-     ;; do the loop processing now
-     ;; validate and process the images in a loop
-     fn_logfile = dir_batch + batch_type + '.log'
-     nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
-     openw, 9, fn_logfile
-     printf, 9, 'Shannon batch processing logfile: ', systime()
-     printf, 9, 'Number of files to be processed: ', nr_im_files
-     printf, 9, '==============================================='
-     close, 9
-     msg = 'Processing selected images for Shannon, please wait...'
-     progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
-     progressBar -> Start
-
-     FOR fidx = 0, nr_im_files - 1 DO BEGIN
-       counter = strtrim(fidx + 1, 2) + '/' + strtrim(nr_im_files, 2)
-       ;; validate the input, if not skip it without message
-       IF progressBar -> CheckCancel() THEN BEGIN
-         res = Dialog_Message('Batch-processing cancelled by user.')
-         openw, 9, fn_logfile, /append
-         printf, 9, 'Batch-processing cancelled by user.'
-         close, 9
-         progressBar -> Destroy
-         Obj_Destroy, progressBar
-         tvlct, rini, gini, bini
-         GOTO, fin
-       ENDIF
-
-     input = im_file(fidx)
-     res = strpos(input,' ') ge 0
-     IF res EQ 1 THEN BEGIN
-       openw, 9, fn_logfile, /append
-       printf, 9, ' '
-       printf, 9, '==============   ' + counter + '   =============='
-       printf, 9, 'Skipping invalid Shannon input (empty space in directory path or input filename): ', input
-       close, 9
-       GOTO, skip_batch_shannon  ;; invalid input
-     ENDIF
-     
-     type = '' & res = query_image(input, type=type)
-     IF type NE 'TIFF' THEN BEGIN
-       openw, 9, fn_logfile, /append
-       printf, 9, ' '
-       printf, 9, '==============   ' + counter + '   =============='
-       printf, 9, 'Skipping invalid Shannon input (not a TIFF image): ', input
-       close, 9
-       GOTO, skip_batch_shannon  ;; invalid input
-     ENDIF
-
-     res = query_tiff(input, geotiff = geotiffinfo)
-     IF res EQ 0 THEN BEGIN
-       openw, 9, fn_logfile, /append
-       printf, 9, ' '
-       printf, 9, '==============   ' + counter + '   =============='
-       printf, 9, 'Skipping invalid Shannon input file: ', input
-       close, 9
-       GOTO, skip_batch_shannon 
-     ENDIF
-
-     image0 = read_tiff(input)  ;; read and check it
-     q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)     
-     IF size(image0, / type) NE 1 OR kdim ge imgminsize THEN BEGIN
-       openw, 9, fn_logfile, /append
-       printf, 9, ' '
-       printf, 9, '==============   ' + counter + '   =============='
-       printf, 9, 'Skipping invalid Shannon input file: ', input
-       close, 9
-       GOTO, skip_batch_shannon  
-     ENDIF
-
-     ;; now all is ok for processing
-     qmiss=where(image0 eq 0b,ctmiss, /l64)
-     time0 = systime( / sec)
-     widget_control, / hourglass
-
-     spatcon, image0, kdim, 'shannon', info.dir_tmp, info.my_os, info.resfloat, im
-
-     ;; rescale to normalized byte range
-     if info.resfloat eq 0 then begin
-       ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
-       ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
-       ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-       q = where(im eq 255b, ct, /l64)
-       im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
-       im = byte(round(temporary(im) * 100.0))
-       if ct gt 0 then im[q] = 100b
-     endif else begin
-       im = byte(round(im*100.0))
-     endelse
-
-     ;; add Missing(102b)
-     if ctmiss gt 0 then im[qmiss] = 102b
-     ;; write the final result to the initial input dir
-     res = file_basename(input, '.tif')
-     fn_out = dir_batch + res + '_shannon_' + strtrim(kdim, 2) + '.tif'
-     ;; get the correct colortable
-     ;if okfile eq 0 then begin
-       restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
-     ;endif
-
-     ;; add the geotiff info if available
-     IF (size(geotiffinfo))[0] gt 0 THEN $
-       write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiffinfo, compression = 1 ELSE $
-       write_tiff, fn_out, im, red = r, green = g, blue = b, compression = 1
-     im = 0
-     okfile = okfile + 1
-     openw, 9, fn_logfile, /append
-     printf, 9, ' '
-     printf, 9, '==============   ' + counter + '   =============='
-     printf, 9, 'File: ' + input
-     printf, 9, 'Shannon comp.time [sec]: ', systime( / sec) - time0
-     close, 9
-
-     skip_batch_shannon:
-     stepn = (fidx + 1.0)/nr_im_files * 100.0
-     progressBar -> Update, stepn
-   ENDFOR
-   progressBar -> Destroy
-   Obj_Destroy, progressBar
-
-   ;; inform that batch is done
-   proct = systime( / sec) - time00
-   IF proct GT 3600.0 THEN BEGIN
-     proct2 = proct - ulong(proct/3600)*3600
-     proctstr = strtrim(ulong(proct/3600.),2) + ' hrs, ' + strtrim(ulong(proct2/60.),2) + $
-       ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
-   ENDIF ELSE BEGIN
-     proctstr = strtrim(ulong(proct/60.),2) + $
-       ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
-   ENDELSE
-   IF proct LT 60.0 THEN proctstr = strtrim(ulong(proct),2) + ' secs'
-   openw, 9, fn_logfile, /append
-   printf, 9, ''
-   printf, 9, '==============================================='
-   printf, 9, 'Shannon Batch Processing total comp.time: ', proctstr
-   printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
-   printf, 9, '==============================================='
-   close, 9
-
-   msg = 'Shannon Batch Processing finished.' + string(10b) + $
-     'Total computation time: ' + proctstr + string(10b) + $
-     'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
-     'More information can be found in the logfile: ' + string(10b) + fn_logfile
-   res = dialog_message(msg, / information)
-   ;; reset the colortable to the settings before the batch processing
-   tvlct, rini, gini, bini
-
-   ;; free and delete the temporary pointers
-   ptr_free, cancel & cancel = 0b
-   ptr_free, selected_kernel & selected_kernel = 0b
-   GOTO, fin
- END
-
  ;;*****************************************************************************************************
 
    'kernel_lm':  BEGIN
@@ -8042,12 +7502,12 @@ CASE strlowCase(eventValue) OF
       ptr_free, selected_kernel & selected_kernel = 0b                
       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
       IF kdim ge imgminsize THEN BEGIN
-        res = dialog_message('Kernel dimension larger than x or y image dimension. ' + $
+        res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
           string(10b) + 'Returning...', / information)
         GOTO, fin
       ENDIF
 
-      ;; do the lm now
+      ;; do the LM now
       widget_control, / hourglass
       qmiss = where(image0 eq 0b,ctmiss, /l64)
       spatcon, image0, kdim, 'lm', info.dir_tmp, info.my_os, 0, im  ;; im not defined here, it will be used in heatmap
@@ -8128,9 +7588,17 @@ CASE strlowCase(eventValue) OF
       kdim = * selected_kernel & kdim = (size(kdim))[1] & kdim_str = strtrim(kdim, 2)
       
       ;; test that we can write into the parent directory or if it exists already
-      batch_type = 'batch_LM'
+      batch_type = 'batch_lm'
       dd = file_dirname(im_file[0], / mark_directory)
       dir_batch = file_dirname(dd, / mark_directory) + batch_type + '_' + kdim_str + info.os_sep
+      ;; test if directory is not named like dir_batch
+      if file_basename(path2file) eq file_basename(dir_batch) then begin
+        msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+          "Please rename the directory to any other name."
+        res = dialog_message(msg, / information)
+        GOTO, fin
+      endif
+      
       res = file_test(dir_batch, /directory, /write)
       if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -8197,20 +7665,19 @@ CASE strlowCase(eventValue) OF
           printf, 9, 'Skipping invalid LM input (empty space in directory path or input filename): ', input
           close, 9
           GOTO, skip_batch_lm  ;; invalid input
-        ENDIF
-        
-        type = '' & res = query_image(input, type=type)
-        IF type NE 'TIFF' THEN BEGIN
+        ENDIF       
+
+        res = query_tiff(input, qtres, geotiff = geotiffinfo)
+        IF qtres.type NE 'TIFF' THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
           printf, 9, 'Skipping invalid LM input (not a TIFF image): ', input
           close, 9
           GOTO, skip_batch_lm  ;; invalid input
-        ENDIF
-
-        res = query_tiff(input, geotiff = geotiffinfo)
-        IF res EQ 0 THEN BEGIN
+        ENDIF              
+        res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+        IF res NE 0 THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
@@ -8252,7 +7719,7 @@ CASE strlowCase(eventValue) OF
           write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1 ELSE $
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
         
-        ;; copy over the lm103class image
+        ;; copy over the LM103class image
         fn_out = outdir + '/' + res + '_lm_' + kdim_str + '_103class.tif'
         close,1 & openr, 1, info.dir_tmp + 'lm103class'
         readu,1, im & close, 1
@@ -8353,11 +7820,11 @@ CASE strlowCase(eventValue) OF
      
      q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
      IF imgminsize LT 500 THEN BEGIN
-       res = dialog_message('Dominance requires a minimum image dimension of 500 pixels in x and y image dimension.' + $
+       res = dialog_message('Dominance requires a minimum map dimension of 500 pixels in x and y map dimension.' + $
          string(10b) + 'Returning...', / information)
        GOTO, fin
      ENDIF
-     LM_Compliance, info.fname_input, image0, 'lm', info.immaxsizeg, 1, result
+     lm_Compliance, info.fname_input, image0, 'lm', info.immaxsizeg, 1, result
      IF result EQ 0 THEN GOTO, fin  ;; invalid input
 
      ;; loop over 5 observation scales
@@ -8482,6 +7949,14 @@ CASE strlowCase(eventValue) OF
      batch_type = 'batch_Dominance'
      dd = file_dirname(im_file[0], / mark_directory)
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -8548,18 +8023,17 @@ CASE strlowCase(eventValue) OF
          GOTO, skip_batch_lmms  ;; invalid input
        ENDIF
 
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid Dominance input (not a TIFF image): ', input
-         close, 9 
+         close, 9
          GOTO, skip_batch_lmms  ;; invalid input
-       ENDIF
-
-       res = query_tiff(input, geotiff = geotiffinfo)
-       IF res EQ 0 THEN BEGIN
+       ENDIF              
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+       IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -9159,6 +8633,14 @@ CASE strlowCase(eventValue) OF
      batch_type = 'batch_' + spax
      dd = file_dirname(im_file[0], / mark_directory)
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -9222,28 +8704,26 @@ CASE strlowCase(eventValue) OF
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid ' + spax + ' input (empty space in directory path or input filename): ', input
          close, 9
-         GOTO, skip_spa  ;; invalid input
+         GOTO, skip_batch_spa  ;; invalid input
        ENDIF
 
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid ' + spax + ' input (not a TIFF image): ', input
          close, 9
-         GOTO, skip_spa  ;; invalid input
-       ENDIF
-
-
-       res = query_tiff(input, geotiff = geotiffinfo)
-       IF res EQ 0 THEN BEGIN
+         GOTO, skip_batch_spa  ;; invalid input
+       ENDIF              
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+       IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid ' + spax + ' input file: ', input
          close, 9
-         GOTO, skip_spa  ;; invalid input
+         GOTO, skip_batch_spa  ;; invalid input
        ENDIF
 
        image0 = read_tiff(input)  ;; read and check it
@@ -9254,7 +8734,7 @@ CASE strlowCase(eventValue) OF
          printf, 9, '==============   ' + counter + '   =============='
          printf, 9, 'Skipping invalid ' + spax + ' input file: ', input
          close, 9
-         GOTO, skip_spa  ;; invalid input
+         GOTO, skip_batch_spa  ;; invalid input
        ENDIF
 
        ;; now all is ok for processing
@@ -9566,7 +9046,7 @@ CASE strlowCase(eventValue) OF
        printf, 9, spax + ' comp.time [sec]: ', systime( / sec) - time0
        close, 9
 
-       skip_spa:
+       skip_batch_spa:
        stepn = (fidx + 1.0)/nr_im_files * 100.0
        progressBar -> Update, stepn
      ENDFOR
@@ -9725,12 +9205,10 @@ CASE strlowCase(eventValue) OF
 
    'batch_ci':  BEGIN
       tit = 'Select raster image-file(s)'
-      filters = [['*.tif;*.tiff','*.png','*gif','*.bmp','*.jpg;*.jpeg','*.jp2;*.jpx','*.*'], $
-      ['TIFF','PNG','GIF','BITMAP','JPEG','JPEG2000','All files']]
       im_file = $
         dialog_pickfile(Title = tit, get_path = path2file, $
         path = info.dir_data, default_extension = 'tif', / fix_filter, $
-        / must_exist, / multiple_files, FILTER = filters)
+        / must_exist, / multiple_files, FILTER = ['*.tif', '*.tiff'])
       IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
       
       ;; test that the directory of the selected files has no sub-directories
@@ -9752,6 +9230,14 @@ CASE strlowCase(eventValue) OF
       batch_type = 'batch_ConeforInputs'
       dd = file_dirname(im_file[0], / mark_directory)
       dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+      ;; test if directory is not named like dir_batch
+      if file_basename(path2file) eq file_basename(dir_batch) then begin
+        msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+          "Please rename the directory to any other name."
+        res = dialog_message(msg, / information)
+        GOTO, fin
+      endif
+
       res = file_test(dir_batch, /directory, /write)
       if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -9807,9 +9293,6 @@ CASE strlowCase(eventValue) OF
       msg = 'Processing selected images for ConeforInputs, please wait...'
       progressBar = Obj_New("SHOWPROGRESS", message = msg, title=title, /cancel)
       progressBar -> Start
-      
-      ;; supported image file types 
-      ftypes='TIFF, PNG, GIF, BITMAP, JPEG, JPEG2000'
  
       FOR fidx = 0, nr_im_files - 1 DO BEGIN
         counter = strtrim(fidx + 1, 2) + '/' + strtrim(nr_im_files, 2)
@@ -9826,7 +9309,7 @@ CASE strlowCase(eventValue) OF
         ENDIF
    
          ;; validate the input, if not skip it without message
-         fname = im_file(fidx) & res = query_image(fname, inpinfo) & msgr=''
+         fname = im_file(fidx) & res = query_tiff(fname, inpinfo) & msgr=''
          openw, 9, fn_logfile, /append
          printf, 9, strtrim(fidx+1,2)+') ' + fname + ': '
          close, 9
@@ -9845,7 +9328,7 @@ CASE strlowCase(eventValue) OF
          ;; check if image can be read
          ;;===========================       
          IF res EQ 0 THEN BEGIN
-            msgr = 'Input image file format is not of type: ' + ftypes
+            msgr = 'Input map file format is not of type: ' + ftypes
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
             close, 9
@@ -9865,7 +9348,7 @@ CASE strlowCase(eventValue) OF
          ;; check for single channel image
          ;;===========================
          IF inpinfo.channels GT 1  THEN BEGIN
-            msgr = 'Input image has more than 1 band. ' + string(10b) + $
+            msgr = 'Input map has more than 1 band. ' + string(10b) + $
                   "Try using General Tools: Preprocessing: RGB -> Single Band" 
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
@@ -9875,18 +9358,18 @@ CASE strlowCase(eventValue) OF
          
          ;; check min/max value in image
          ;;===========================
-         image0 = read_image(fname) & image0 = abs(image0) & mxx = max(image0, min = mii)
+         image0 = read_tiff(fname) & image0 = abs(image0) & mxx = max(image0, min = mii)
          ;; rotate the image
          image0 = rotate(image0,7)
 
          IF mxx EQ mii THEN BEGIN
-            msgr = 'Image has no objects.'
+            msgr = 'Map has no objects.'
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
             close, 9
             GOTO, skip_batch_CI  ;; invalid CI input       
          ENDIF ELSE IF mxx LT 2 THEN BEGIN
-            msgr = 'Image has no valid foreground objects. ' + string(10b) + $
+            msgr = 'Map has no valid foreground objects. ' + string(10b) + $
                   'ConeforInputs will calculate area and distance ONLY'  + string(10b) + $
                   'for foreground objects having a value of 2.' 
             openw, 9, fn_logfile, /append
@@ -9901,7 +9384,7 @@ CASE strlowCase(eventValue) OF
          ;;===============================
          sz = inpinfo.dimensions & fsz = float(sz[0])*sz[1] & mxfsz=25000100 
          IF fsz GT mxfsz THEN BEGIN
-           msgr = 'Exceeded ConeforInputs maximum image dimensions: 5000x5000' 
+           msgr = 'Exceeded ConeforInputs maximum map dimensions: 5000x5000' 
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
             close, 9
@@ -9926,7 +9409,7 @@ CASE strlowCase(eventValue) OF
          objects = label_region(ext, all_neighbors=all_n, / ulong)
          n_obj=max(objects)
          IF n_obj LT 2 THEN BEGIN
-           msgr = 'Image has less than 2 objects.'
+           msgr = 'Map has less than 2 objects.'
            openw, 9, fn_logfile, /append
            printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
            close, 9
@@ -10186,7 +9669,7 @@ CASE strlowCase(eventValue) OF
        ENDIF
 
        ;; validate the input, if not skip it without message
-       fname = im_file(fidx) & res = query_image(fname, inpinfo) & msgr=''
+       fname = im_file(fidx) & res = query_tiff(fname, inpinfo) & msgr=''
        openw, 9, fn_logfile, /append
        printf, 9, strtrim(fidx+1,2)+') ' + fname + ': '
        close, 9
@@ -10206,7 +9689,7 @@ CASE strlowCase(eventValue) OF
        ;; check if image can be read
        ;;===========================
        IF res EQ 0 THEN BEGIN
-         msgr = 'Input image file format is not of type: ' + ftypes
+         msgr = 'Input map file format is not of type: ' + ftypes
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
          close, 9
@@ -10226,7 +9709,7 @@ CASE strlowCase(eventValue) OF
        ;; check for single channel image
        ;;===========================
        IF inpinfo.channels GT 1  THEN BEGIN
-         msgr = 'Input image has more than 1 band. ' + string(10b) + $
+         msgr = 'Input map has more than 1 band. ' + string(10b) + $
            "Try using General Tools: Preprocessing: RGB -> Single Band"
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
@@ -10248,7 +9731,7 @@ CASE strlowCase(eventValue) OF
        IF info.my_os EQ 'windows' THEN spawn, cmd, log, / hide ELSE spawn, cmd, log & q = log[0]
        ftype = strmid(q, strpos(q, ': ') + 2, 13)
        IF ftype NE 'GTiff/GeoTIFF' THEN BEGIN
-         msgr = 'Input image is not of type Geotiff. '
+         msgr = 'Input map is not of type Geotiff. '
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
          close, 9
@@ -10282,7 +9765,7 @@ CASE strlowCase(eventValue) OF
        endif      
        
        IF mspaext eq '' THEN BEGIN
-         msgr = 'Input image is not MSPA.'
+         msgr = 'Input map is not MSPA.'
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
          close, 9
@@ -10667,7 +10150,7 @@ CASE strlowCase(eventValue) OF
          fname = imfilebase + '.txt'
          openw, 1, fname
          printf, 1, fn_outbase + add_title
-         printf, 1, '(NOTE: node ID & importance in the actual image data are'
+         printf, 1, '(NOTE: node ID & importance in the actual map data are'
          printf, 1, 'NEGATIVE to distinguish them from link ID & importance)'
          printf, 1, '===================================================================='
          xx = strcompress(nw_mxinw) + ' /' + strcompress(nr_links) + $
@@ -10807,6 +10290,14 @@ CASE strlowCase(eventValue) OF
       batch_type = 'batch_MSPA'
       dd = file_dirname(im_file[0], / mark_directory)
       dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+      ;; test if directory is not named like dir_batch
+      if file_basename(path2file) eq file_basename(dir_batch) then begin
+        msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+          "Please rename the directory to any other name."
+        res = dialog_message(msg, / information)
+        GOTO, fin
+      endif
+
       res = file_test(dir_batch, /directory, /write)
       if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -10916,9 +10407,9 @@ CASE strlowCase(eventValue) OF
            close, 9
            GOTO, skip_batch_mspa  ;; invalid input
          ENDIF  
-         
-         type = '' & res = query_image(input, type=type)
-         IF type NE 'TIFF' THEN BEGIN
+                      
+         res = query_tiff(input, tiffinfo, geotiff = geotiffinfo)
+         IF tiffinfo.type NE 'TIFF' THEN BEGIN
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
@@ -10926,10 +10417,7 @@ CASE strlowCase(eventValue) OF
            close, 9
            GOTO, skip_batch_mspa  ;; invalid input
          ENDIF
-             
-         res = query_tiff(input, tiffinfo, geotiff = geotiffinfo)
          ss = tiffinfo.dimensions & ssct = n_elements(ss) & ss3 = ulong64(ss[0]) * ss[1]  / (1024.0^2)
-
          IF res EQ 0 or ssct ne 2 THEN BEGIN ;;invalid file, wrong dimensions, image too big  
            openw, 9, fn_logfile, /append
            printf, 9, ' '
@@ -10943,7 +10431,7 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid MSPA input file (image too big): ', input
+           printf, 9, 'Skipping invalid MSPA input file (map too big): ', input
            close, 9
            GOTO, skip_batch_mspa  ;; invalid input
          ENDIF
@@ -11101,9 +10589,10 @@ CASE strlowCase(eventValue) OF
    'mspatile':  BEGIN ;; Purpose: automatic tiling for MSPA
       
       msg = 'MSPA Tiling is a less than ideal solution, it will:' + string(10b) + $
-       '1) cut the entire image into subtiles buffered by 2000 pixels,' + string(10b) + $
-       '2) process the buffered subtiles for MSPA,' + string(10b) + $
-       '3) reassemble the subtiles to the final result.' + string(10b) + $
+       '1) process the map with a fixed edge width = 1,' + string(10b) + $
+       '2) cut the entire map into subtiles buffered by 2000 pixels,' + string(10b) + $
+       '3) process the buffered subtiles for MSPA,' + string(10b) + $
+       '4) reassemble the subtiles to the final result.' + string(10b) + $
        'This procedure is time-consuming and NOT guaranteed to provide correct results.'+ string(10b) + string(10b) + $
        'Instead, please ALWAYS use GWB (Help->GTB Online->GWB) for MSPA processing of large images!' + string(10b)
       res = dialog_message(msg, / information, title = 'IMPORTANT: use GWB for MSPA processing of large images')
@@ -11115,15 +10604,15 @@ CASE strlowCase(eventValue) OF
                         default_extension = 'tif', / fix_filter, $
                         / must_exist, filter = ['*.tif', '*.tiff','*.TIF', '*.TIFF'])
       IF fname EQ '' THEN GOTO, fin ;; 'cancel' selected
-      type = '' & res = query_image(fname, type=type)
-      IF type NE 'TIFF' THEN BEGIN
+      res = query_tiff(fname, qtres)
+      IF qtres.type NE 'TIFF' THEN BEGIN
         msg = 'Input is not a TIFF image.' + string(10b) + $
             'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information) & GOTO, fin
       ENDIF
 
       ;;========================================================================
-      ;; reset the front image and block any events
+      ;; reset the front map and block any events
       ;;========================================================================
       title = 'MSPA Tiling'
       goto, resetfront
@@ -11144,14 +10633,14 @@ CASE strlowCase(eventValue) OF
       ;;====================================================================
       ;; check for MSPA compliant input image
       ;;====================================================================
-      ;; check if input is an image format
+      ;; check if input is an map format
       res = query_tiff(fname, inpinfo, geotiff = geotiffx)
       IF res EQ 0 THEN BEGIN ;; or IDL/ENVI file
          msg = 'Input file could not be read.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information) & GOTO, fin
       ENDIF
-      ;; check for single image in file
+      ;; check for single map in file
       ;;===========================
       IF inpinfo.num_images GT 1 THEN BEGIN
          msg = 'Input file has more than 1 image.' + string(10b) + $
@@ -11161,32 +10650,32 @@ CASE strlowCase(eventValue) OF
       ;; check for single channel image
       ;;===========================
       IF inpinfo.channels NE 1 THEN BEGIN
-         msg = 'Input image has more than 1 layer.' + string(10b) + $
+         msg = 'Input map has more than 1 layer.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information) & GOTO, fin
       ENDIF
       ;; check for byte array
       ;;===========================
       IF inpinfo.pixel_type NE 1 THEN BEGIN
-         msg = 'Input image is not of type Byte.' + string(10b) + $
+         msg = 'Input map is not of type Byte.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information) & GOTO, fin
       ENDIF
       ;; check for type tiff
       ;;===========================
       IF inpinfo.type NE 'TIFF' THEN BEGIN
-         msg = 'Input image is not of type TIFF.' + string(10b) + $
+         msg = 'Input map is not of type TIFF.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information) & GOTO, fin
       ENDIF
       ;; check for type GeoTiff
       ;;===========================
       IF (size(geotiffx))[0] EQ 0 THEN BEGIN
-         msg = 'Input image is not of type GeoTiff.' + string(10b) + $
+         msg = 'Input map is not of type GeoTiff.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information) & GOTO, fin
       ENDIF
-      ;; check for minimum image size: > info.immaxsize
+      ;; check for minimum map size: > info.immaxsize
       ;;===========================
       imsize = inpinfo.dimensions[0] / (1024.0^2) * inpinfo.dimensions[1]
       IF imsize LE (info.immaxsize) THEN BEGIN
@@ -11213,7 +10702,7 @@ CASE strlowCase(eventValue) OF
       IF info.my_os EQ 'windows' THEN spawn, cmd, log, / hide ELSE spawn, cmd, log
       ftype = strmid(log[0], strpos(log[0], ': ') + 2, 13)
       IF ftype NE 'GTiff/GeoTIFF' THEN BEGIN
-         msg = 'This image is not a GeoTiff file.' + string(10b) + $
+         msg = 'This map is not a GeoTiff file.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          progressBar -> Destroy
@@ -11228,20 +10717,20 @@ CASE strlowCase(eventValue) OF
       mm = mm[1] &  mm = strsplit(mm, ',', / extract)
       mii = byte(fix(mm(0))) & mxx = byte(fix(mm(1)))
       IF mxx GT 2b THEN BEGIN
-         msg = 'Image maximum is larger than 2 BYTE.' + string(10b) + 'Returning...'
+         msg = 'Map maximum is larger than 2 BYTE.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          progressBar -> Destroy
          Obj_Destroy, progressBar
          GOTO, fin
       ENDIF ELSE IF mxx LT 2b THEN BEGIN
-         msg = 'Image has no foreground (2 BYTE).' + string(10b) + 'Returning...'
+         msg = 'Map has no foreground (2 BYTE).' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          progressBar -> Destroy
          Obj_Destroy, progressBar
          GOTO, fin
       ENDIF
       IF mii GT 1b THEN BEGIN
-         msg = 'Image has no background (1 BYTE).' + string(10b) + 'Returning...'
+         msg = 'Map has no background (1 BYTE).' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          progressBar -> Destroy
          Obj_Destroy, progressBar
@@ -11755,10 +11244,10 @@ CASE strlowCase(eventValue) OF
 
       msg =  'MSPA tile comp.time [min]: ' + mt + $
              string(10b) + string(10b) + $
-             "The MSPA processed image has been saved to:" + $
+             "The MSPA processed map has been saved to:" + $
              string(10b) + fn_out + string(10b) + string(10b) + $
              '(to get information on statistics and openings load' + string(10b) + $
-             'the image into GTB and activate: MSPA statistics)' + string(10b) + string(10b) + $
+             'the map into GTB and activate: MSPA statistics)' + string(10b) + string(10b) + $
              'Please use GWB instead of MSPA-Tiling.' + string(10b)
       result = dialog_message(msg, / information)
       widget_control, info.w_file, / sensitive
@@ -11894,7 +11383,7 @@ CASE strlowCase(eventValue) OF
         
       ;;endif else if info.is_fragm eq 1 then begin 
       endif else if info.is_fragm gt 0 then begin
-        ;; label Fragm or P2, P22, P23
+        ;; label Fragm or PF, PFF
         ;;=============================================
         ;; label fragm areas into groups
         qsmall = where(image0 lt info.label_t1,c_small)
@@ -12044,7 +11533,7 @@ CASE strlowCase(eventValue) OF
    'nw_components':  BEGIN
       ;; 1) check if mspa
       IF info.is_mspa NE 1b THEN BEGIN
-         msg = 'Image has no MSPA classes.' + string(10b) + 'Returning...'
+         msg = 'Map has no MSPA classes.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDIF
@@ -12369,221 +11858,6 @@ CASE strlowCase(eventValue) OF
       info.cs22_mx_bridge = mx_bridge & info.cs22_mx_core = mx_core
    END
 
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   ;; N E T W O R K   A N A L Y S I S: COMPONENT CONNECTORS
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   'nw_nwconnect':BEGIN
-
-     ;; 1) check if nw
-     IF info.is_nw NE 1b THEN BEGIN
-       msg = 'Please first run: Image Analysis -> Network -> NW Components.' + $
-         string(10b) + 'Returning...'
-       res = dialog_message(msg, / information)
-       GOTO, fin
-     ENDIF
-
-     ;; 2) if in zoom mode, quit zoom mode
-     IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
-       info.selsubregion_id = 0
-       ;; deactivate zoomfactor selector
-       widget_control, info.w_zoomfac, sensitive = 1
-       widget_control, info.w_selsubregion, $
-         set_value = 'Zoom Mode'
-       ;; restore the prezoomed process image
-       * info.process = * info.prezoomprocess
-       ;; disable button and enable motion events in w_draw
-       widget_control, info.w_draw, Draw_Motion_Events = 1
-       widget_control, info.w_draw, Draw_Button_Events = 0
-       info.set_zoom = 0 & info.scroll_x = 0 & info.scroll_y = 0
-     ENDIF
-
-     widget_control, / hourglass
-     ;; get the extended fullres image of cores and bridges
-     fn = info.dir_tmp + 'nwtmp.sav' & res = file_info(fn)
-     IF res.exists NE 1b THEN BEGIN
-       msg = 'Please first run: Image Analysis -> Network -> NW Components.' + string(10b) + 'Returning...'
-       res = dialog_message(msg, / information)
-       GOTO, fin
-     ENDIF
-     restore, fn
-
-     time0 = systime( / sec)
-     ;; mspa FG-connectivity: 8 <=> euclidean distance;  4 <=> cityblock
-     IF info.mspa_param1_id EQ 1b THEN distnbr = 3 ELSE distnbr = 2
-
-     ;; PCnum:= overall connectivity. Sum of[ (components area)^2]
-     ;; bridges have no area
-     ;;
-     ;; network components
-     ;; btw, image0 is enlarged image with 1-core and 2-bridge
-
-     IF nr_comp LT 5 THEN BEGIN
-       msg = 'Network needs at least 5 components.' + string(10b) + 'Returning...'
-       res = dialog_message(msg, / information)
-       GOTO, fin
-     ENDIF
-
-     ;; set area of links in components to zero and get area by component
-     ;; this to use the 5 biggest components having the biggest core area
-     ;;h_comp_area = histogram(lbl_comp * (image0 NE 2b), / l64)
-
-     ;; 5 biggest components by area, *** not by core area ***:
-     h_comp_area = histogram(lbl_comp, / l64)
-     ;; overall connectivity of the current network of components before adding in anything new
-     pcnum_orig = total(h_comp_area(1: * )^2, / double)
-
-     ;; we can have 10 uniq links between the 5 largest components
-     ;; from h_comp_area we exclude the first entry (= background)
-     lcompidx = (reverse(sort(h_comp_area[1:*])))+1
-     lcompidx = lcompidx[0:4] ;; these are the top 5 by ID
-
-     ;;lcomparea = h_comp_area[lcompidx]
-     ;tenlinks = strtrim([12, 13, 14, 15, 23, 24, 25, 34, 35, 45], 2)
-     tenlinks = ['1 <-> 2', '1 <-> 3', '1 <-> 4', '1 <-> 5', '2 <-> 3', $
-       '2 <-> 4', '2 <-> 5', '3 <-> 4', '3 <-> 5', '4 <-> 5']
-     tenlinksimp = fltarr(10) & tenlinkslength = intarr(2, 10)
-
-     ;; prepare image for display
-     ;; load the colors-on table
-     restore, info.dir_guidossub + 'mspacolorston.sav' & tvlct, r, g, b
-     nw_conns = image0 * 0.0 & cl = byte([1, 5, 9, 17, 33, 65, 80, 150, 176])
-     image0 = (image0 GT 0b) * 150b
-     FOR i = 1l, 5 DO BEGIN
-       q = where(lbl_comp EQ lcompidx(i - 1), /l64) & image0[q] = cl(i)
-     ENDFOR
-
-     ;; prepare temporary output   
-     statsfiletxt = info.dir_tmp + 'compconnect_tmp.txt'
-     close, 11 & openw, 11, statsfiletxt
-     printf, 11, format='(9(a13))', 'CCONN', 'COMP_A', 'SIZE_A', 'COMP_B', 'SIZE_B', 'LEN_TOT', 'LEN_EFF', 'GAIN'
-   
-     openw, 1, info.dir_tmp + 'compconnect_tmp.csv'
-     printf, 1, 'CCONN, COMP_A, SIZE_A, COMP_B, SIZE_B, LEN_TOT, LEN_EFF, GAIN '
-
-     ;; calculate importance for these new links
-     FOR il = 0, 9 DO BEGIN
-       ;; each link in 'tenlinks' connects the two
-       ;; components laidx and lbidx. They correspond to
-       ;; linka and linkb in the image
-       laidx = fix(strmid(tenlinks(il), 0, 1)) & linka = lcompidx(laidx - 1)
-       lbidx = fix(strmid(tenlinks(il), 6, 1)) & linkb = lcompidx(lbidx - 1)
-
-       ;; 1) calculate the location and length of the shortest path
-       ;; between the two components
-       ppa = lbl_comp EQ linka
-       ppa = morph_distance(ppa, / background, neighbor = distnbr, / no_copy)
-       ;; get the smallest distance within component B
-       ppb = lbl_comp eq linkb & ppa = ppa * ppb & ppa = ppa + (ppa LT 0.5) * 10000.0
-       xb = min(ppa, min_subscript) & loc_b = array_indices(image0,  min_subscript)
-
-       ppb = morph_distance(ppb, / background, neighbor = distnbr, / no_copy)
-       ppa = lbl_comp eq linka & ppb = ppb * ppa & ppb = ppb + (ppb LT 0.5) * 10000.0
-       xa = min(ppb, min_subscript) & loc_a = array_indices(image0,  min_subscript)
-
-       ;; insert shortest path loc_a -> loc_b into the map
-       q1 = loc_b & q1 = float(q1 - round(loc_a))
-       ps = (q1 GE 0) * 2 - 1 & q1 = q1 * ps  ;;sign of loc_b
-       fi = q1[1] GT q1[0]
-       x = lindgen(round(q1[fi] + 1)) & y = round((x * q1[1 - fi]) / q1[fi])
-       x = round(loc_a[fi]) + x[0: * ] * ps[fi]
-       y = round(loc_a[1 - fi]) + y[0: * ] * ps[1 - fi]
-       IF fi EQ 1 THEN $
-         shpath = transpose([[y], [x]]) ELSE shpath = transpose([[x], [y]])
-       shpathlength = n_elements(x)
-
-       ;;res = trace_conn_grid(loc_a, loc_b, lc = 1)
-       ;; assign path pixels to black
-       FOR i = 1, shpathlength - 2 DO image0(shpath(0, i), shpath(1, i)) = 103b
-
-       ;; shpath starts in linka and ends in linkb
-       ;; 2) find out if this path passes through other components
-       pts = lbl_comp(shpath(0, 1:shpathlength - 2), shpath(1, 1:shpathlength - 2))
-       ;; the full length not accountinmg for intermediate components
-       tenlinkslength(0, il) = shpathlength - 2
-       ;; the length accounting for components along this path
-       tenlinkslength(1, il) = fix(total(pts eq 0))
-       ;; test for and add intermediate components
-       h = histogram(pts) & q = where(h GT 0) & intcomp = n_elements(q) GT 1
-       ;; calculate importance for this new link:
-       ;; pcnum is sum [ (core-areas per component)^2 ] but we take full component area here
-       ;; remove the two individual areas from pcnum_orig
-       pcnum = pcnum_orig - (h_comp_area(linka))^2 - (h_comp_area(linkb))^2
-       ;; if intermediate components were encountered then remove
-       ;; them as well
-       IF intcomp EQ 1 THEN $
-         FOR i = 1, n_elements(q) - 1 DO pcnum = pcnum - (h_comp_area(q(i)))^2
-       ;; add the new combined linka <-> linkb area
-       ;; to get the final new pcnum for the set when this new link is included
-       aaa = h_comp_area(linka) + h_comp_area(linkb)
-       IF intcomp EQ 1 THEN $
-         FOR i = 1, n_elements(q) - 1 DO aaa = aaa + h_comp_area(q(i))
-       pcnum = pcnum + (aaa)^2
-       ;; note: pcnum is the one for the set with the new link added in. 
-       ;; pcnum_orig is the original set without any new links
-       
-       ;; option a)%-increase in overall connectivity (pcnum)
-       ;tenlinksimp(il) = (pcnum - pcnum_orig) / pcnum_orig * 100.0 
-       
-       ;; option b)%-increase in ECA (equivalent connected area
-       ;ECA_orig = sqrt(pcnum_orig) & ECA_new = sqrt(pcnum)
-       ;tenlinksimp(il) = (ECA_new - ECA_orig)/ECA_orig * 100.0 ;;% increase in ECA
-       
-       ;; option c)%-increase in DOC
-       ECA_orig = sqrt(pcnum_orig) & ECA_new = sqrt(pcnum) & ECA_max = total(h_comp_area[1:*])
-       doc_orig = ECA_orig/ECA_max*100.0
-       doc = ECA_new/ECA_max*100.0
-       gain = doc - doc_orig
-       tenlinksimp(il) = gain
-       
-       ;; ECA_rel: normalised/relative ECA
-       ;; ARH: amount of reachable habitat (%)
-       ;; PRH: percentage of reachable habitat
-       ; ECA_max = total(h_comp_area[1:*])
-       ; ECA_rel = ECA/ECA_max * 100.0
-
-  
-       FOR i = 1, shpathlength - 2 DO nw_conns(shpath(0, i), shpath(1, i)) = tenlinksimp(il)
-;       IF intcomp EQ 0 THEN BEGIN
-;           row2 = 'NONE'           
-;       ENDIF ELSE BEGIN
-;           row2arr = strtrim(q(1: * ), 1) & row2nr = n_elements(row2arr) & row2 = row2arr[0]
-;           if row2nr gt 1 then for i = 1,row2nr-1 do row2 = row2 + ' ' + row2arr[i]
-;       ENDELSE
-       rowstr = tenlinks(il) + ',' + strtrim(linka, 2) + ',' + strtrim(h_comp_area(linka), 2) + ',' + $
-        strtrim(linkb, 2) + ',' + strtrim(h_comp_area(linkb), 2) + ',' + $
-        strtrim(tenlinkslength(0, il), 2) + ',' + strtrim(tenlinkslength(1, il), 2) + ',' + $
-        strtrim(tenlinksimp(il), 2) ;; + ',' + row2
-        printf, 1, rowstr      
-
-        ;; add output for xdisplayfile
-        printf, 11, format = '(9(a17))',tenlinks(il), strtrim(linka, 2), strtrim(h_comp_area(linka), 2), + $
-          strtrim(linkb, 2), strtrim(h_comp_area(linkb), 2), $
-          strtrim(tenlinkslength(0, il), 2), strtrim(tenlinkslength(1, il), 2), $
-          strtrim(tenlinksimp(il), 2)
-
-     ENDFOR
-     close, 1, 11
-     IF ctqm GT 0 THEN image0[qm] = 129b & qm = 0
-     print, 'CompConnect comp.time [sec]: ', systime( / sec) - time0
-
-     xdisplayfile, statsfiletxt, title = 'Connectors between 5 largest NW Components', width=120, /grow
-
-     ;; go back to original dimension to be shown in the display
-     ;; store stuff in the info structure
-     info.autostretch_id = 0
-     * info.nw_ids = lbl_comp[eew:eew + sz(0) - 1, eew:eew + sz(1) - 1]
-     * info.nw_conns = nw_conns[eew:eew + sz(0) - 1, eew:eew + sz(1) - 1]
-     * info.process = image0[eew:eew + sz(0) - 1, eew:eew + sz(1) - 1]
-     lbl_comp = 0 & image0 = 0 & nw_conns = 0 & * info.fr_image = * info.process
-     info.add_title = ' (Connectors between 5 largest NW Components)'
-
-     ;; reset mspa
-     info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b
-     info.do_mspa_stats_id = 0 & info.is_cost = 0
-
-     ;; set is_nwconnect to active
-     info.is_nwconnect = 1 & info.is_nw = 0 & info.is_cs22 = 0
-   END
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
    ;;    N E T W O R K   A N A L Y S I S:   CS-INPUT
@@ -12680,6 +11954,27 @@ CASE strlowCase(eventValue) OF
       info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 & info.selsubregion_id = 0 & info.is_cost = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       GOTO, fin
+   END
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   'overview':  BEGIN
+     doc = 'GTB_ov_' + strmid(eventValue2,9) + '.pdf'    
+     IF info.my_os EQ 'apple' THEN BEGIN
+       spawn, 'open ' + info.dir_guidossub + doc
+       GOTO, fin
+     ENDIF
+     widget_control, / hourglass
+     IF info.my_os EQ 'windows' THEN BEGIN
+       pushd, info.dir_guidossub 
+       spawn, 'start ' + doc, / nowait, /hide
+       popd
+       GOTO, fin
+     ENDIF ELSE BEGIN ;; Linux
+       cmd = info.pdf_exe + ' "' + info.dir_guidossub + doc + '"'
+       spawn, cmd + ' &'
+       GOTO, fin
+     ENDELSE
    END
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -13106,6 +12401,14 @@ CASE strlowCase(eventValue) OF
      batch_type = 'batch_ACC' ;;'batch_Accounting'
      dd = file_dirname(im_file[0], / mark_directory)
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -13224,28 +12527,26 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid  input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid accounting input (empty space in directory path or input filename): ', input
          close, 9
          GOTO, skip_batch_acc  ;; invalid input
        ENDIF
 
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid  input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid accounting input (not a TIFF image): ', input
          close, 9
          GOTO, skip_batch_acc  ;; invalid input
        ENDIF
-
-
-       res = query_tiff(input, geotiff = geotiffinfo)
-       IF res EQ 0 THEN BEGIN
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+       IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid  input file: ', input
+         printf, 9, 'Skipping invalid accounting input file: ', input
          close, 9
          GOTO, skip_batch_acc  ;; invalid input
        ENDIF
@@ -14018,6 +13319,14 @@ CASE strlowCase(eventValue) OF
      batch_type = 'batch_Euclidean'
      dd = file_dirname(im_file[0], / mark_directory)
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -14086,8 +13395,8 @@ CASE strlowCase(eventValue) OF
          GOTO, skip_eucldist  ;; invalid input
        ENDIF
        
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -14095,9 +13404,8 @@ CASE strlowCase(eventValue) OF
          close, 9
          GOTO, skip_eucldist  ;; invalid input
        ENDIF
-
-       res = query_tiff(input, geotiff = geotiffinfo)
-       IF res EQ 0 THEN BEGIN
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+       IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -14393,6 +13701,14 @@ CASE strlowCase(eventValue) OF
        batch_type = 'batch_FragHypsometry'
        dd = file_dirname(im_file[0], / mark_directory)
        dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+       ;; test if directory is not named like dir_batch
+       if file_basename(path2file) eq file_basename(dir_batch) then begin
+         msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+           "Please rename the directory to any other name."
+         res = dialog_message(msg, / information)
+         GOTO, fin
+       endif
+
        res = file_test(dir_batch, /directory, /write)
        if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -14463,8 +13779,8 @@ CASE strlowCase(eventValue) OF
              GOTO, skip_batch_hmc  ;; invalid input
            ENDIF
            
-           type = '' & res = query_image(input, type=type)
-           IF type NE 'TIFF' THEN BEGIN
+           res = query_tiff(input, qtres, geotiff = geotiffinfo)
+           IF qtres.type NE 'TIFF' THEN BEGIN
              openw, 9, fn_logfile, /append
              printf, 9, ' '
              printf, 9, '==============   ' + counter + '   =============='
@@ -14472,9 +13788,8 @@ CASE strlowCase(eventValue) OF
              close, 9
              GOTO, skip_batch_hmc  ;; invalid input
            ENDIF
-
-           res = query_tiff(input, geotiff = geotiffinfo)
-           IF res EQ 0 THEN BEGIN
+           res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+           IF res NE 0 THEN BEGIN
              openw, 9, fn_logfile, /append
              printf, 9, ' '
              printf, 9, '==============   ' + counter + '   =============='
@@ -15143,7 +14458,7 @@ CASE strlowCase(eventValue) OF
      head = 'Please load or setup a Resistance map: [(0), 2, 3-100] byte' + string(10b) + string(10b)
      histo = histogram(image0) & tit = 'Restoration setup information:'
      IF histo[2] EQ 0 THEN BEGIN
-       msg = head + 'Image has no FG-objects (2b).' + string(10b) + 'Returning...'
+       msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information, title = tit)
        GOTO, fin
      ENDIF
@@ -15225,7 +14540,7 @@ CASE strlowCase(eventValue) OF
      
      ;; image must have FG pixels, if not notify
      if ctfg eq 0 then begin     
-       msg = 'The current image has no Foreground (FG) objects <-> pixel value 2 byte.' + string(10b) + $
+       msg = 'The current map has no Foreground (FG) objects <-> pixel value 2 byte.' + string(10b) + $
        "Please use 'General Tools -> Preprocessing' to assign the value 2 to your FG-objects." 
        tit = 'Restoration Planner Setup: Distance to Resistance'
        res = dialog_message(msg, title = tit, / information)
@@ -15368,7 +14683,7 @@ CASE strlowCase(eventValue) OF
      ;; test for presence of FG-objects and correct resistance values
      histo = histogram(image0)
      IF histo[2] EQ 0 THEN BEGIN
-       msg = head + 'Image has no FG-objects (2b).' + string(10b) + 'Returning...'
+       msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information, title = tit)
        GOTO, fin
      ENDIF
@@ -15547,7 +14862,7 @@ CASE strlowCase(eventValue) OF
      IF strpos(info.add_title,'; tick FGConn for Path setup)') GT 0 THEN BEGIN
        res = file_info(info.dir_tmp + 'customLCP.sav')
        IF res.exists EQ 0b THEN BEGIN
-         msg = "Please first setup your image via either:" + string(10b) + $
+         msg = "Please first setup your map via either:" + string(10b) + $
            "'Add Custom Path' or 'Find Optimum Path'"
          res = dialog_message(msg, / error)
          GOTO, fin
@@ -15679,6 +14994,14 @@ CASE strlowCase(eventValue) OF
      batch_type = 'batch_rss' ;;'batch_RestorationStatus'
      dd = file_dirname(im_file[0], / mark_directory)
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -15745,9 +15068,9 @@ CASE strlowCase(eventValue) OF
          close, 9
          GOTO, skip_batch_RSS  ;; invalid input
        ENDIF
-
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -15926,7 +15249,7 @@ CASE strlowCase(eventValue) OF
       ;; test for presence of FG-objects and correct resistance values
       histo = histogram(image0)
       IF histo[2] EQ 0 THEN BEGIN
-        msg = head + 'Image has no FG-objects (2b).' + string(10b) + 'Returning...'
+        msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
         GOTO, fin
       ENDIF
@@ -16103,7 +15426,7 @@ CASE strlowCase(eventValue) OF
         ;; test for presence of FG-objects and correct resistance values
         histo = histogram(image0)
         IF histo[2] EQ 0 THEN BEGIN
-          msg = head + 'Image has no FG-objects (2b).' + string(10b) + 'Returning...'
+          msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information, title = tit)
           GOTO, fin
         ENDIF
@@ -16258,7 +15581,7 @@ CASE strlowCase(eventValue) OF
       ;; test for presence of FG-objects and correct resistance values
       histo = histogram(image0)
       IF histo[2] EQ 0 THEN BEGIN
-        msg = head + 'Image has no FG-objects (2b).' + string(10b) + 'Returning...'
+        msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
         GOTO, fin
       ENDIF
@@ -16497,7 +15820,7 @@ CASE strlowCase(eventValue) OF
         if ctqm gt 0 then maxcost=round((max((cost lt maxcost)*cost))/2.0) else maxcost=round(maxcost/2.0)
         ;; test if image is too large for long 32 processing
         if maxcost lt 0 then begin
-          msg = 'Image is too large for current implementation.' + string(10b) + 'Returning.'
+          msg = 'Map is too large for current implementation.' + string(10b) + 'Returning.'
           res = dialog_message(msg, / information) & popd & GOTO, fin
         endif
 
@@ -16925,7 +16248,7 @@ CASE strlowCase(eventValue) OF
           if ctqm gt 0 then maxcost=max((cost lt maxcost)*cost)
           ;; test if image is too large for long 32 processing
           if maxcost lt 0 then begin
-            msg = 'Image is too large for current implementation.' + string(10b) + 'Returning.'
+            msg = 'Map is too large for current implementation.' + string(10b) + 'Returning.'
             res = dialog_message(msg, / information) & popd
             progressBar -> Destroy
             Obj_Destroy, progressBar
@@ -16979,7 +16302,7 @@ CASE strlowCase(eventValue) OF
 
           ;; test if image is too large for long 32 processing
           if maxcost lt 0 then begin
-            msg = 'Image is too large for current implementation.' + string(10b) + 'Returning.'
+            msg = 'Map is too large for current implementation.' + string(10b) + 'Returning.'
             res = dialog_message(msg, / information) & popd
             progressBar -> Destroy
             Obj_Destroy, progressBar
@@ -17090,7 +16413,7 @@ CASE strlowCase(eventValue) OF
       ;; divide image in subtiles of dx, dy
       dx = 50 & dy=dx & imgminsize=(xdim<ydim)
       IF imgminsize lt 500 THEN BEGIN
-        res = dialog_message('Entropy requires minimum image size ' + $
+        res = dialog_message('Entropy requires minimum map size ' + $
           string(10b) + 'of 500 x 500 pixels.' + string(10b) + 'Returning...', / information)
         info.is_fragm = 0 & GOTO, fin
       ENDIF
@@ -17100,7 +16423,7 @@ CASE strlowCase(eventValue) OF
       if strmid(eventValue2, 13, 2) eq 'mw' then begin
         msg = 'Warning'+ string(10b) + 'Compared to the default entropy calcualtion the moving window' + $
           string(10b) + 'calculation is about 250 times slower and differs only slightly.' + $
-          string(10b) + '(Example: processing time for a 1000x1000 image is 1 minute)'+ $
+          string(10b) + '(Example: processing time for a 1000x1000 map is 1 minute)'+ $
           string(10b) + 'Are you sure you want to do this?'
         res = dialog_message(msg, /question)
         if res eq 'No' then begin
@@ -17242,6 +16565,14 @@ CASE strlowCase(eventValue) OF
        batch_type = 'batch_FragEntropy'
        dd = file_dirname(im_file[0], / mark_directory)
        dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+       ;; test if directory is not named like dir_batch
+       if file_basename(path2file) eq file_basename(dir_batch) then begin
+         msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+           "Please rename the directory to any other name."
+         res = dialog_message(msg, / information)
+         GOTO, fin
+       endif
+
        res = file_test(dir_batch, /directory, /write)
        if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -17309,8 +16640,8 @@ CASE strlowCase(eventValue) OF
            GOTO, skip_frag1  ;; invalid input
          ENDIF
          
-         type = '' & res = query_image(input, type=type)
-         IF type NE 'TIFF' THEN BEGIN
+         res = query_tiff(input, qtres, geotiff = geotiffinfo)
+         IF qtres.type NE 'TIFF' THEN BEGIN
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
@@ -17318,9 +16649,8 @@ CASE strlowCase(eventValue) OF
            close, 9
            GOTO, skip_frag1  ;; invalid input
          ENDIF
-
-         res = query_tiff(input, geotiff = geotiffinfo)
-         IF res EQ 0 THEN BEGIN
+         res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+         IF res NE 0 THEN BEGIN
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
@@ -17496,7 +16826,7 @@ CASE strlowCase(eventValue) OF
    END
       
    ;;*****************************************************************************************************
-
+   ;; legacy contagion PFF
    'frag_contagion':  BEGIN
    ;; 1) check for input compliance:
    MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, 1, result
@@ -17533,7 +16863,7 @@ CASE strlowCase(eventValue) OF
    ;; divide image in subtiles of dx, dy
    dx = 50 & dy=dx & imgminsize=(xdim<ydim)
    IF imgminsize lt 50 THEN BEGIN
-     res = dialog_message('Contagion requires minimum image size ' + $
+     res = dialog_message('Contagion requires minimum map size ' + $
        string(10b) + 'of 50 x 50 pixels.' + string(10b) + 'Returning...', / information)
      info.is_fragm = 0 & GOTO, fin
    ENDIF
@@ -17553,7 +16883,7 @@ CASE strlowCase(eventValue) OF
    ext[dx:dx + xdim - 1, 0:dy-1] = reverse(im0[*, 0:dy-1],2) ;top
    ext[dx:dx + xdim - 1, dy+ydim:*] = reverse(im0[*, ydim-dy:*],2) ;bottom
    
-   spatcon, ext, kdim, 'p22', info.dir_tmp, info.my_os, info.resfloat, im
+   spatcon, ext, kdim, 'pff', info.dir_tmp, info.my_os, info.resfloat, im
 
    ;; rescale to original size and normalized byte range
    im = im[dx:dx + xdim - 1, dy:dy + ydim - 1]
@@ -17597,8 +16927,8 @@ CASE strlowCase(eventValue) OF
    END
    
    ;;*****************************************************************************************************
-
-   'batch_cont':  BEGIN
+   ;; legacy frag PFF contagion
+   'batch_cont':  BEGIN 
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -17625,6 +16955,14 @@ CASE strlowCase(eventValue) OF
      batch_type = 'batch_FragContagion'
      dd = file_dirname(im_file[0], / mark_directory)
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -17689,8 +17027,8 @@ CASE strlowCase(eventValue) OF
          GOTO, skip_frag2  ;; invalid input
        ENDIF
        
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -17698,9 +17036,8 @@ CASE strlowCase(eventValue) OF
          close, 9
          GOTO, skip_frag2  ;; invalid input
        ENDIF
-
-       res = query_tiff(input, geotiff = geotiffinfo)
-       IF res EQ 0 THEN BEGIN
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+       IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -17744,7 +17081,7 @@ CASE strlowCase(eventValue) OF
        ext[dx+xdim:*, dy:dy+ydim-1] = reverse(im0[xdim-dx:*,*]) ;right
        ext[dx:dx + xdim - 1, 0:dy-1] = reverse(im0[*, 0:dy-1],2) ;top
        ext[dx:dx + xdim - 1, dy+ydim:*] = reverse(im0[*, ydim-dy:*],2) ;bottom
-       spatcon, ext, kdim, 'p22', info.dir_tmp, info.my_os, info.resfloat, im
+       spatcon, ext, kdim, 'pff', info.dir_tmp, info.my_os, info.resfloat, im
        
        ;; rescale to original size and normalized byte range
        im = im[dx:dx + xdim - 1, dy:dy + ydim - 1]
@@ -18014,6 +17351,14 @@ CASE strlowCase(eventValue) OF
      batch_type = 'batch_PARC'
      dd = file_dirname(im_file[0], / mark_directory)
      dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
      res = file_test(dir_batch, /directory, /write)
      if res eq 1 then begin ;; dir_batch already exists
        msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
@@ -18081,8 +17426,8 @@ CASE strlowCase(eventValue) OF
          GOTO, skip_parcellation  ;; invalid input
        ENDIF
 
-       type = '' & res = query_image(input, type=type)
-       IF type NE 'TIFF' THEN BEGIN
+       res = query_tiff(input, qtres, geotiff = geotiffinfo)
+       IF qtres.type NE 'TIFF' THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -18090,10 +17435,8 @@ CASE strlowCase(eventValue) OF
          close, 9
          GOTO, skip_parcellation  ;; invalid input
        ENDIF
-
-
-       res = query_tiff(input, geotiff = geotiffinfo)
-       IF res EQ 0 THEN BEGIN
+       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
+       IF res NE 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
@@ -18951,7 +18294,8 @@ CASE strlowCase(eventValue) OF
           b_sav = tt
           
           restore, a_sav
-          a_xdim=xdim & a_ydim=ydim & a_fostype = fostype;;& a_geotiff_log=geotiff_log & a_rare=rare & a_patchy=patchy & a_transitional=transitional
+          a_xdim=xdim & a_ydim=ydim & a_fostype = fostype & a_fosclass = fosclass
+          ;;& a_geotiff_log=geotiff_log & a_rare=rare & a_patchy=patchy & a_transitional=transitional
           ;;a_dominant=dominant & a_interior=interior & a_intact=intact & a_fgarea=fgarea & a_hec = hec & a_acr = acr
           a_conn = conn_str & a_pres = pixres_str & a_kdim = kdim_str
           ;; check if fad_av was saved, if so then use it
@@ -18959,7 +18303,8 @@ CASE strlowCase(eventValue) OF
           if a_tt eq 4 then a_fad_av = fad_av
           
           restore, b_sav
-          b_xdim=xdim & b_ydim=ydim & b_fostype = fostype ;;& b_geotiff_log=geotiff_log & b_rare=rare & b_patchy=patchy & b_transitional=transitional
+          b_xdim=xdim & b_ydim=ydim & b_fostype = fostype & b_fosclass = fosclass
+          ;;& b_geotiff_log=geotiff_log & b_rare=rare & b_patchy=patchy & b_transitional=transitional
           ;;b_dominant=dominant & b_interior=interior & b_intact=intact & b_fgarea=fgarea & b_hec = hec & b_acr = acr
           b_conn = conn_str & b_pres = pixres_str & b_kdim = kdim_str  
           ;; check if fad_av was saved, if so then use it
@@ -18967,9 +18312,9 @@ CASE strlowCase(eventValue) OF
           if b_tt eq 4 then b_fad_av = fad_av
           fad_avok = a_tt + b_tt
      
-          res = (a_xdim eq b_xdim) + (a_ydim eq b_ydim) + (a_conn eq b_conn) + (a_pres eq b_pres) + (a_kdim eq b_kdim) + (a_fostype eq b_fostype)
+          res = (a_xdim eq b_xdim) + (a_ydim eq b_ydim) + (a_conn eq b_conn) + (a_pres eq b_pres) + (a_kdim eq b_kdim) + (a_fostype eq b_fostype) + (a_fosclass eq b_fosclass)
           
-          if res ne 6b then begin
+          if res ne 7b then begin
             msg = 'FOS change analysis requires identical values for' + string(10b) + $
               'X/Y-image dimension, FOS type, FG-connectivity,' + string(10b) + $
               'Pixel Resolution, and Observation Scale.' + string(10b) + string(10b) + $
@@ -18991,7 +18336,7 @@ CASE strlowCase(eventValue) OF
           ;; get topdir of im1_file which will be used to save the results
           outdir = file_dirname(file_dirname(im1_file)) + info.os_sep  
           
-          ;; make a simplified output for FE4.7 2-class analysis
+          ;; make a simplified output for FE4.7_2class analysis
           if fostype eq 'FOS-APP2' then begin
             change = dblarr(3,3) & change0 = change
             ;; exclude missing data from both maps, temporarily set them to 150b
@@ -19022,9 +18367,10 @@ CASE strlowCase(eventValue) OF
             uchange = strtrim(ulong64(change),2)
             
             ;; save the tables into a txt-file
-            f_out = outdir + strlowcase(fostype) + '-change.txt' 
+            ch_pref = 'fos-' + strlowcase(fosclass)+ '_' + a_kdim
+            f_out = outdir + ch_pref + '-change.txt' 
             close,12 & openw,12, f_out
-            printf,12, fostype + ': Fragmentation class change from A -> B'
+            printf,12, ch_pref + ': Fragmentation class change from A -> B'
             printf,12, 'A-' + fn_a
             printf,12, 'B-' + fn_b
             printf,12, '=============================================================================================================================================='
@@ -19039,13 +18385,13 @@ CASE strlowCase(eventValue) OF
             printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(ulong64(gain),2) + ' pixels'
             printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(ulong64(loss),2) + ' pixels'
             printf,12, 'Net area change (A->B): ' + sig + nc2 + ' pixels'
-            if fad_avok eq 8 then printf,12, 'FAD_av (A->B) [%]: ' + strtrim(a_fad_av,2) + ' -> ' + $
+            if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A->B) [%]: ' + strtrim(a_fad_av,2) + ' -> ' + $
                strtrim(b_fad_av,2) + ': ' + strtrim(a_fad_av - b_fad_av,2)
             close, 12
             
             ;; save the tables as a csv-file
             z=strtrim(change,2) 
-            f_out = outdir + strlowcase(fostype) + '-change.csv'
+            f_out = outdir + ch_pref + '-change.csv'
             
             ;; test and warn if that file is currently open
             IF (file_info(f_out)).exists EQ 1b THEN BEGIN
@@ -19063,7 +18409,7 @@ CASE strlowCase(eventValue) OF
             ENDIF
 
             close,12 & openw,12, f_out
-            printf,12, fostype + ': Fragmentation class change from A -> B ' 
+            printf,12, ch_pref + ': Fragmentation class change from A -> B ' 
             printf,12, 'A-' + fn_a
             printf,12, 'B-' + fn_b
             printf,12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
@@ -19077,7 +18423,7 @@ CASE strlowCase(eventValue) OF
             printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(gain,2) + ' pixels'
             printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(loss,2) + ' pixels'
             printf,12, 'Net area change (A->B): ' + strtrim(nc,2) + ' pixels'
-            if fad_avok eq 8 then printf,12, 'FAD_av (A->B) [%]: ' + strtrim(a_fad_av,2) + ' -> ' + $
+            if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A->B) [%]: ' + strtrim(a_fad_av,2) + ' -> ' + $
               strtrim(b_fad_av,2) + ': ' + strtrim(a_fad_av - b_fad_av,2)
             close, 12
             goto, skip_otherfoschange
@@ -19144,54 +18490,64 @@ CASE strlowCase(eventValue) OF
             endfor
           endfor
           ;; get integer numbers
-          if fostype eq 'FOS-APP5' then begin
+          if fostype eq 'FOS-APP5' OR fostype eq 'FOS5' then begin
             change = change[0:5,0:5] & perc = perc[0:5,0:5]
           endif
           uchange = strtrim(ulong64(change),2)
 
           ;; save the tables into a txt-file
-          f_out = outdir + strlowcase(fostype) + '-change.txt'    
+          ch_pref = 'fos-' + strlowcase(fosclass)+ '_' + a_kdim
+          f_out = outdir + ch_pref + '-change.txt'    
           close,12 & openw,12, f_out
-          printf,12, fostype + ': Fragmentation class change from A -> B'
+          printf,12, ch_pref + ': Fragmentation class change from A -> B'
           printf,12, 'A-' + fn_a 
           printf,12, 'B-' + fn_b
           printf,12, '=============================================================================================================================================='
           printf,12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
           printf,12, '(Pixel resolution: ' + pixres_str + '[m], Window size: ' + kdim_str + 'x' + kdim_str +')'
           printf,12, '=============================================================================================================================================='
-          if fostype eq 'FOS' then printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior         B6-Intact'
-          if fostype eq 'FOS-APP5' then printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior'
+          if fostype eq 'FOS6' then begin
+            printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior         B6-Intact'
+          endif else begin
+            printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior'
+          endelse
+;          if fostype eq 'FOS' then printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior         B6-Intact'
+;          if fostype eq 'FOS-APP5' then printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior'
           printf,12, format='(a16,7(a18))','A0-Background  :', uchange[*,0]
           printf,12, format='(a16,7(a18))','A1-Rare        :', uchange[*,1]
           printf,12, format='(a16,7(a18))','A2-Patchy      :', uchange[*,2]
           printf,12, format='(a16,7(a18))','A3-Transitional:', uchange[*,3]
           printf,12, format='(a16,7(a18))','A4-Dominant    :', uchange[*,4]
           printf,12, format='(a16,7(a18))','A5-Interior    :', uchange[*,5]
-          if fostype eq 'FOS' then printf,12, format='(a16,7(a18))','A6-Intact      :', uchange[*,6]
+          if fostype eq 'FOS6' then printf,12, format='(a16,7(a18))','A6-Intact      :', uchange[*,6]
           printf,12, '  '
           gain=total(change[1:*,0]) & loss=total(change[0,1:*]) & nc=gain-loss & if nc lt 0.0 then sig = '-' else sig = '' & nc2 = strtrim(ulong64(abs(nc)),2)
           printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(ulong64(gain),2) + ' pixels'
           printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(ulong64(loss),2) + ' pixels'
           printf,12, 'Net area change (A->B): ' + sig + nc2 + ' pixels'
-          if fad_avok eq 8 then printf,12, 'FAD_av (A-B) [%]: ' + strtrim(a_fad_av,2) + ' - ' + $
+          if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A-B) [%]: ' + strtrim(a_fad_av,2) + ' - ' + $
             strtrim(b_fad_av,2) + ': ' + strtrim(a_fad_av - b_fad_av,2)
           printf,12, '  '
           printf,12, 'Relative fragmentation value increase is found below the matrix diagonal and expressed with positive percentages.'
           printf,12, 'Relative fragmentation value decrease is found above the matrix diagonal and expressed with negative percentages.'
-          if fostype eq 'FOS' then printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior       B6-Intact'
-          if fostype eq 'FOS-APP5' then printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior'
+          if fostype eq 'FOS6' then begin
+            printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior       B6-Intact'
+          endif else begin
+            printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior'
+          endelse
+;          if fostype eq 'FOS-APP5' then printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior'
           printf,12, format='(8(a16))','A1-Rare        :',perc[1:*,1]
           printf,12, format='(8(a16))','A2-Patchy      :',perc[1:*,2]
           printf,12, format='(8(a16))','A3-Transitional:',perc[1:*,3]
           printf,12, format='(8(a16))','A4-Dominant    :',perc[1:*,4]
           printf,12, format='(8(a16))','A5-Interior    :',perc[1:*,5]
-          if fostype eq 'FOS' then printf,12, format='(8(a16))','A6-Intact      :',perc[1:*,6]
+          if fostype eq 'FOS6' then printf,12, format='(8(a16))','A6-Intact      :',perc[1:*,6]
           printf,12, '  '
           close,12
 
           ;; save the tables as a csv-file
           z=strtrim(change,2) & zp=strtrim(perc,2)
-          f_out = outdir + strlowcase(fostype) + '-change.csv'
+          f_out = outdir + ch_pref + '-change.csv'
           
           ;; test and warn if that file is currently open
           IF (file_info(f_out)).exists EQ 1b THEN BEGIN
@@ -19209,13 +18565,13 @@ CASE strlowCase(eventValue) OF
           ENDIF 
          
           close,12 & openw,12, f_out
-          printf,12, fostype + ': Fragmentation class change from A -> B'
+          printf,12, ch_pref + ': Fragmentation class change from A -> B'
           printf,12, 'A-' + fn_a 
           printf,12, 'B-' + fn_b
           printf,12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
           printf,12, '(Pixel resolution: ' + pixres_str + '[m] Window size: ' + kdim_str + 'x' + kdim_str +')'
           printf,12, ' '
-          if fostype eq 'FOS' then begin
+          if fostype eq 'FOS6' then begin
             printf,12, '# pixels, B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
             printf,12, 'A0-Background,  '+z[0,0]+', '+z[1,0]+', '+z[2,0]+', '+z[3,0]+', '+z[4,0]+', '+z[5,0]+', '+z[6,0]
             printf,12, 'A1-Rare,        '+z[0,1]+', '+z[1,1]+', '+z[2,1]+', '+z[3,1]+', '+z[4,1]+', '+z[5,1]+', '+z[6,1]
@@ -19224,7 +18580,8 @@ CASE strlowCase(eventValue) OF
             printf,12, 'A4-Dominant,    '+z[0,4]+', '+z[1,4]+', '+z[2,4]+', '+z[3,4]+', '+z[4,4]+', '+z[5,4]+', '+z[6,4]
             printf,12, 'A5-Interior,    '+z[0,5]+', '+z[1,5]+', '+z[2,5]+', '+z[3,5]+', '+z[4,5]+', '+z[5,5]+', '+z[6,5]
             printf,12, 'A6-Intact,      '+z[0,6]+', '+z[1,6]+', '+z[2,6]+', '+z[3,6]+', '+z[4,6]+', '+z[5,6]+', '+z[6,6]
-          endif else if fostype eq 'FOS-APP5' then begin
+;          endif else if fostype eq 'FOS-APP5' then begin
+          endif else begin
             printf,12, '# pixels, B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
             printf,12, 'A0-Background,  '+z[0,0]+', '+z[1,0]+', '+z[2,0]+', '+z[3,0]+', '+z[4,0]+', '+z[5,0]
             printf,12, 'A1-Rare,        '+z[0,1]+', '+z[1,1]+', '+z[2,1]+', '+z[3,1]+', '+z[4,1]+', '+z[5,1]
@@ -19232,17 +18589,18 @@ CASE strlowCase(eventValue) OF
             printf,12, 'A3-Transitional,'+z[0,3]+', '+z[1,3]+', '+z[2,3]+', '+z[3,3]+', '+z[4,3]+', '+z[5,3]
             printf,12, 'A4-Dominant,    '+z[0,4]+', '+z[1,4]+', '+z[2,4]+', '+z[3,4]+', '+z[4,4]+', '+z[5,4]
             printf,12, 'A5-Interior,    '+z[0,5]+', '+z[1,5]+', '+z[2,5]+', '+z[3,5]+', '+z[4,5]+', '+z[5,5]
-          endif
+;          endif
+          endelse
           printf,12, '  '
           printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(gain,2) + ' pixels'
           printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(loss,2) + ' pixels'
           printf,12, 'Net area change (A->B): ' + strtrim(nc,2) + ' pixels'
-          if fad_avok eq 8 then printf,12, 'FAD_av (A-B) [%]: ' + strtrim(a_fad_av,2) + ' - ' + $
+          if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A-B) [%]: ' + strtrim(a_fad_av,2) + ' - ' + $
             strtrim(b_fad_av,2) + ': ' + strtrim(a_fad_av - b_fad_av,2)
           printf,12, '  '
           printf,12, 'Relative fragmentation value increase is found below the matrix diagonal and expressed with positive percentages.'
           printf,12, 'Relative fragmentation value decrease is found above the matrix diagonal and expressed with negative percentages.'
-          if fostype eq 'FOS' then begin
+          if fostype eq 'FOS6' then begin
             printf,12, '% change A->B  :,  B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
             printf,12, 'A1-Rare        :,'+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]+','+zp[5,1]+','+zp[6,1]
             printf,12, 'A2-Patchy      :,'+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]+','+zp[5,2]+','+zp[6,2]
@@ -19250,14 +18608,14 @@ CASE strlowCase(eventValue) OF
             printf,12, 'A4-Dominant    :,'+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]+','+zp[6,4]
             printf,12, 'A5-Interior    :,'+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]+','+zp[6,5]
             printf,12, 'A6-Intact      :,'+zp[1,6]+','+zp[2,6]+','+zp[3,6]+','+zp[4,6]+','+zp[5,6]+','+zp[6,6]
-          endif else if fostype eq 'FOS-APP5' then begin
+          endif else begin
             printf,12, '% change A->B  :,  B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
             printf,12, 'A1-Rare        :,'+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]+','+zp[5,1]
             printf,12, 'A2-Patchy      :,'+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]+','+zp[5,2]
             printf,12, 'A3-Transitional:,'+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]+','+zp[5,3]
             printf,12, 'A4-Dominant    :,'+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]
             printf,12, 'A5-Interior    :,'+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]           
-          endif        
+          endelse        
           close,12
                    
           skip_otherfoschange:
@@ -19609,7 +18967,7 @@ CASE strlowCase(eventValue) OF
 
           newfadzipname:
           dir_fadchange = $
-            dialog_pickfile(file = fname, get_path = path2file, $
+            dialog_pickfile(get_path = path2file, $
             / write, / directory, path = info.dir_data, title = fadtype + ' change output directory')
           IF (strlen(dir_fadchange) - strlen(path2file) EQ 4) OR $
             (dir_fadchange EQ '') THEN GOTO, fin  ;; no name or 'cancel' selected
@@ -20617,7 +19975,7 @@ CASE strlowCase(eventValue) OF
       image0 = (* info.fr_image eq 2b) ;use only FG=2b 
       sz = size(image0,/dim) & fsz = float(sz[0])*sz[1] & mxfsz=25000100
       IF fsz GT mxfsz THEN BEGIN
-        msg = "Exceeded maximum image dimensions for contortion: 5000x5000" + string(10b) + 'Returning...'
+        msg = "Exceeded maximum map dimensions for contortion: 5000x5000" + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
         GOTO, fin
       ENDIF
@@ -20798,7 +20156,7 @@ CASE strlowCase(eventValue) OF
         popd
         GOTO, fin
       ENDIF ELSE BEGIN ;; Linux
-        cmd = info.acroread_exe + ' "' + info.dir_guidos + 'GuidosToolbox_Manual.pdf' + '"'
+        cmd = info.pdf_exe + ' "' + info.dir_guidos + 'GuidosToolbox_Manual.pdf' + '"'
         spawn, cmd + ' &'
         GOTO, fin
       ENDELSE
@@ -20819,7 +20177,7 @@ CASE strlowCase(eventValue) OF
         popd
         GOTO, fin
       ENDIF ELSE BEGIN ;; Linux
-        cmd = info.acroread_exe + ' "' + info.dir_guidos + 'MSPAstandalone/MSPA_Guide.pdf' + '"'
+        cmd = info.pdf_exe + ' "' + info.dir_guidos + 'MSPAstandalone/MSPA_Guide.pdf' + '"'
         spawn, cmd + ' &'
         GOTO, fin
       ENDELSE
@@ -20945,8 +20303,8 @@ CASE strlowCase(eventValue) OF
        popd
        GOTO, fin
      ENDIF ELSE BEGIN ;; Linux
-       IF info.isBDAP THEN cmd = info.acroread_exe + ' "' + info.dir_guidos + 'EULA_GTB.pdf' + '"' ELSE $
-        cmd = info.acroread_exe + ' "' + info.dir_guidos + '../../EULA_GTB.pdf' + '"'
+       IF info.isBDAP THEN cmd = info.pdf_exe + ' "' + info.dir_guidos + 'EULA_GTB.pdf' + '"' ELSE $
+        cmd = info.pdf_exe + ' "' + info.dir_guidos + '../../EULA_GTB.pdf' + '"'
        spawn, cmd + ' &'
        GOTO, fin
      ENDELSE
@@ -21196,7 +20554,7 @@ CASE strlowCase(eventValue) OF
                ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
                  pushd, downdir & spawn, 'start GuidosToolbox_Installation.pdf', / nowait, /hide & popd
                ENDIF ELSE BEGIN ;; Linux
-                 cmd = info.acroread_exe + ' "' + ginst_file + '"'
+                 cmd = info.pdf_exe + ' "' + ginst_file + '"'
                  spawn, cmd + ' &'
                ENDELSE
 
@@ -21339,7 +20697,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, July 2022' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, December 2022' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -21360,7 +20718,7 @@ CASE strlowCase(eventValue) OF
         mbavail = (fra+frb+frc+frd)*4096/1048576
         info.immaxsize = uint(mbavail/19) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
       endif 
-      str_about = str_about + string(10b) + string(10b) + 'Maximum image dimension [pixels]: ' + string(10b) + $
+      str_about = str_about + string(10b) + string(10b) + 'Maximum map dimension [pixels]: ' + string(10b) + $
         '- GTB: 30000 x 30000' + string(10b) + $
         '- Contortion/ConeforInputs: 5000 x 5000' + string(10b) + $
         '- MSPA: ' + mspamax + ' x ' + mspamax + string(10b) + $
@@ -21410,13 +20768,13 @@ CASE strlowCase(eventValue) OF
           'linux':BEGIN
             ;; get the distro info
             osd = 'Unknown [unknown]'
-            spawn, 'unset LD_LIBRARY_PATH; which xdg-open 2>/dev/null', res &  res = res(0)
+            spawn, 'unset LD_LIBRARY_PATH; which xdg-open 2>/dev/null', res &  res = res[0]
             IF strmid(res, 0, 1) NE '/' THEN BEGIN ;; not found
               buginfo = 'Please install xdg-open to display text files.' + string(10b)
             ENDIF
           
             ;; first try inxi
-            spawn, 'unset LD_LIBRARY_PATH; which inxi 2>/dev/null', res &  res = res(0)
+            spawn, 'unset LD_LIBRARY_PATH; which inxi 2>/dev/null', res &  res = res[0]
             IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;;  found
               spawn, res + ' -v 4', osd
               printf, 11, 'INXI:'
@@ -21490,7 +20848,7 @@ CASE strlowCase(eventValue) OF
             popd
           END
           'linux':BEGIN
-            spawn, 'unset LD_LIBRARY_PATH; which xdg-open 2>/dev/null', res &  res = res(0)
+            spawn, 'unset LD_LIBRARY_PATH; which xdg-open 2>/dev/null', res &  res = res[0]
             IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;;  found
               spawn, res + ' ' + GTBreport + ' &'
             ENDIF
@@ -21617,7 +20975,6 @@ widget_control, info.w_label, sensitive = info.is_mspa OR info.is_fragm or info.
 widget_control, info.w_lp1222, sensitive = info.is_mspa
 widget_control, info.w_pa_connectivity1, sensitive = info.is_mspa
 widget_control, info.w_pa_connectivity2, sensitive = info.is_nw
-widget_control, info.w_pa_connectivity20, sensitive = info.is_nw
 widget_control, info.w_pa_connectivity3, sensitive = info.is_nw
 widget_control, info.w_sgeotiff, sensitive = info.is_geotiff
 IF info.mspa_stats_show EQ 0b THEN widget_control, info.w_mspa_stats, set_value = transpose(replicate('n/a', 14, 2))
@@ -21644,22 +21001,20 @@ case eventvalue of
   'batch_mspanw': goto, backto_batch_mspanw
   'batch_ent': goto, backto_batch_ent
   'batch_hmc': goto, backto_batch_hmc
-  'batch_cont': goto, backto_batch_cont
+  'batch_cont': goto, backto_batch_cont ;; legacy frag PFF contagion
   'batch_eucldist': goto, backto_batch_eucldist
   'batch_parcellation': goto, backto_batch_parcellation
   'batch_accounting': goto, backto_batch_accounting
   'batch_mspa': goto, backto_batch_mspa
   'batch_spa': goto, backto_batch_spa
   'mspatile': goto, backto_mspatile
-  'batch_p2': goto, backto_batch_p2
-  'batch_p22': goto, backto_batch_p22
-  'batch_p23': goto, backto_batch_p23
-  'batch_sumd': goto, backto_batch_sumd
-  'batch_shannon': goto, backto_batch_shannon
+  'batch_pf': goto, backto_batch_pf
+  'batch_pff': goto, backto_batch_pff ;; moving window PFF contagion
+  'batch_fac': goto, backto_batch_fac
   'batch_lm': goto, backto_batch_lm
   'batch_lmms': goto, backto_batch_lmms
   'batch_recode': goto, backto_batch_recode
-  'batch_fad': goto, backto_batch_fad
+  'batch_fadms': goto, backto_batch_fadms
   'batch_fos': goto, backto_batch_fos
   'batch_rss': goto, backto_batch_rss
   'change': begin
@@ -21738,7 +21093,6 @@ widget_control, info.w_label, sensitive = info.is_mspa or (info.is_fragm gt 0 an
 widget_control, info.w_lp1222, sensitive = info.is_mspa
 widget_control, info.w_pa_connectivity1, sensitive = info.is_mspa
 widget_control, info.w_pa_connectivity2, sensitive = info.is_nw OR info.is_nwconnect
-widget_control, info.w_pa_connectivity20, sensitive = info.is_nw
 widget_control, info.w_pa_connectivity3, sensitive = info.is_nw OR info.is_nwconnect
 widget_control, info.w_sgeotiff, sensitive = info.is_geotiff
 widget_control, info.w_c2b, sensitive = info.datatype NE 'byte'
@@ -21884,7 +21238,6 @@ widget_control, info.w_label, sensitive = info.is_mspa or info.is_fragm or info.
 widget_control, info.w_lp1222, sensitive = info.is_mspa
 widget_control, info.w_pa_connectivity1, sensitive = info.is_mspa
 widget_control, info.w_pa_connectivity2, sensitive = info.is_nw OR info.is_nwconnect
-widget_control, info.w_pa_connectivity20, sensitive = info.is_nw
 widget_control, info.w_pa_connectivity3, sensitive = info.is_nw OR info.is_nwconnect
 
 ;; return the info structure.
@@ -22051,14 +21404,22 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
     IF strpos(info.add_title,'(Frag(Contagion): ') GT 0 THEN $
       fname = fname + '_FragContagion' ELSE fname = fname + '_FragEntropy'
   ENDIF ELSE IF info.is_fragm EQ 3 THEN BEGIN ;; fos or fad
-    IF strpos(info.add_title,'(FOS 6-class: ') GT 0 THEN BEGIN
-      is_fos=1 & fostypen = 'fos6'
-    ENDIF ELSE IF strpos(info.add_title,'(FOS 5-class: ') GT 0 THEN BEGIN
-        is_fos=2 & fostypen = 'fos5'
-    ENDIF ELSE IF strpos(info.add_title,'(FOS-APP 2-class: ') GT 0 THEN BEGIN
-      is_fos=4 & fostypen = 'fos-app2'
-    ENDIF ELSE IF strpos(info.add_title,'(FOS-APP 5-class: ') GT 0 THEN BEGIN
-      is_fos=5 & fostypen = 'fos-app5'
+    IF (strpos(info.add_title,'(FOS-FAD_6class: ') GT 0) THEN BEGIN
+      is_fos=1 & fostypen = 'fos-fad_6class'
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC_6class: ') GT 0) THEN BEGIN
+      is_fos=1 & fostypen = 'fos-fac_6class'
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAD_5class: ') GT 0) THEN BEGIN
+        is_fos=2 & fostypen = 'fos-fad_5class'      
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC_5class: ') GT 0) THEN BEGIN
+        is_fos=2 & fostypen = 'fos-fac_5class'
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAD-APP_2class: ') GT 0) THEN BEGIN
+      is_fos=4 & fostypen = 'fos-fad-app_2class'
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC-APP_2class: ') GT 0) THEN BEGIN
+      is_fos=4 & fostypen = 'fos-fac-app_2class'
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAD-APP_5class: ') GT 0) THEN BEGIN
+      is_fos=5 & fostypen = 'fos-fad-app_5class'
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC-APP_5class: ') GT 0) THEN BEGIN
+      is_fos=5 & fostypen = 'fos-fac-app_5class'
     ENDIF
     IF is_fos GT 0 THEN BEGIN
       restore,info.dir_tmp + 'fos.sav' ;; watch out there is a fostype variable in there with captal letters
@@ -22066,11 +21427,11 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
       fname = fname + '_' + fostypen + '_' + kdim_str
       desc = 'GTB_FOS, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/ '+ strmid(mspaext, 1)
     ENDIF ELSE BEGIN
-      IF strpos(info.add_title,'(FAD 6-class: MultiScale summary)') GT 0 THEN BEGIN
+      IF strpos(info.add_title,'(FAD_6class: MultiScale summary)') GT 0 THEN BEGIN
         is_fad=1 & fadtypen = 'fad'
-      ENDIF ELSE IF strpos(info.add_title,'(FAD-APP 2-class: MultiScale summary)') GT 0 THEN BEGIN
+      ENDIF ELSE IF strpos(info.add_title,'(FAD-APP_2class: MultiScale summary)') GT 0 THEN BEGIN
         is_fad=2 & fadtypen = 'fad-app2'
-      ENDIF ELSE IF strpos(info.add_title,'(FAD-APP 5-class: MultiScale summary)') GT 0 THEN BEGIN
+      ENDIF ELSE IF strpos(info.add_title,'(FAD-APP_5class: MultiScale summary)') GT 0 THEN BEGIN
         is_fad=5 & fadtypen = 'fad-app5'
       ENDIF
       IF is_fad GT 0 THEN BEGIN
@@ -22112,27 +21473,25 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
     fdir = fname + '_lm_' + kdim_str
     fname = fname + '_lm_' + kdim_str
     desc = 'GTB_LM, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
-  ENDIF ELSE IF strpos(info.add_title,'SumD: overall') GT 0 THEN BEGIN
-    fname = fname + '_sumd'
   ENDIF ELSE IF strpos(info.add_title,'ominance: MultiScale summary') GT 0 THEN BEGIN
     fn_lmms = fname + '_lm_'
     fname = fname + '_dominance_mscale' & is_lmms = 1
     desc = 'GTB_LM, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
-  ENDIF ELSE IF strpos(info.add_title,'P22: FG contagion') GT 0 THEN BEGIN
+  ENDIF ELSE IF strpos(info.add_title,'(Contagion') GT 0 THEN BEGIN
     q = strpos(info.add_title,'kdim=') & q = strmid(info.add_title, q+5)
     kdim = (strsplit(q,';',/extract))[0]
-    fname = fname + '_p22_' + kdim
-    desc = 'GTB_P22, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
-  ENDIF ELSE IF strpos(info.add_title,'P23: FG/interesting') GT 0 THEN BEGIN
+    fname = fname + '_contagion_' + kdim
+    desc = 'GTB_CON, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+  ENDIF ELSE IF strpos(info.add_title,'(Clustering') GT 0 THEN BEGIN
     q = strpos(info.add_title,'kdim=') & q = strmid(info.add_title, q+5)
     kdim = (strsplit(q,';',/extract))[0]
-    fname = fname + '_p23_' + kdim
-    desc = 'GTB_P23, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
-  ENDIF ELSE IF strpos(info.add_title,'P2: FG density') GT 0 THEN BEGIN
+    fname = fname + '_clustering_' + kdim
+    desc = 'GTB_FAC, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+  ENDIF ELSE IF strpos(info.add_title,'(Density') GT 0 THEN BEGIN
     q = strpos(info.add_title,'kdim=') & q = strmid(info.add_title, q+5)
     kdim = (strsplit(q,';',/extract))[0]
-    fname = fname + '_p2_' + kdim
-    desc = 'GTB_P2, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+    fname = fname + '_density_' + kdim
+    desc = 'GTB_FAD, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
   ENDIF ELSE IF strpos(info.add_title,'isochrone map A)') GT 0 THEN BEGIN
     fname = fname + '_isochroneA'
     desc = 'GTB_ISO, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
@@ -22254,13 +21613,15 @@ CASE fileaction OF
         q=log(q) & res=strsplit(q,' ',/extract,count=nx)
         if nx eq 3 then newimis_mspa=res(nx-1)
       endif
-      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_fad = 1
+      q=where(strmid(log,0,36) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FADMS") & q=q[0] & if q gt 0 then newimis_fadms = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FOS") & q=q[0] & if q gt 0 then newimis_fos = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_SPA") & q=q[0] & if q gt 0 then newimis_spa = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_ACC") & q=q[0] & if q gt 0 then newimis_acc = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_LM,") & q=q[0] & if q gt 0 then newimis_lm = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_EUC") & q=q[0] & if q gt 0 then newimis_dist = 1
-      q=where(strmid(log,0,33) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_P2") & q=q[0] & if q gt 0 then newimis_P222 = 1
+      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_p222 = 1
+      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAC") & q=q[0] & if q gt 0 then newimis_p222 = 1
+      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_CON") & q=q[0] & if q gt 0 then newimis_p222 = 1
       q=where(strmid(log,0,35) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_DRES") & q=q[0] & if q gt 0 then newimis_disres = 1 
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_RES") & q=q[0] & if q gt 0 then newimis_res = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_ISO") & q=q[0] & if q gt 0 then newimis_cos = 1
@@ -22283,8 +21644,8 @@ CASE fileaction OF
       ;; check for maximum allowed size
       q = float(tiffinfo.dimensions[0]) * tiffinfo.dimensions[1]
       IF q GT info.immaxsizeg THEN BEGIN
-         msg = 'This image is larger than the maximum' + string(10b) + $
-               'supported file-size in GuidosToolbox (31000 x 31000). ' + string(10b) + 'Returning...'
+         msg = 'This image is larger than the maximum supported' + string(10b) + $
+               'map dimension in GTB (31,000 x 31,000) pixels. ' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information) & GOTO, fin
       ENDIF
       
@@ -22317,7 +21678,7 @@ CASE fileaction OF
          if (size(newimis_p222))[2] eq 1 OR (size(newimis_cos))[2] eq 1 then begin
            info.disp_colors_id = 5 & info.ctbl = - 1 & info.autostretch_id = 0 
          endif
-         if (size(newimis_fad))[2] eq 1 OR (size(newimis_fos))[2] eq 1 then begin
+         if (size(newimis_fadms))[2] eq 1 OR (size(newimis_fos))[2] eq 1 then begin
            info.disp_colors_id = 8 & info.ctbl = - 1 
          endif
          if (size(newimis_lm))[2] eq 1 then begin
@@ -22394,8 +21755,8 @@ CASE fileaction OF
      
      q = res[1] * res[2]
      IF q GT info.immaxsizeg THEN BEGIN
-        msg = 'This image is larger than the maximum' + string(10b) + $
-               'supported file-size in GuidosToolbox (31000 x 31000).' + string(10b) + 'Returning...'
+        msg = 'This image is larger than the maximum supported' + string(10b) + $
+               'map dimension in GTB (31,000 x 31,000) pixels.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information) & GOTO, fin
      ENDIF
      tvlct, r, g, b
@@ -22444,14 +21805,15 @@ CASE fileaction OF
        q=log(q) & res=strsplit(q,' ',/extract,count=nx)
        if nx eq 3 then newimis_mspa=res(nx-1)
      endif
-     q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_fad = 1
      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FOS") & q=q[0] & if q gt 0 then newimis_fos = 1
      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_SPA") & q=q[0] & if q gt 0 then newimis_spa = 1
      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_ACC") & q=q[0] & if q gt 0 then newimis_acc = 1
      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_LM,") & q=q[0] & if q gt 0 then newimis_lm = 1
      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_EUC") & q=q[0] & if q gt 0 then newimis_dist = 1
      q=where(strmid(log,0,35) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_DRES") & q=q[0] & if q gt 0 then newimis_disres = 1
-     q=where(strmid(log,0,33) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_P2") & q=q[0] & if q gt 0 then newimis_P222 = 1
+     q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_CON") & q=q[0] & if q gt 0 then newimis_p222 = 1
+     q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_p222 = 1
+     q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAC") & q=q[0] & if q gt 0 then newimis_p222 = 1
               
      ;; test for original (M)SPA or other ACC, FAD/FOS, LM image
      if (size(newimis_mspa))[2] eq 1 OR (size(newimis_acc))[2] eq 1 OR (size(newimis_spa))[2] eq 1 then begin
@@ -22463,7 +21825,7 @@ CASE fileaction OF
      if (size(newimis_p222))[2] eq 1 then begin
        info.disp_colors_id = 5 & info.ctbl = - 1 
      endif
-     if (size(newimis_fad))[2] eq 1 OR (size(newimis_fos))[2] eq 1 then begin
+     if (size(newimis_fadms))[2] eq 1 OR (size(newimis_fos))[2] eq 1 then begin
        info.disp_colors_id = 8 & info.ctbl = - 1
      endif
      if (size(newimis_lm))[2] eq 1 then begin
@@ -23298,9 +22660,8 @@ CASE fileaction OF
 
       newkmlname:
       dir_kml = $
-        dialog_pickfile(file = fname, get_path = path2file, $
-        / write, / directory, path = info.dir_data, $
-        title = 'kml output directory')
+        dialog_pickfile(file = fname, get_path = path2file, / write, / directory, path = info.dir_data, $
+        title = 'Select kml output directory')
       IF (strlen(dir_kml) - strlen(path2file) EQ 4) OR $
         (dir_kml EQ '') THEN GOTO, finall  ;; no name or 'cancel' selected
         
@@ -23457,7 +22818,7 @@ CASE fileaction OF
         IF mxx EQ 105b THEN st = 'FAD2legend.png'
         IF mxx EQ 106b THEN st = 'FAD3legend.png'         
         if is_fos eq 4 or is_fad eq 2 then st = 'fadapp2legend.png'       
-        if is_fos eq 5 or is_fad eq 5  then st = 'fadapp5legend.png'
+        if is_fos eq 5 or is_fad eq 5 or fostype eq 'FOS5' then st = 'fadapp5legend.png'
         
         file_copy, info.dir_guidossub + st, $
           info.dir_tmp + file_basename(dir_kml) + $
@@ -23573,7 +22934,7 @@ ENDIF
 ;; set autostretch only for fomask else 0b
 info.autostretch_id = (max(image0) LE 100b)
 ;; no autostretch in these cases: 
-if (size(newimis_fad))[2] eq 1 OR (size(newimis_fos))[2] eq 1 OR (size(newimis_lm))[2] eq 1 $
+if (size(newimis_fadms))[2] eq 1 OR (size(newimis_fos))[2] eq 1 OR (size(newimis_lm))[2] eq 1 $
   OR (size(newimis_p222))[2] eq 1 OR (size(newimis_disres))[2] eq 1 OR (size(newimis_res))[2] $
   then info.autostretch_id = 0
 
@@ -23662,7 +23023,6 @@ widget_control, info.w_label, sensitive = info.is_mspa OR info.is_fragm or info.
 widget_control, info.w_lp1222, sensitive = info.is_mspa
 widget_control, info.w_pa_connectivity1, sensitive = info.is_mspa
 widget_control, info.w_pa_connectivity2, sensitive = info.is_nw
-widget_control, info.w_pa_connectivity20, sensitive = info.is_nw
 widget_control, info.w_pa_connectivity3, sensitive = info.is_nw
 widget_control, info.w_sgeotiff, sensitive = info.is_geotiff
 IF info.mspa_stats_show EQ 0b THEN widget_control, info.w_mspa_stats, set_value = transpose(replicate('n/a', 14, 2))
@@ -24376,13 +23736,18 @@ widget_control, event.top, get_uvalue = info, / no_copy
 ;;===============================================
 ;; Note: do NOT search for a string starting with an empty space, it won't work properly!
 IF (strpos(info.add_title,'LM, kdim=') GT 0) OR (strpos(info.add_title,'Dominance') GT 0) THEN is_lm=1 else is_lm=0
-IF strpos(info.add_title,'(FOS 5-class: ') GT 0 THEN is_fos=2 ELSE is_fos=0
-IF strpos(info.add_title,'(FOS 6-class: ') GT 0 THEN is_fos=1 
-IF strpos(info.add_title,'(FOS-APP 2-class: ') GT 0 THEN is_fos=4
-IF strpos(info.add_title,'(FOS-APP 5-class: ') GT 0 THEN is_fos=5 
-IF strpos(info.add_title,'(FAD 6-class: ') GT 0 THEN is_fad=1 ELSE is_fad=0
-IF strpos(info.add_title,'(FAD-APP 2-class: ') GT 0 THEN is_fad=2
-IF strpos(info.add_title,'(FAD-APP 5-class: ') GT 0 THEN is_fad=5
+
+is_fos = 0
+IF (strpos(info.add_title,'(FOS-FAD_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC_5class: ') GT 0) THEN is_fos=2
+IF (strpos(info.add_title,'(FOS-FAD_6class: ') GT 0) OR  (strpos(info.add_title,'(FOS-FAC_6class: ') GT 0) THEN is_fos=1 
+IF (strpos(info.add_title,'(FOS-FAD-APP_2class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC-APP_2class: ') GT 0) THEN is_fos=4
+IF (strpos(info.add_title,'(FOS-FAD-APP_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC-APP_5class: ') GT 0) THEN is_fos=5 
+
+is_fad = 0
+IF strpos(info.add_title,'(FAD_6class: ') GT 0 THEN is_fad=1 
+IF strpos(info.add_title,'(FAD-APP_2class: ') GT 0 THEN is_fad=2
+IF strpos(info.add_title,'(FAD-APP_5class: ') GT 0 THEN is_fad=5
+
 IF strpos(info.add_title,'(restoration path between 5 largest objects') GT 0 THEN is_restore=1 ELSE is_restore=0
 is_mcd=0
 IF strmid(info.title,0,15) EQ 'MCD (A->B) FG: ' THEN is_mcd=1
@@ -25381,7 +24746,7 @@ IF NOT condi THEN BEGIN
     ;; one and adapt the rescaling factor to transfer the selected ROI
     ;; from the downscaled image to the fullres one
 
-;;; PV    IF info.bigim THEN z = * info.fr_image ELSE z = * info.process
+;;;    IF info.bigim THEN z = * info.fr_image ELSE z = * info.process
     z = * info.fr_image
     x = x * info.resfac & y = y * info.resfac & zdim = size(z,/dim)
 
@@ -25878,7 +25243,7 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
       IF info.is_cost EQ 3 THEN BEGIN
         res = file_info(info.dir_tmp + 'customLCP.sav')
         IF res.exists EQ 0b THEN BEGIN
-          msg = "Please first setup your image via either:" + string(10b) + $
+          msg = "Please first setup your map via either:" + string(10b) + $
             "'Add Custom Path' or 'Find Optimum Path'"
           res = dialog_message(msg, / error)
           GOTO, fin
@@ -26056,7 +25421,7 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
       
       ;; stuff for add custom line to resistance map
       IF info.is_cost EQ 9 THEN BEGIN
-        info.is_cost = 0 ;; stop drawing lines
+        info.is_cost = 0 ;; finish drawing lines
         
         ;; ask for BG-resistance value for the new line
         cancel = ptr_new(1b)
@@ -26118,7 +25483,7 @@ ENDIF ELSE IF info.is_cost EQ 3 OR info.is_cost EQ 9 THEN BEGIN
       ENDIF         
       
       
-      ;; set indicator from 3 to 4 to stop drawing lines
+      ;; set indicator from 3 to 4 to no longer draw lines
       info.is_cost = 4 & showinf = 1 ;; display statistic info
       lbl_comp= * info.nw_ids
       h_comp_area = * info.nw_hnw
@@ -26354,7 +25719,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.100
+gtb_version = 3.101
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -26655,7 +26020,7 @@ button = widget_button(w_sgeneric, Value = 'PNG', $
          Event_Pro = 'guidos_io', uvalue = 'save_generic_png')
 button = widget_button(w_file_save, Value = 'Display Snapshot', $
          Event_Pro = 'guidos_io', uvalue = 'save_display')
-w_save_kml = widget_button(w_file_save, Value = 'KML', $
+w_save_kml = widget_button(w_file_save, Value = 'GoogleEarth KML', $
          Event_Pro = 'guidos_io', uvalue = 'save_kml')
         
 ;; Batch processing 
@@ -26675,33 +26040,34 @@ button = widget_button(w_batchm, Value = 'SPA5', Event_Pro = 'guidos_processing'
 button = widget_button(w_batchm, Value = 'SPA6', Event_Pro = 'guidos_processing', uvalue = 'batch_spa6')
 button = widget_button(w_batchm, Value = 'MSPA', Event_Pro = 'guidos_processing', uvalue = 'batch_mspa')
 w_batchk = Widget_Button(w_batchpat, Value = 'Moving Window', / Menu)
-button = Widget_Button(w_batchk, Value = 'LM', Event_Pro = 'guidos_processing', uvalue = 'batch_lm')
-button = Widget_Button(w_batchk, Value = 'P2', Event_Pro = 'guidos_processing', uvalue = 'batch_p2')
-button = Widget_Button(w_batchk, Value = 'P22', Event_Pro = 'guidos_processing', uvalue = 'batch_p22')
-button = Widget_Button(w_batchk, Value = 'P23', Event_Pro = 'guidos_processing', uvalue = 'batch_p23')
-button = Widget_Button(w_batchk, Value = 'Shannon', Event_Pro = 'guidos_processing', uvalue = 'batch_shannon')
-button = Widget_Button(w_batchk, Value = 'SumD', Event_Pro = 'guidos_processing', uvalue = 'batch_sumd')
+button = Widget_Button(w_batchk, Value = 'Landscape Mosaic', Event_Pro = 'guidos_processing', uvalue = 'batch_lm')
+button = Widget_Button(w_batchk, Value = 'Density', Event_Pro = 'guidos_processing', uvalue = 'batch_pf')
+button = Widget_Button(w_batchk, Value = 'Clustering', Event_Pro = 'guidos_processing', uvalue = 'batch_fac',/separator)
+button = Widget_Button(w_batchk, Value = 'Contagion', Event_Pro = 'guidos_processing', uvalue = 'batch_pff')
 
 ;; Network
-w_batchnw = Widget_button(w_batch, Value = 'Network', / menu)
+w_batchnw = Widget_button(w_batch, Value = 'Graph Theory Network: GTN(MSPA)', / menu)
 w_batchnw1 = Widget_button(w_batchnw, Value = 'MSPA-based', / menu)
-button = Widget_button(w_batchnw1, Value = 'NW Components', Event_Pro = 'guidos_processing', uvalue = 'batch_nwcomp')
-button = Widget_button(w_batchnw1, Value = 'Node/Link Importance', Event_Pro = 'guidos_processing', uvalue = 'batch_nlimp')
+button = Widget_button(w_batchnw1, Value = 'GTN Components', Event_Pro = 'guidos_processing', uvalue = 'batch_nwcomp')
+button = Widget_button(w_batchnw1, Value = 'GTN Node/Link Importance', Event_Pro = 'guidos_processing', uvalue = 'batch_nlimp')
 button = Widget_button(w_batchnw1, Value = 'MSPA ConeforInputs', Event_Pro = 'guidos_processing', uvalue = 'batch_mspaci')
 button = Widget_button(w_batchnw, Value = 'ConeforInputs', Event_Pro = 'guidos_processing', uvalue = 'batch_ci')
 
 ;; Fragmentation
 w_batchf = Widget_Button(w_batch, Value = 'Fragmentation', / Menu)
-w_batchf1 = Widget_Button(w_batchf, Value = 'Index', / Menu)
+button = Widget_button(w_batchf, Value = 'Fixed Observation Scale (FOS)', Event_Pro = 'guidos_processing', uvalue = 'batch_fos')
+w_batchf3 = Widget_Button(w_batchf, Value = 'Multiple Observation Scale', / Menu)
+button = Widget_button(w_batchf3, Value = 'FAD-MS', Event_Pro = 'guidos_processing', uvalue = 'batch_fadms')
+button = Widget_button(w_batchf3, Value = 'Dominance', Event_Pro = 'guidos_processing', uvalue = 'batch_lmms')
+w_batchf_leg = Widget_Button(w_batchf, Value = 'Legacy', /menu)
+w_batchf1 = Widget_Button(w_batchf_leg, Value = 'Index', / Menu)
 button = Widget_button(w_batchf1, Value = 'Entropy', Event_Pro = 'guidos_processing', uvalue = 'batch_ent_img')
 button = Widget_button(w_batchf1, Value = 'Hypsometry', Event_Pro = 'guidos_processing', uvalue = 'batch_hmc')
-w_batchf2 = Widget_Button(w_batchf, Value = 'Map', / Menu)
+w_batchf2 = Widget_Button(w_batchf_leg, Value = 'Map', / Menu)
 button = Widget_button(w_batchf2, Value = 'Entropy', Event_Pro = 'guidos_processing', uvalue = 'batch_ent_spa')
-button = Widget_button(w_batchf2, Value = 'Contagion', Event_Pro = 'guidos_processing', uvalue = 'batch_cont')
-button = Widget_button(w_batchf2, Value = 'FOS', Event_Pro = 'guidos_processing', uvalue = 'batch_fos')
-w_batchf3 = Widget_Button(w_batchf, Value = 'MultiScale', / Menu)
-button = Widget_button(w_batchf3, Value = 'FAD', Event_Pro = 'guidos_processing', uvalue = 'batch_fad')
-button = Widget_button(w_batchf3, Value = 'Dominance', Event_Pro = 'guidos_processing', uvalue = 'batch_lmms')
+button = Widget_button(w_batchf2, Value = 'Contagion', Event_Pro = 'guidos_processing', uvalue = 'batch_cont') ;; legacy frag PFF contagion
+
+
 
 ;; Distance
 w_batchd = Widget_Button(w_batch, Value = 'Distance', / Menu)
@@ -26716,10 +26082,10 @@ button = widget_button(w_batch, Value = 'Recode Classes', Event_Pro = 'guidos_pr
 ;;; Change Analysis
 w_change = Widget_Button(w_file, Value = 'Change', / Menu)
 button = Widget_Button(w_change, Value = 'FOS', Event_Pro = 'guidos_processing', uvalue = 'change_fos')
-button = Widget_Button(w_change, Value = 'FAD', Event_Pro = 'guidos_processing', uvalue = 'change_fad')
-button = Widget_Button(w_change, Value = 'LM heatmap', Event_Pro = 'guidos_processing', uvalue = 'delta_lm')
+button = Widget_Button(w_change, Value = 'FAD Multiscale', Event_Pro = 'guidos_processing', uvalue = 'change_fad')
+button = Widget_Button(w_change, Value = 'Landscape Mosaic Heatmap', Event_Pro = 'guidos_processing', uvalue = 'delta_lm')
 button = Widget_Button(w_change, Value = 'Simple Change', Event_Pro = 'guidos_processing', uvalue = 'change_simple')
-button = Widget_Button(w_change, Value = 'Morph. Change', Event_Pro = 'guidos_processing', uvalue = 'change_morph')
+button = Widget_Button(w_change, Value = 'Morphological Change', Event_Pro = 'guidos_processing', uvalue = 'change_morph')
 
 ;; set/change the default data directory
 button = Widget_Button(w_file, Value = 'Set Data Directory', / Separator, Event_Pro = 'guidos_processing', uvalue = 'set_dd')
@@ -26744,6 +26110,7 @@ w_c2i = Widget_Button(w_conv, Value = 'Convert -> Integer', uvalue = 'mspainp_c2
 w_c2l = Widget_Button(w_conv, Value = 'Convert -> Long', uvalue = 'mspainp_c2l')
 w_c2s = Widget_Button(w_mspainp, Value = 'RGB -> Single Band', uvalue = 'mspainp_c2s')
 w_c2ge = Widget_Button(w_mspainp, Value = 'Reproject for GoogleEarth', uvalue = 'mspainp_c2ge')
+button = Widget_Button(w_mspainp, Value = 'Setup Recode Table', uvalue = 'setup_recodetable')
 w_recode = Widget_Button(w_mspainp, Value = 'Recode Classes', uvalue = 'mspainp_recode')
 button = Widget_Button(w_mspainp, Value = 'Recode Pixel', uvalue = 'mspainp_recodepixel')
 button = Widget_Button(w_mspainp, Value = 'Recode Line', uvalue = 'mspainp_recodeline')
@@ -26833,9 +26200,9 @@ IF my_os EQ 'apple' THEN BEGIN
    res = file_info('/Applications/QGIS*')
    if res.exists EQ 1 then qgis_exe = res.name + '/Contents/MacOS/QGIS'
 ENDIF ELSE IF my_os EQ 'linux' THEN BEGIN
-   spawn, 'unset LD_LIBRARY_PATH; which qgis 2>/dev/null', res & res = res(0)
+   spawn, 'unset LD_LIBRARY_PATH; which qgis 2>/dev/null', res & res = res[0]
    IF strmid(res, 0, 1) EQ '/' THEN qgis_exe = res   
-   spawn, 'unset LD_LIBRARY_PATH; which xdg-open 2>/dev/null', res &  res = res(0)
+   spawn, 'unset LD_LIBRARY_PATH; which xdg-open 2>/dev/null', res &  res = res[0]
    IF strmid(res, 0, 1) EQ '/' THEN xdgop = res   
 ENDIF ELSE IF my_os EQ 'windows' THEN BEGIN 
    tt = file_search(getenv('PROGRAMFILES') + '\QGIS*\bin\qgis.bat')
@@ -26856,57 +26223,64 @@ w_pa = $
  Widget_Button(w_menubar, Value = 'Image Analysis', / Menu, $
                Event_Pro = 'guidos_processing', sensitive = 0)
 
-w_pa_objects = Widget_Button(w_pa, Value = 'Objects', / Menu)
-button = Widget_Button(w_pa_objects, Value = 'Accounting', uvalue = 'accounting')
+button = Widget_Button(w_pa, Value = 'Overview', uvalue = 'overview_imageanalysis')
+w_pa_objects = Widget_Button(w_pa, Value = 'Objects', / Menu, /Separator)
+button = Widget_Button(w_pa_objects, Value = 'Overview', uvalue = 'overview_objects')
+button = Widget_Button(w_pa_objects, Value = 'Accounting', uvalue = 'accounting', /Separator)
 button = Widget_Button(w_pa_objects, Value = 'Parcellation', uvalue = 'frag_parcellation')
 button = Widget_Button(w_pa_objects, Value = 'Contortion', uvalue = 'contortion1')
 
 
 w_pa_pattern = Widget_Button(w_pa, Value = 'Pattern', / Menu)
-w_pa_m = Widget_Button(w_pa_pattern, Value = 'Morphological', /menu)
-button = Widget_Button(w_pa_m, Value = 'SPA2 (SLF)', uvalue = 'spa2')
+button = Widget_Button(w_pa_pattern, Value = 'Overview', uvalue = 'overview_pattern')
+w_pa_m = Widget_Button(w_pa_pattern, Value = 'Morphological', /menu, /Separator)
+button = Widget_Button(w_pa_m, Value = 'SPA2 (SLF)', uvalue = 'spa2', /Separator)
 button = Widget_Button(w_pa_m, Value = 'SPA3', uvalue = 'spa3')
 button = Widget_Button(w_pa_m, Value = 'SPA5', uvalue = 'spa5')
 button = Widget_Button(w_pa_m, Value = 'SPA6', uvalue = 'spa6')
-w_pa_morph = Widget_Button(w_pa_m, Value = 'MSPA', uvalue = 'mspa')
+w_pa_morph = Widget_Button(w_pa_m, Value = 'MSPA', uvalue = 'mspa', /Separator)
 button = widget_button(w_pa_m, Value = 'MSPA Tiling', uvalue = 'mspatile')
 w_pa_kernel = Widget_Button(w_pa_pattern, Value = 'Moving Window', / Menu)
-button = Widget_Button(w_pa_kernel, Value = 'LM', uvalue = 'kernel_lm')
-button = Widget_Button(w_pa_kernel, Value = 'P2',  uvalue = 'kernel_p2')
-button = Widget_Button(w_pa_kernel, Value = 'P22', uvalue = 'kernel_p22')
-button = Widget_Button(w_pa_kernel, Value = 'P23', uvalue = 'kernel_p23')
-button = Widget_Button(w_pa_kernel, Value = 'Shannon', uvalue = 'kernel_shannon')
-button = Widget_Button(w_pa_kernel, Value = 'SumD', uvalue = 'kernel_sumd')
+w_pa_k1 = Widget_Button(w_pa_kernel, Value = 'Counting Pixels', / Menu)
+button = Widget_Button(w_pa_k1, Value = 'Landscape Mosaic', uvalue = 'kernel_lm')
+button = Widget_Button(w_pa_k1, Value = 'Density',  uvalue = 'kernel_PF')
+w_pa_k2 = Widget_Button(w_pa_kernel, Value = 'Counting Edges', / Menu)
+button = Widget_Button(w_pa_k2, Value = 'Clustering', uvalue = 'kernel_fac')
+button = Widget_Button(w_pa_k2, Value = 'Contagion', uvalue = 'kernel_pff')
 
 
-w_pa_connectivity = Widget_Button(w_pa, Value = 'Network(MSPA)', / Menu)
-w_pa_connectivity1 = Widget_Button(w_pa_connectivity, Value = 'NW Components', uvalue = 'nw_components')
-w_pa_connectivity2 = Widget_Button(w_pa_connectivity, Value = 'NW Node/Link Importance',  uvalue = 'nw_importance')
-w_pa_connectivity20 = Widget_Button(w_pa_connectivity, Value = 'NW Component Connectors', uvalue = 'nw_nwconnect')
+w_pa_connectivity = Widget_Button(w_pa, Value = 'Graph Theory Network: GTN(MSPA)', / Menu)
+button = Widget_Button(w_pa_connectivity, Value = 'Overview', uvalue = 'overview_network')
+w_pa_connectivity1 = Widget_Button(w_pa_connectivity, Value = 'GTN Components', uvalue = 'nw_components', /Separator)
+w_pa_connectivity2 = Widget_Button(w_pa_connectivity, Value = 'GTN Node/Link Importance',  uvalue = 'nw_importance')
 w_pa_connectivity3 = Widget_Button(w_pa_connectivity, Value = 'MSPA ConeforInputs', uvalue = 'nw_cs22')
 
 
 w_pa_frag = Widget_Button(w_pa, Value = 'Fragmentation', / Menu)
-w_pa_frag1 = Widget_Button(w_pa_frag, Value = 'Index', /menu)
+button = Widget_Button(w_pa_frag, Value = 'Overview', uvalue = 'overview_fragmentation')
+button = Widget_Button(w_pa_frag, Value = 'Fixed Observation Scale (FOS)', uvalue = 'frag_fos', /Separator)
+w_pa_frag3 = Widget_Button(w_pa_frag, Value = 'Multiple Observation Scale', /menu)
+button = Widget_Button(w_pa_frag3, Value = 'FAD-MS',uvalue = 'frag_fad')
+button = Widget_Button(w_pa_frag3, Value = 'Dominance',uvalue = 'lmms')
+w_pa_frag0 = Widget_Button(w_pa_frag, Value = 'Legacy', /menu)
+w_pa_frag1 = Widget_Button(w_pa_frag0, Value = 'Index', /menu)
 button = Widget_Button(w_pa_frag1, Value = 'Entropy', uvalue = 'frag_entropy_im')
 button = Widget_Button(w_pa_frag1, Value = 'Hypsometry', uvalue = 'frag_hmc')
-w_pa_frag2 = Widget_Button(w_pa_frag, Value = 'Map', /menu)
+w_pa_frag2 = Widget_Button(w_pa_frag0, Value = 'Map', /menu)
 button = Widget_Button(w_pa_frag2, Value = 'Entropy', uvalue = 'frag_entropy_tl')
 button = Widget_Button(w_pa_frag2, Value = 'Contagion',uvalue = 'frag_contagion')
-button = Widget_Button(w_pa_frag2, Value = 'FOS', uvalue = 'frag_fos')
-w_pa_frag3 = Widget_Button(w_pa_frag, Value = 'MultiScale', /menu)
-button = Widget_Button(w_pa_frag3, Value = 'FAD',uvalue = 'frag_fad')
-button = Widget_Button(w_pa_frag3, Value = 'Dominance',uvalue = 'lmms')
 
 
 w_pa_distance = Widget_Button(w_pa, Value = 'Distance', / Menu)
-button = Widget_Button(w_pa_distance, Value = 'Euclidean Distance', uvalue = 'distance_morph')
+button = Widget_Button(w_pa_distance, Value = 'Overview', uvalue = 'overview_distance')
+button = Widget_Button(w_pa_distance, Value = 'Euclidean Distance', uvalue = 'distance_morph', /Separator)
 button = Widget_Button(w_pa_distance, Value = 'Influence Zones', uvalue = 'distance_influence')
 button = Widget_Button(w_pa_distance, Value = 'Proximity', uvalue = 'distance_proximity')
 
 
 w_pa_cost = Widget_Button(w_pa, Value = 'Restoration Planner', / Menu)
-w_pa_costpre = Widget_Button(w_pa_cost, Value = 'Setup Tools', / menu)
+button = Widget_Button(w_pa_cost, Value = 'Overview', uvalue = 'overview_resplanner')
+w_pa_costpre = Widget_Button(w_pa_cost, Value = 'Setup Tools', / menu, /Separator)
 button = Widget_Button(w_pa_costpre, Value = 'Fixed BG-Resistance', uvalue = 'cost_fixed')
 button = Widget_Button(w_pa_costpre, Value = 'Land Cover -> Resistance', uvalue = 'cost_recode')
 button = Widget_Button(w_pa_costpre, Value = 'Distance -> Resistance', uvalue = 'cost_disres')
@@ -26972,8 +26346,7 @@ w_lp1 = widget_base(w_Toolbarbase, / column)
 
 ;; display values
 w_lp11 = widget_base(w_lp1, / column, / frame, / align_center, sensitive = 0)
-button = $
-  widget_label(w_lp11, value = '       IMAGE/DISPLAY ATTRIBUTES       ', $
+button = widget_label(w_lp11, value = '       IMAGE/DISPLAY ATTRIBUTES       ', $
   / sunken_frame, / align_center)
 
 w_lp111 = widget_base(w_lp11, / row, / align_center)
@@ -27009,9 +26382,6 @@ w_zoomfac_tit = $
 zoomfactor = $
  Widget_combobox(w_zoomfac1, Value = factorString, UValue = factors, $
                   Event_Pro = 'ZIMAGE_FACTOR', scr_xsize = 60)
-
-;w_undo = Widget_Button(w_lp1112, Value = 'Undo', UValue = 'Redo', /frame, $
-;  Event_Pro = 'guidos_Undo', Sensitive = 0)
 
 ;;============================
 ;; SECOND LEFT PANEL WIDGET
@@ -27109,7 +26479,7 @@ w_labelstr3 = widget_label(w_label, value = ' > large')
 ;; test for pdf, browser, gdal etc.
 ;;=======================================
 ;; initialize 
-acroread_exe = '' & html_exe = '' & sysgdal='' & fmanager = '' & linterm='' & ftmp = dir_tmp + 'tmp.txt'
+pdf_exe = '' & html_exe = '' & sysgdal='' & fmanager = '' & linterm='' & ftmp = dir_tmp + 'tmp.txt'
 dir_fwtools = 'unset LD_LIBRARY_PATH; ' & windrive = '' & immaxsizeg = -1
 
 CASE my_os OF
@@ -27158,9 +26528,9 @@ CASE my_os OF
   'linux': BEGIN
     ;;================================================================================================
     ;; check for system-gdal
-    spawn, 'unset LD_LIBRARY_PATH; which gdalinfo 2>/dev/null', res &  res = res(0)
+    spawn, 'unset LD_LIBRARY_PATH; which gdalinfo 2>/dev/null', res &  res = res[0]
     IF strmid(res, 0, 1) EQ '/' THEN BEGIN
-      sysgdal=res
+      sysgdal = 'unset LD_LIBRARY_PATH; ' + res
     ENDIF ELSE BEGIN
       msg='Could not find GDAL. Please install gdal/gdalinfo via your package manager.' + $
         string(10b) + 'Exiting...'
@@ -27168,128 +26538,75 @@ CASE my_os OF
       exit
     ENDELSE
 
-    ;; check for file manager, first by xdg, if that does not work then use a list of apps
-    ;;==============================================================================
-    spawn, 'unset LD_LIBRARY_PATH; which xdg-mime 2>/dev/null', res & res = res(0)
-    IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; xdg-mime found
-      spawn, 'unset LD_LIBRARY_PATH; xdg-mime query default inode/directory', res & res = res(0)
-      if strlen(res) gt 0 then begin ;; association found, take off the .desktop
-        res=(strsplit(res, '.',/extract))[0]
-        ;; test if it actually works
-        spawn, 'unset LD_LIBRARY_PATH; which '+ res + ' 2>/dev/null', res2 & res2 = res2[0]
-        IF strmid(res2, 0, 1) EQ '/' THEN BEGIN ;; application found
-          fmanager = res2
-          GOTO, html_check1
-        ENDIF
-      endif
-    ENDIF
-    fm_view = ['dolphin', 'konqueror', 'mate-file-manager', 'caja', 'nemo', 'pcmanfm', 'nautilus', 'thunar']
-    nx = n_elements(fm_view) &  id = 0
-    fm_again1:
-    spawn, 'unset LD_LIBRARY_PATH; which ' + fm_view(id) + ' 2>/dev/null', res &  res = res(0)
-    IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; application found
-      fmanager = res & GOTO, html_check1
-    ENDIF ELSE BEGIN ;; application not found
-      id = id + 1  ;; check the next application
-      IF id LT nx THEN GOTO, fm_again1 ELSE GOTO, html_check1
-    ENDELSE
-
+    ;; check for file manager, use a list of apps
+    ;;==============================================================================    
+    fm_view = ['dolphin', 'konqueror', 'mate-file-manager', 'caja', 'nemo', 'pcmanfm', $
+      'nautilus', 'thunar', 'krusader', 'mc', 'doublecmd-gtk']
+    FOR idx = 0, n_elements(fm_view)-1 DO BEGIN
+      spawn, 'unset LD_LIBRARY_PATH; which ' + fm_view[idx] + ' 2>/dev/null', res &  res = res[0]
+      IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; application found
+        fmanager = 'unset LD_LIBRARY_PATH; ' + res & GOTO, html_check1
+      ENDIF
+    ENDFOR
     html_check1:
     if fmanager eq '' then begin
       msg='No file manager found. Please install any of: ' + string(10b) + $
         'dolhin, konqueror, thunar, mate-file-manager, caja,' + string(10b) + $
-        'nemo, pcmanfm, nautilus' + string(10b) + $
+        'nemo, pcmanfm, nautilus, krusader, mc' + string(10b) + $
         'or let me know which different file manager you use!' + string(10b) + 'Exiting...'
       res = dialog_message(msg, title='GTB startup check:',/ error)
       exit
     endif
 
 
-    ;; check for browser, first use a list of apps, if that does not work use xdgs
-    ;;================================================================================
+    ;; check for browser, use a list of apps
+    ;;========================================================================
     html_view = ['firefox', 'konqueror', 'google-chrome', 'chrome', 'chromium', 'netscape', 'iceweasel', $
       'opera', 'mozilla', 'flock', 'galeon', 'dillo', 'epiphany', 'seamonkey']
-    nx = n_elements(html_view) &  id = 0
-    html_again1:
-    spawn, 'unset LD_LIBRARY_PATH; which ' + html_view(id) + ' 2>/dev/null', res &  res = res(0)
-    IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; application found
-      html_exe = res & GOTO, pdf_check1
-    ENDIF ELSE BEGIN ;; application not found
-      id = id + 1  ;; check the next application
-      IF id LT nx THEN GOTO, html_again1
-    ENDELSE
-    
-    ;; still nothing found, try xdg       
-    spawn, 'unset LD_LIBRARY_PATH; which xdg-mime 2>/dev/null', res & res = res(0)
-    IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; xdg-mime found
-      spawn, 'unset LD_LIBRARY_PATH; xdg-mime query default text/html', res & res = res(0)
-      if strlen(res) gt 0 then begin ;; association found, take off the .desktop
-        res=(strsplit(res, '.',/extract))[0]
-        ;; test if it actually works
-        spawn, 'unset LD_LIBRARY_PATH; which '+ res + ' 2>/dev/null', res2 & res2 = res2[0]
-        IF strmid(res2, 0, 1) EQ '/' THEN BEGIN ;; application found
-          html_exe = res2
-          GOTO, pdf_check1
-        ENDIF
-      endif
-    ENDIF
-
-    ;; check for pdf
-    ;;=======================================================================
+    FOR idx = 0, n_elements(html_view)-1 DO BEGIN
+      spawn, 'unset LD_LIBRARY_PATH; which ' + html_view[idx] + ' 2>/dev/null', res &  res = res[0]
+      IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; application found
+        html_exe = 'unset LD_LIBRARY_PATH; ' + res & GOTO, pdf_check1
+      ENDIF
+    ENDFOR
     pdf_check1:
     if html_exe eq '' then begin
       msg='No web browser found. Please install any of: ' + string(10b) + $
         'firefox, konqueror, google-chrome, netscape, iceweasel, opera'  + string(10b) + $
         'mozilla, flock, galeon, dillo, epiphany, seamonkey' + string(10b) + $
         'or let me know which different web browser you use!' + string(10b) + 'Exiting...'
-      res = dialog_message(msg, title='GTB startup check:',/ information)
+      res = dialog_message(msg, title='GTB startup check:',/ error)
       exit
     endif
-    ;; test for pdf-viewer applications, first by xdg, if that does not work then use a list of apps
-    spawn, 'unset LD_LIBRARY_PATH; which xdg-mime 2>/dev/null', res & res = res[0]
-    IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; xdg-mime found
-      spawn, 'unset LD_LIBRARY_PATH; xdg-mime query default application/pdf', res & res = res[0]
-      if strlen(res) gt 0 then begin ;; association found, take off the .desktop
-        res=(strsplit(res, '.',/extract))[0]
-        ;; test if it actually works
-        spawn, 'unset LD_LIBRARY_PATH; which '+ res + ' 2>/dev/null', res2 & res2 = res2[0]
-        IF strmid(res2, 0, 1) EQ '/' THEN BEGIN ;; application found
-          acroread_exe = res2
-          GOTO, term_check
-        ENDIF
-      endif
-    ENDIF
-    pdf_view = ['acroread', 'okular', 'kghostview', 'kpdf', 'xpdf', $
-      'FoxitReader', 'mupdf', 'epdfview', 'gpdf', 'gv', 'ggv', 'atril', 'calibre', 'FBReader', 'evince']
-    nx = n_elements(pdf_view) &  id = 0
-    pdf_again1:
-    spawn, 'unset LD_LIBRARY_PATH; which ' + pdf_view[id] + ' 2>/dev/null', res & res = res[0]
-    IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; application found
-      acroread_exe = res & GOTO, term_check
-    ENDIF ELSE BEGIN ;; application not found
-      id = id + 1  ;; test the next application
-      IF id LT nx THEN GOTO, pdf_again1 ELSE GOTO, term_check
-    ENDELSE
-
+    
+    ;; check for pdf, use a list of apps
+    ;;=======================================================================
+    pdf_view = ['acroread', 'okular', 'evince', 'kghostview', 'kpdf', 'xpdf', 'epdf', 'qpdfview', $
+      'epdfview', 'gpdf', 'gv', 'ggv', 'atril', 'mupdf', 'FoxitReader', 'calibre', 'FBReader', 'zathura']   
+    FOR idx = 0, n_elements(pdf_view)-1 DO BEGIN
+      spawn, 'unset LD_LIBRARY_PATH; which ' + pdf_view[idx] + ' 2>/dev/null', res & res = res[0]
+      IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;; application found
+        pdf_exe = 'unset LD_LIBRARY_PATH; ' + res & GOTO, term_check
+      ENDIF
+    ENDFOR    
     term_check:
-    if acroread_exe eq '' then begin
+    if pdf_exe eq '' then begin
       msg='No pdf-reader found. Please install any of: ' + string(10b) + $
-        'acroread, okular, kghostview, kpdf, xpdf, mupdf' + string(10b) + $
-        'FoxitReader, epdfview, gpdf, gv, ggv, atril, calibre, FBReader, evince' + string(10b) + $
+        'acroread, okular, mupdf, evince, kghostview, kpdf, xpdf, epdf, qpdfview' + string(10b) + $
+        'FoxitReader, epdfview, gpdf, gv, ggv, atril, calibre, FBReader, zathura' + string(10b) + $
         'or let me know which different pdf-reader you use!' + string(10b) + 'Exiting...'
-      res = dialog_message(msg, title='GTB startup check:',/ information)
+      res = dialog_message(msg, title='GTB startup check:',/ error)
       exit
     endif
 
     ;; check for terminal
     ;;=======================================================================
     ;; test which terminal is available in this sequence to put the best at the end
-    ;; xterm, gnome, konsole rxvt dtterm eterm Eterm kvt
-    termtest=['konsole', 'mate-terminal', 'gnome-terminal', 'aterm', 'eterm', 'Eterm', 'lxterm', 'roxterm', 'rxvt', 'xterm']
-    for idx=0, n_elements(termtest)-1 do begin
-      spawn, 'unset LD_LIBRARY_PATH; which '+termtest(idx)+' 2>/dev/null', res & res = res(0)
+    termtest = ['konsole', 'mate-terminal', 'gnome-terminal', 'aterm', 'eterm', 'Eterm', 'lxterm', 'roxterm', 'rxvt', 'xterm']
+    for idx = 0, n_elements(termtest)-1 do begin
+      spawn, 'unset LD_LIBRARY_PATH; which '+termtest[idx]+' 2>/dev/null', res & res = res[0]
       IF strmid(res, 0, 1) EQ '/' THEN BEGIN
-        linterm=res & goto, cont_lin
+        linterm = 'unset LD_LIBRARY_PATH; ' + res & goto, cont_lin
       ENDIF
     endfor
     if linterm eq '' then begin
@@ -27297,7 +26614,7 @@ CASE my_os OF
         'konsole, mate-terminal, gnome-terminal, aterm,' + string(10b) + $
         'eterm, lxterm, roxterm, rxvt, xterm' + string(10b) + $
         'or let me know which different terminal you use!' + string(10b) + 'Exiting...'
-      res = dialog_message(msg, title='GTB startup check:',/ information)
+      res = dialog_message(msg, title='GTB startup check:',/ error)
       exit
     endif
 
@@ -27591,7 +26908,6 @@ mspa_class_int(17) = 'CORE (medium, external)'
 mspa_class_int(117) = 'CORE (medium, internal)'
 mspa_class_int(18) = 'CORE (large, external)'
 mspa_class_int(118) = 'CORE (large, internal)'
-
 mspa_class_ext = strarr(230)
 mspa_class_ext(0) = 'BACKGROUND'
 mspa_class_ext(220) = 'OPENING'
@@ -27684,7 +27000,6 @@ info = { image0:Ptr_New(image0), $    ;; A pointer to the original image.
          w_mspa_param4:w_mspa_param4, $
          w_pa_connectivity1:w_pa_connectivity1, $
          w_pa_connectivity2:w_pa_connectivity2, $
-         w_pa_connectivity20:w_pa_connectivity20, $
          w_pa_connectivity3:w_pa_connectivity3, $
          w_sgeotiff:w_sgeotiff, $
          small_lt_old:-1,$
@@ -27777,7 +27092,7 @@ info = { image0:Ptr_New(image0), $    ;; A pointer to the original image.
          fmanager:fmanager, $
          resfloat:resfloat, $
          html_exe:html_exe, $
-         acroread_exe:acroread_exe, $
+         pdf_exe:pdf_exe, $
          qgis_exe:qgis_exe, $
          xdgop:xdgop, $
          recline:0, $
