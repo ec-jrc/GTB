@@ -41,7 +41,7 @@ CASE strlowCase(eventValue) OF
    END 
    'restore': BEGIN ;; load existing recode table
      res = dialog_pickfile(Title = "Restore recode table 'GTBrecode_*.sav'", get_path = path2file, $
-       default_extension = 'sav', / must_exist, filter = 'GTBrecode_*.sav', /fix_filter, /read)
+       default_extension = 'sav', / must_exist, filter = ['*.sav'], /fix_filter, /read)
      IF res EQ '' THEN GOTO, fin  ;; no name or 'cancel' selected
      ;; test to see if a .sav file was selected
      suffix = strmid(res,3,/reverse)
@@ -85,7 +85,7 @@ CASE strlowCase(eventValue) OF
      q = dialog_message(msg,/information)
    
      if idx ne nr_curr then begin
-      msg='Class values in current and restored table were different.' + string(10b) + $
+      msg='Number of classes in current and restored table differ.' + string(10b) + $
          'Only applicable class values were inserted.' + string(10b) + $
          'Please verify the new recode table.'
        res = dialog_message(msg, / information)
@@ -93,7 +93,7 @@ CASE strlowCase(eventValue) OF
    END
    'save': BEGIN ;; save recode table
      res = dialog_pickfile(Title = "Save recode table to 'GTBrecode_*.sav'", file = 'GTBrecode_myrecode.sav', get_path = path2file, $
-       / overwrite_prompt, / write, default_extension = 'sav', filter = ['GTBrecode_*.sav'], / fix_filter)
+       / overwrite_prompt, / write, default_extension = 'sav', filter = ['*.sav'], / fix_filter)
      IF res EQ '' THEN GOTO, fin  ;; no name or 'cancel' selected
      ;; verify the correct naming scheme
      fbn = file_basename(res) & prefix = strmid(fbn,0,10)
@@ -142,8 +142,7 @@ w_l1 = widget_base(w_l, / column)
 
 if batch eq 1 then begin
   ;; in batch mode upv must have 256 entries, define base table
-  q0 = bytarr(256) & q1 = bindgen(256)
-  upv = (transpose([[q0],[q1]]))
+  q = bindgen(256) & upv = (transpose([[q],[q]]))
 endif
 edt=upv*0b & edt[0,*]=1b  ;; allow editing of first column only
 qs = size(upv,/dim) & q = n_elements(qs)
@@ -159,12 +158,10 @@ endelse
 ;; and right side
 lrpart = widget_base(lowerpart, / column, / frame)
 dummy = widget_label(lrpart, value = 'Options')
-acceptID = $
- Widget_Button(lrpart, Value = 'Accept', uvalue = 'accept', $
-              event_pro = 'get_xrecode_done')
+if tit ne "Setup recode values in [0, 255]" then acceptID = $
+ Widget_Button(lrpart, Value = 'Accept', uvalue = 'accept', event_pro = 'get_xrecode_done')
 cancelID = $
- Widget_Button(lrpart, Value = 'Cancel', uvalue = 'cancel', $
-              event_pro = 'get_xrecode_done')
+ Widget_Button(lrpart, Value = 'Exit', uvalue = 'cancel', event_pro = 'get_xrecode_done')
 
 loadID = Widget_Button(lrpart, Value = 'Restore', uvalue = 'restore')
 saveID = Widget_Button(lrpart, Value = 'Save', uvalue = 'save')

@@ -111,7 +111,7 @@ llparttop = widget_base(llpart, / row)
 ;; fadtype
 llparttop20 = widget_base(llparttop, / column, / frame)
 button = widget_label(llparttop20, value = 'FAD Type', / sunken_frame, / align_center)
-fad20arr = ['FAD 6-class', 'FAD-APP 2-class', 'FAD-APP 5-class']
+fad20arr = ['FAD_6class', 'FAD-APP_2class', 'FAD-APP_5class']
 w_fad20 = Widget_combobox(llparttop20, Value = fad20arr, UValue = 'fad20')
 
 ;; FG-conn

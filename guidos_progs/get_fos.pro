@@ -166,7 +166,7 @@ llparttop = widget_base(llpart, / row)
 ;; FOStype
 llparttop20 = widget_base(llparttop, / column, / frame)
 button = widget_label(llparttop20, value = 'FOS Type', / sunken_frame, / align_center)
-fos20arr = ['FOS 5-class', 'FOS 6-class', 'FOS-APP 2-class', 'FOS-APP 5-class']
+fos20arr = ['FAD_5class', 'FAD_6class', 'FAD-APP_2class', 'FAD-APP_5class', 'FAC_5class', 'FAC_6class', 'FAC-APP_2class', 'FAC-APP_5class']
 w_fos20 = Widget_combobox(llparttop20, Value = fos20arr, UValue = 'fos20')
 
 ;; FG-conn

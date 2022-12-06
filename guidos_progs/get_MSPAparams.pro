@@ -135,12 +135,14 @@ w_mspa1 = $
                  UValue = 'mspa1')
 
 llparttop2 = widget_base(llparttop, / column, / frame)
+
+sens = title NE 'MSPA Tiling'
 button = $
   widget_label(llparttop2, value = 'EdgeWidth', / sunken_frame, / align_center)
 mspa2arr = ['X', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
 w_mspa2 = $  ;; eew
  Widget_combobox(llparttop2, Value = mspa2arr, / editable, $
-                 UValue = 'mspa2')
+                 UValue = 'mspa2', sensitive = sens)
 
 llparttop3 = widget_base(llparttop, / column, / frame)
 button = $
