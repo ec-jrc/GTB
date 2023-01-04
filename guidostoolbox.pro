@@ -1341,8 +1341,7 @@ endelse
 printf,1,'m 0'
 if resfloat eq 1 then printf,1,'f 1' else printf,1,'f 0'
 if metric eq 'lmms' then printf,1,'p 1'
-if metric eq 'lm' then printf,1,'p 0'
-;;printf,1,'z 0' z=0 is used as default
+;;;PV if metric eq 'lm' then printf,1,'p 0'
 close,1
 
 openw, 1, 'scinput' & writeu,1, scinput & close,1
@@ -20697,7 +20696,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, December 2022' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, January 2023' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -25719,7 +25718,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.101
+gtb_version = 3.102
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -26244,7 +26243,7 @@ w_pa_kernel = Widget_Button(w_pa_pattern, Value = 'Moving Window', / Menu)
 w_pa_k1 = Widget_Button(w_pa_kernel, Value = 'Counting Pixels', / Menu)
 button = Widget_Button(w_pa_k1, Value = 'Landscape Mosaic', uvalue = 'kernel_lm')
 button = Widget_Button(w_pa_k1, Value = 'Density',  uvalue = 'kernel_PF')
-w_pa_k2 = Widget_Button(w_pa_kernel, Value = 'Counting Edges', / Menu)
+w_pa_k2 = Widget_Button(w_pa_kernel, Value = 'Counting Adjacencies', / Menu)
 button = Widget_Button(w_pa_k2, Value = 'Clustering', uvalue = 'kernel_fac')
 button = Widget_Button(w_pa_k2, Value = 'Contagion', uvalue = 'kernel_pff')
 
