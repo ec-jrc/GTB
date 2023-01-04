@@ -19,10 +19,10 @@ c) directory: external_sources
 C-source code of GTB-external programs:
 -   ggeo: https://github.com/ec-jrc/jeolib-miallib/blob/master/core/c/ggeo.c
 -   fsp: directory with source files and instructions needed to compile GTB/GWB-amended version of mspa requiring miallib: https://github.com/ec-jrc/jeolib-miallib
--   combinelpt: combinelpt28Sept2021.c
--   recode: recode<date>.c
--   spatcon: spatcon<date>.c
--   orig/spatcon: spatcon2July2018.c; older version of spatcon, needed for the GTB-Dominance module
+-   combinelpt: combinelpt.c
+-   recode: recode.c
+-   spatcon: spatcon.c
+-   orig/spatcon: spatcon.c; older version of spatcon, needed for the GTB-Dominance module
 
 d) directory: guidos_progs
 ------
