@@ -21,6 +21,7 @@ C-source code of GTB-external programs:
 -   fsp: directory with source files and instructions needed to compile GTB/GWB-amended version of mspa requiring miallib: https://github.com/ec-jrc/jeolib-miallib
 -   combinelpt: combinelpt.c
 -   recode: recode.c
+-   grayspatcon: grayspatcon.c
 -   spatcon: spatcon.c
 -   orig/spatcon: spatcon.c; older version of spatcon, needed for the GTB-Dominance module
 
@@ -47,6 +48,7 @@ f) Additional documents of the current GTB-version:
 -   changelog: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/changelog.txt
 -   GTB Manual: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/GuidosToolbox_Manual.pdf
 -   MSPA Guide: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/MSPA_Guide.pdf
+-   GraySpatCon Guide: https://ies-ows.jrc.ec.europa.eu/gtb/GTB/GRAYSPATCON_Guide.pdf
 
 g) Citing GTB in publications:
 -----

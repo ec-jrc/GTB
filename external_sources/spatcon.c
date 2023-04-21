@@ -1,18 +1,18 @@
 /*
 ************************************************************************
-            SPATCON.C   spatial convolution routines.
+    SPATCON.C   spatial convolution routines.
+    Kurt Riitters
+	Version 1.3.3 February 2023
+************************************************************************ 
+DISCLAIMER:
+The author(s), their employer(s), the archive host(s), nor any part of the United States federal government
+can assure the reliability or suitability of this software for a particular purpose. The act of distribution 
+shall not constitute any such warranty, and no responsibility is assumed for a user's application of this 
+software or related materials.
 ************************************************************************
 
-compile flags on Linux gcc:
+compile flags 
  * gcc -std=c99 -m64 -O2 -Wall -fopenmp spatcon.c -o spatcon -lm
-windows with mingw64:
- * gcc -std=c99 -m64 -O2 -Wall -fopenmp Spatcon.c -o Spatcon -lm -D__USE_MINGW_ANSI_STDIO
-
-Static Linux build examples, will need to update static library paths according to the current system.
-on Debian (using gcc version 10.2):
-  gcc -std=c99 -m64 -O2 -Wall -fopenmp spatcon.c -o spatcon_lin64_debian11 -lm -static /usr/lib/gcc/x86_64-linux-gnu/10/libgomp.a
-on PCLOS (using gcc version 11.2):
-  gcc -std=c99 -m64 -O2 -Wall -fopenmp spatcon.c -o spatcon_lin64_pclos -lm -static /usr/lib/gcc/x86_64-mandriva-linux-gnu/12.2.1/libgomp.
 
 ***************************************************************************
 
@@ -93,131 +93,133 @@ Guidos Mode: spatcon
             etc.
 
 ***************************************************************************
+Version and changes
 
-Major changes.
+1.0.0 March 1994
+		First operational code.
+		
+1.0.1 December 1994
+		Added re-coding of input pixel values
+		Added lpt generator rule 6
+		
+1.0.2 January 1995
+		All of this was removed later.
+		Added patch_window routines,
+	     If the mapping_rule is > 100, then an integer matrix is set up
+	     and the "infile" on the command line is the patch number map from
+	     a landstat run.  A patch statistics file is also needed if the
+	     mapping rule is > 150.  For the patch statistics, this program
+ 	    looks for a file called '<arg1>.yyy' in the same directory as <arg1>.
 
-March 1994. First operational code.
+1.1.0 October 1998.
+		Port to gcc under linux, cleaned up things a bit, got rid of xwd format,
+		Want something that will compile under both solaris
+		(now 2.6) and linux (now redhat 5.0-5.1).
+		main changes ... making all local variables 'static'
+		using argv and argc early on
+		got rid of xwd and dependence on xwdfile.h
+		got rid of a couple of unused subroutines
+		change code to read color map file, no longer needs 256 rows.
 
-December 1994.
-Added re-coding of input pixel values
-Added lpt generator rule 6
+1.1.1 December 1999
+		Add new filter rule for the global frag work.  This is code 78 to get proportion of joins for a
+		color that are joins between that color and some other specified color, i.e., a non-diagnonal
+		pair / marginal total.
+		Also note that the 243 max window size is in here, not 81.
 
-January 1995. All of this was removed later.
-Added patch_window routines,
-     If the mapping_rule is > 100, then an integer matrix is set up
-     and the "infile" on the command line is the patch number map from
-     a landstat run.  A patch statistics file is also needed if the
-     mapping rule is > 150.  For the patch statistics, this program
-     looks for a file called '<arg1>.yyy' in the same directory as <arg1>.
+1.2.0 December 2005
+		major overhaul to do only bsq i/o, to get rid of unused junk, clean up memory management
+		to see if larger images can be processed, and reduce number of options.
+		notes -
+		1. grain is always 1 now
+		2. missing value codes should refer to codes after recoding, if recoding is used.  The missing
+		values are not included in the computations of an index value.  However, this program no longer
+		sets incoming missing pixels to outgoing missing pixels.  That is, a pixel can be missing when
+		calculating an index, but there could be an index value for missing pixels.  When specifying the
+		recode table and missing value code, remember that arcinfo, when writing a bsq, sets the background
+		to zero.  So the recode table should deal with that if needed.
+		3. no max window size but min window size is still 3
+		4. header info is read from .siz file which is kr's version of arc header.  The
+		first two rows of the .siz file have nrows and ncols, the other rows are not read.
+		No new header is written by this program because it is the same as the input file.
 
-October 1998.
-   Port to gcc under linux, cleaned up things a bit, got rid of xwd format,
-   Want something that will compile under both solaris
-   (now 2.6) and linux (now redhat 5.0-5.1).
-      main changes ... making all local variables 'static'
-                       using argv and argc early on
-                       got rid of xwd and dependence on xwdfile.h
-                       got rid of a couple of unused subroutines
-                       change code to read color map file, no longer needs 256 rows.
+1.2.1 November 2006
+		LPT code now does 16 classes instead of 19.
+		LPT code now returns missing ONLY if all pixels in window are missing
 
-December 1999
-  Add new filter rule for the global frag work.  This is code 78 to get proportion of joins for a
-    color that are joins between that color and some other specified color, i.e., a non-diagnonal
-    pair / marginal total.
-   Also note that the 243 max window size is in here, not 81.
+1.2.1 March 2007
+		LPT adds 3 classes for the corners of the triangle, so num classes is 19 again
+		(cleaned up description and checked algorithm)
 
-December 2005
-major overhaul to do only bsq i/o, to get rid of unused junk, clean up memory management
-to see if larger images can be processed, and reduce number of options.
-notes -
-1. grain is always 1 now
-2. missing value codes should refer to codes after recoding, if recoding is used.  The missing
-   values are not included in the computations of an index value.  However, this program no longer
-   sets incoming missing pixels to outgoing missing pixels.  That is, a pixel can be missing when
-   calculating an index, but there could be an index value for missing pixels.  When specifying the
-   recode table and missing value code, remember that arcinfo, when writing a bsq, sets the background
-   to zero.  So the recode table should deal with that if needed.
-3. no max window size but min window size is still 3
-4. header info is read from .siz file which is kr's version of arc header.  The
-   first two rows of the .siz file have nrows and ncols, the other rows are not read.
-   No new header is written by this program because it is the same as the input file.
+1.2.2 September 2008
+		Adds output option of float arrays for Px, Pxx. Later extended to additional metrics.
+		Header is still not used here, so changes to header must be made externally.
+		changes-
+		out float parameter in parfile and parameter array
+		With float output, "-0.01" indicates missing value.
+		Tested float output only for mapping rules 77 and 81 (px and pxx),
+		but it should be ready to test for anything else found in new subroutine Freq_Filters_Float
 
-November 2006
-LPT code now does 16 classes instead of 19.
-LPT code now returns missing ONLY if all pixels in window are missing
+1.2.3 March 2014 
+		modifications for use with Guidos platform.
+		1. adapt for 64-bit OS's
+		2. revise I/O to work with Guidos/IDL environment
+		3. Get rid of some things:
+		 * the 'which_slider' code; the step size is now always 1 pixel.
+		 * conditional compilation for K&R C
+		 * unused variables etc
 
-March 2007
-LPT adds 3 classes for the corners of the triangle, so num classes is 19 again
-(cleaned up description and checked algorithm)
+1.2.4 June 2017
+		Minor edit to handle mis-use of rule 78 to get Pxx (rule 77). Doing this resulted in double-
+		counting the diagonal of the adjacency matrix. The fix is to check for self-join and if so, don't double count.nt.
 
-September 2008
-Adds output option of float arrays for Px, Pxx. Later extended to additional metrics.
-Header is still not used here, so changes to header must be made externally.
-	changes-
-	outfloat parameter in parfile and parameter array
-With float output, "-0.01" indicates missing value.
-Tested float output only for mapping rules 77 and 81 (px and pxx),
-but it should be ready to test for anything else found in new subroutine Freq_Filters_Float
+1.2.5 July 2017
+		Added ifdef(apple) for GTB
+		Got rid of extra 'padding' on right and bottom which accommodated grain step sizes other than 1.
+		Grain was fixed at step size 1 since 2005, but the code which supported other choices was not removed.
+		(not all of the unnecessary code was removed, only the part that calculated the buffering, because I
+		want to be able to calculate the buffering based on window size alone to support the next item.)
+		This was removed later due to incompatibility with parallel processing:
+		Added a parameter to allow export of three additional maps when running lptmaker. The three maps are
+		Pa, Pn, and Pd in the middle of the Freq_filters subroutine. Because of where this export is located,
+		those three maps will still have a half-window of buffering that has to be removed externally.
 
-March 2014 modifications for use with Guidos platform.
-1. adapt for 64-bit OS's
-2. revise I/O to work with Guidos/IDL environment
-3. Get rid of some things:
- * the 'which_slider' code; the step size is now always 1 pixel.
- * conditional compilation for K&R C
- * unused variables etc
-
-June 2017.
-Minor edit to handle mis-use of rule 78 to get Pxx (rule 77). Doing this resulted in double-
-counting the diagonal of the adjacency matrix. The fix is to check for self-join and if so, don't double count.nt.
-
-July 2017.
-Added ifdef(apple) for GTB
-Got rid of extra 'padding' on right and bottom which accommodated grain step sizes other than 1.
-	Grain was fixed at step size 1 since 2005, but the code which supported other choices was not removed.
-	(not all of the unnecessary code was removed, only the part that calculated the buffering, because I
-	want to be able to calculate the buffering based on window size alone to support the next item.)
-This was removed later due to incompatibility with parallel processing:
-    Added a parameter to allow export of three additional maps when running lptmaker. The three maps are
-	Pa, Pn, and Pd in the middle of the Freq_filters subroutine. Because of where this export is located,
-	those three maps will still have a half-window of buffering that has to be removed externally.
-
-July 2018.
-Implemented a 103-class version of the LPT classification, (R 7) supporting bins defined by 10% thesholds on all
+1.2.6 July 2018
+		Implemented a 103-class version of the LPT classification, (R 7) supporting bins defined by 10% thesholds on all
         three axes, plus the three corner points. (a) add a new mapping rule, and (b) new code for that rule
         in Freq_Filters subroutine.
 
-August 2018.
-This was removed later: For JDW, added a parameter to allow export of unsigned integer map of the count of focal class pixels instead
-	of byte values of percentages when running rule 81.
+1.2.7 August 2018.
+		This was removed later: For JDW, added a parameter to allow export of unsigned integer map of the count of focal class pixels instead
+		of byte values of percentages when running rule 81.
 
-September 2021.
-Added openmp to parallize the big do loop
-	Had to remove the 'p' and 'j' options (the August and July 2018 mods)
-	because they are incompatible with omp, because they involve disk writes in the freq-filters function
-	which is called in parallel fashion and should be called serially.
+1.3.0 September 2021
+		Added openmp to parallize the big do loop
+		Had to remove the 'p' and 'j' options (the August and July 2018 mods)
+		because they are incompatible with omp, because they involve disk writes in the freq-filters function
+		which is called in parallel fashion and should be called serially.
 
-September 2022.
-Added better handling of mixed-type arithmetic in FREQ_FILTERS and FREQ_FILTERS_FLOAT.
-	for mapping rules 50-76 only, ensured arithmetic was not mixed type.
-	before, rule 76 had random differences in output values between successive runs of same input map,
-	depending on which versions of clibs were used (ask Peter).
-	changed rules 50-76 only. There was no problem with rules 77, 78, 81 so no changes were made there.
+1.3.1 September 2022
+		Added better handling of mixed-type arithmetic in FREQ_FILTERS and FREQ_FILTERS_FLOAT.
+		for mapping rules 50-76 only, ensured arithmetic was not mixed type.
+		before, rule 76 had random differences in output values between successive runs of same input map,
+		depending on which versions of clibs were used (ask Peter).
+		changed rules 50-76 only. There was no problem with rules 77, 78, 81 so no changes were made there.
 
-December 2022.
-Bug fix for user-selected values of parameter 'a' or 'b' that are not in input map. Now this is checked and error message added.
-Removed from the list of acceptable r values the two which were deleted a long time ago. Now there are 21 possible metrics.
-Substantial revision of embedded comments to support exposure of all metrics for potential usage.
-Less cryptic error messages.
-Re-arranged and improved compilation and execution instructions, and file format descriptions.
-Other notes for consistency with other documentation:
-	"Landscape Mosaic" in the documentation is the same as "LPT" here
-	"Target codes" 1 and 2 in the documentation are sometimes referred to "selected" codes here
-	"Byte values" in the documentation are sometimes referred to here as "color codes"
+1.3.2 December 2022
+		Bug fix for user-selected values of parameter 'a' or 'b' that are not in input map. Now this is checked and error message added.
+		Removed from the list of acceptable r values the two which were deleted a long time ago. Now there are 21 possible metrics.
+		Substantial revision of embedded comments to support exposure of all metrics for potential usage.
+		Less cryptic error messages.
+		Re-arranged and improved compilation and execution instructions, and file format descriptions.
+		Other notes for consistency with other documentation:
+		"Landscape Mosaic" in the documentation is the same as "LPT" here
+		"Target codes" 1 and 2 in the documentation are sometimes referred to "selected" codes here
+		"Byte values" in the documentation are sometimes referred to here as "color codes"
 
-February 2023
-Improved precision of percentage calculations for LM19 (R6) and LM103 (R7) in Freq_Filters
-Bug fix for rule 72, the number of unique byte values was incorrectly calculated, in Freq_Filters and Freq_Filters_Float
+1.3.3 February 2023
+		Improved precision of percentage calculations for LM19 (R6) and LM103 (R7) in Freq_Filters
+		Bug fix for rule 72, the number of unique byte values was incorrectly calculated, in Freq_Filters and Freq_Filters_Float
 
 ************************************************************************ */
 

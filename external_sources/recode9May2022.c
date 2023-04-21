@@ -1,6 +1,6 @@
 /* ************************************************************************ 
   RECODE.C   recode the byte values in a file.
-Version 1. March 2014 for use with Guidos platform.
+Version 1. March 2014 for use with Guidos platform. 
 revised May 2022 to do row-by-row processing instead of the entire image, to save ram.   
 ************************************************************************ */
 /*  

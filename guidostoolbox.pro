@@ -39,6 +39,7 @@ compile_opt idl2
 @guidos_progs/get_fad
 @guidos_progs/get_fgobj
 @guidos_progs/get_fos
+@guidos_progs/get_gsc
 @guidos_progs/get_kernel
 @guidos_progs/get_lineres
 @guidos_progs/get_locset
@@ -331,7 +332,7 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
   if ptype eq 'fad' then begin
     q=where(upv eq 2, ct)
     IF ct NE 1 THEN BEGIN
-      msg = 'FAD-compliant map required: ' + string(10b) + $
+      msg = 'Fragmentation compliant map required: ' + string(10b) + $
         '1 Byte - background, 2 Byte - foreground.' + string(10b) + $
         '(0 Byte - missing data, optional)' + string(10b) + $
         '(3 Byte - specific background 1, optional)' + string(10b) + $
@@ -343,7 +344,7 @@ PRO LM_Compliance, fname, image0, ptype, immaxsize, verbose, result
     ENDIF 
     q=where(upv eq 1, ct)
     IF ct NE 1 THEN BEGIN
-      msg = 'FAD-compliant map required: ' + string(10b) + $
+      msg = 'Fragmentation compliant map required: ' + string(10b) + $
         '1 Byte - background, 2 Byte - foreground.' + string(10b) + $
         '(0 Byte - missing data, optional)' + string(10b) + $
         '(3 Byte - specific background 1, optional)' + string(10b) + $
@@ -1518,7 +1519,7 @@ PRO guidos_Processing, event
 ;; 'distance_influence':   Influence zones, proximity and reconnect (also 'distance_proximity')
 ;;              Restoration Planner 
 ;; 'cost_fixed':           RP: Setup fixed BG-Resistance
-;; 'cost_recode':          RP: Setup Resistance By Land Cover
+;; 'cost_recode':          RP: Setup Resistance By LandCover
 ;; 'cost_disres':          RP: Setup Resistance By Distance
 ;; 'cost_pixel':           RP: Setup Resistance By Pixel
 ;; 'cost_line':            RP: Setup Resistance By Line
@@ -1532,6 +1533,7 @@ PRO guidos_Processing, event
 ;;---------------  help menu --------------------------------------------
 ;; 'guidos_manual':      Start GTB manual 
 ;; 'mspa_guide':         Start MSPA guide
+;; 'gsc_guide':          Start GSC guide
 ;; 'gt_changelog':       Show GTB changelog
 ;; 'gt_eula':            Show GTB EULA
 ;; 'news':               Show GTB-News
@@ -1570,6 +1572,16 @@ info.prev_is_nwconnect = info.is_nwconnect
 info.prev_add_title = info.add_title
 ;;widget_control, info.w_lp12, sensitive = info.is_mspa
 
+;; define gedit
+tagsw = 'TIFFTAG_SOFTWARE='+'"'+"GTB, https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/" +'" '
+IF info.my_os EQ 'windows' THEN BEGIN
+  gedit = info.windrive + ' & cd "' + info.dir_fwtools + '" & setfw.bat & '
+  gedit = gedit + 'cd "' + info.dir_tmp + '" & gdal_edit -mo ' + tagsw
+ENDIF ELSE BEGIN ;; linux/apple
+  if strlen(info.sysgdal) gt 0 then $
+    gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
+  gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
+ENDELSE
 
 ;; What kind of processing do you need?
 Widget_Control, event.id, Get_UValue = eventValue
@@ -2159,6 +2171,8 @@ CASE strlowCase(eventValue) OF
               endif else begin
                 write_tiff,fname, rotate(cost,7), description = desc2, red = r, green = g, blue = b, compression=1
               endelse
+              gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc2 + '" '
+              IF info.my_os EQ 'windows' THEN spawn, gedit + fname, log, / hide ELSE spawn, gedit + fname, log
               ;; back to MSPA-colors
               restore, info.dir_guidossub + 'mspacolorston.sav' & tvlct, r, g, b
               ;; end cost
@@ -2206,6 +2220,8 @@ CASE strlowCase(eventValue) OF
               endif else begin
                 write_tiff,fname, rotate(image0,7), description = desc, red = r, green = g, blue = b, compression=1
               endelse
+              gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+              IF info.my_os EQ 'windows' THEN spawn, gedit + fname, log, / hide ELSE spawn, gedit + fname, log
               
               ;; build average distance of restore pixels
               q = *info.morphdist & quality = mean(q[lcp[rp]]) & q = 0
@@ -3207,15 +3223,15 @@ CASE strlowCase(eventValue) OF
      ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
       mi = min(arr, / nan) & dtype = info.dtypes(size(arr, / type)) & nr_upv = 'n/a'
-;      if info.is_cost gt 0 then begin
-;        upv = 'not available for cost analysis'
-;      endif else begin
+      if dtype ne 'byte' then begin
+        upv = 'not available for datatype: ' + dtype
+      endif else begin
         q = where(histogram( arr, /l64, min=mi) GT 0, nr_upv)
         upv = strtrim(q(0)+mi, 2)
         IF nr_upv GT 0 THEN FOR i = 1, n_elements(q) - 1 DO $
           upv = upv + ', ' + strtrim(q(i)+mi, 2)
         nr_upv = strtrim(nr_upv,2)
-;      endelse
+      endelse
         
       zz = 'The *currently* loaded map has these attributes: '
       IF info.is_geotiff then begin
@@ -3440,7 +3456,7 @@ CASE strlowCase(eventValue) OF
       IF eventValue EQ 'cost_recode' THEN BEGIN
         tt = reform(psel[0,*]) & msg = ''
         q = where(tt eq 1b, ctq1, /l64) & q = where(tt eq 2b, ctq2, /l64) & q = where(tt GT 100b, ctq3, /l64)
-        tit = 'Restoration Planner Setup: assign land cover class specific resistance'
+        tit = 'Restoration Planner Setup: assign landcover class specific resistance'
         IF ctq1 GT 0 AND ctq3 GT 0 THEN BEGIN
           msg = 'Resistance values of 1 or larger than 100 are not allowed.'
         ENDIF ELSE IF ctq1 GT 0 THEN BEGIN
@@ -3454,7 +3470,7 @@ CASE strlowCase(eventValue) OF
           'Please assign the following resistance values:' + string(10b) + $
           '0: Blocking, can not be traversed (optional)' + string(10b) + $
           '2: Foreground (FG) objects, fixed at 2%' + string(10b) + $
-          '[3, 100]: land cover specific Background (BG) resistance' + string(10b) + string(10b) + $
+          '[3, 100]: landcover specific Background (BG) resistance' + string(10b) + string(10b) + $
           'Note: resistance values of 1 or > 100 are not allowed.'
           res = dialog_message(msg, title=tit,/ error)
           GOTO, fin      
@@ -5012,7 +5028,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FAD input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid FAD input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
@@ -5022,7 +5039,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FAD input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid FAD input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
@@ -5031,18 +5049,33 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FAD input file: ', input
+         printf, 9, 'Skipping invalid FAD input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
 
        image0 = read_tiff(input, geotiff = geotiff) & is_geotiff = (size(geotiff))[0] ;; read and check it
-       sz = size(image0,/dim) & xdim=sz[0] & ydim=sz[1] & imgminsize=(xdim<ydim)
+       sz = size(image0,/dim) 
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid FAD input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_fadms  ;; invalid input
+       ENDIF      
+       
+       xdim=sz[0] & ydim=sz[1] & imgminsize=(xdim<ydim)
        IF imgminsize LT 250 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FAD input file (X/Y dimension less than 250 pixels): ', input
+         printf, 9, 'Skipping invalid FAD input file (X/Y dimension less than 250 pixels): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
@@ -5052,7 +5085,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FAD input file: ', input
+         printf, 9, 'Skipping invalid FAD input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fadms  ;; invalid input
        ENDIF
@@ -5163,7 +5197,9 @@ CASE strlowCase(eventValue) OF
          IF (size(geotiff))[0] gt 0 THEN $
            write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiff, description = desc, compression = 1 ELSE $
            write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
-         im = 0                         
+         im = 0 
+         gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+         IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log                       
        endfor
        
        ;; average over the 5 classes in byte values
@@ -5200,6 +5236,8 @@ CASE strlowCase(eventValue) OF
          write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiff, description = desc, compression = 1 ELSE $
          write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
        im = 0
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
 
        ;; the barplot popup window
        ;; here in batch mode add the buffer keyword to not open a graphic window on the screen
@@ -5839,7 +5877,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FOS input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid FOS input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
        ENDIF
@@ -5849,7 +5888,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FOS input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid FOS input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
        ENDIF
@@ -5858,31 +5898,43 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FOS input file: ', input
+         printf, 9, 'Skipping invalid FOS input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
        ENDIF
 
-       image0 = read_tiff(input)  ;; read and check it
-       sz = size(image0,/dim) & xdim=sz[0] & ydim=sz[1] & imgminsize=(xdim<ydim)
-       
+       image0 = read_tiff(input) & sz = size(image0,/dim) 
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid FOS input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_fos  ;; invalid input
+       ENDIF
+     
+       xdim=sz[0] & ydim=sz[1] & imgminsize=(xdim<ydim)      
        IF kdim ge imgminsize THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FOS input file (Kernel dimension larger than x or y map dimension.): ', input
-         printf, 9, ' ' , input
+         printf, 9, 'Skipping invalid FOS input file (Kernel dimension larger than x or y map dimension.): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
        ENDIF
-
 
        LM_Compliance, input, image0, 'fad', info.immaxsizeg, 0, result
        IF result EQ 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FOS input file: ', input
+         printf, 9, 'Skipping invalid FOS input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
        ENDIF
@@ -5997,6 +6049,8 @@ CASE strlowCase(eventValue) OF
          write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
        ENDELSE
        im = 0
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
 
        ;; b) the statistics       
        fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.txt'
@@ -6383,7 +6437,8 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid Density input (empty space in directory path or input filename): ', input
+          printf, 9, 'Skipping invalid Density input (empty space in directory path or input filename): '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_pf  ;; invalid input
         ENDIF
@@ -6393,7 +6448,8 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid Density input (not a TIFF image): ', input
+          printf, 9, 'Skipping invalid Density input (not a TIFF image): '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_pf  ;; invalid input
         ENDIF
@@ -6402,19 +6458,33 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid Density input file: ', input
+          printf, 9, 'Skipping invalid Density input file: '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_pf  ;; invalid input
         ENDIF
 
-        image0 = read_tiff(input)  ;; read and check it
+        image0 = read_tiff(input) & sz = size(image0,/dim)
+        ;; check for single channel image
+        ;;===========================
+        IF n_elements(sz) NE 2 THEN BEGIN
+          openw, 9, fn_logfile, /append
+          printf, 9, ' '
+          printf, 9, '==============   ' + counter + '   =============='
+          printf, 9, 'Skipping invalid Density input (more than 1 band in the TIF image): '
+          printf, 9, input
+          close, 9
+          GOTO, skip_batch_pf  ;; invalid input
+        ENDIF
+       
         MSPA_Compliance, input, image0, info.immaxsizeg * 10, 0, result
         q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
         IF result EQ 0 OR kdim ge imgminsize THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid Density input file: ', input
+          printf, 9, 'Skipping invalid Density input file: '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_pf  ;; invalid input
         ENDIF
@@ -6453,6 +6523,8 @@ CASE strlowCase(eventValue) OF
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, geotiff = geotiffinfo, compression = 1 ELSE $
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
         im = 0
+        gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+        IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
         okfile = okfile + 1
         openw, 9, fn_logfile, /append
         printf, 9, ' '
@@ -6736,7 +6808,8 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid Contagion input (empty space in directory path or input filename): ', input
+          printf, 9, 'Skipping invalid Contagion input (empty space in directory path or input filename): '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_pff  ;; invalid input
         ENDIF
@@ -6746,7 +6819,8 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid Contagion input (not a TIFF image): ', input
+          printf, 9, 'Skipping invalid Contagion input (not a TIFF image): '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_pff  ;; invalid input
         ENDIF        
@@ -6755,19 +6829,33 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid Contagion input file: ', input
+          printf, 9, 'Skipping invalid Contagion input file: '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_pff  
         ENDIF
 
-        image0 = read_tiff(input)  ;; read and check it
+        image0 = read_tiff(input) & sz = size(image0,/dim)  
+        ;; check for single channel image
+        ;;===========================
+        IF n_elements(sz) NE 2 THEN BEGIN
+          openw, 9, fn_logfile, /append
+          printf, 9, ' '
+          printf, 9, '==============   ' + counter + '   =============='
+          printf, 9, 'Skipping invalid Contagion input (more than 1 band in the TIF image): '
+          printf, 9, input
+          close, 9
+          GOTO, skip_batch_pff  ;; invalid input
+        ENDIF
+      
         MSPA_Compliance, input, image0, info.immaxsizeg * 10, 0, result
         q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
         IF result EQ 0 OR kdim ge imgminsize THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid Contagion input file: ', input
+          printf, 9, 'Skipping invalid Contagion input file: '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_pff  ;; invalid input
         ENDIF
@@ -6807,6 +6895,8 @@ CASE strlowCase(eventValue) OF
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, geotiff = geotiffinfo, compression = 1 ELSE $
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
         im = 0
+        gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+        IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
         okfile = okfile + 1
         openw, 9, fn_logfile, /append
         printf, 9, ' '
@@ -7089,7 +7179,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid clustering input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid Clustering input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fac  ;; invalid input
        ENDIF
@@ -7099,7 +7190,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid clustering input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid Clustering input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fac  ;; invalid input
        ENDIF
@@ -7108,19 +7200,33 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid clustering input file: ', input
+         printf, 9, 'Skipping invalid Clustering input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fac  ;; invalid input
        ENDIF
 
-       image0 = read_tiff(input)  ;; read and check it
+       image0 = read_tiff(input) & sz = size(image0,/dim)
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid Clustering input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_fac  ;; invalid input
+       ENDIF
+     
        MSPA_Compliance, input, image0, info.immaxsizeg * 10, 0, result
        q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
        IF result EQ 0 OR kdim ge imgminsize THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid clustering input file: ', input
+         printf, 9, 'Skipping invalid Clustering input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_fac  ;; invalid input
        ENDIF
@@ -7160,6 +7266,8 @@ CASE strlowCase(eventValue) OF
          write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, geotiff = geotiffinfo, compression = 1 ELSE $
          write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
        im = 0
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
        okfile = okfile + 1
        openw, 9, fn_logfile, /append
        printf, 9, ' '
@@ -7208,6 +7316,570 @@ CASE strlowCase(eventValue) OF
      GOTO, fin
    END
    
+   
+   'grayspatcon': BEGIN
+     ; do we need other input checks here? Byet image?
+     ;
+     ;; 2) if in zoom mode, quit zoom mode
+     IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
+       info.selsubregion_id = 0
+       ;; deactivate zoomfactor selector
+       widget_control, info.w_zoomfac, sensitive = 1
+       widget_control, info.w_selsubregion, $
+         set_value = 'Zoom Mode'
+       ;; restore the prezoomed process image
+       * info.process = * info.prezoomprocess
+       ;; disable button and enable motion events in w_draw
+       widget_control, info.w_draw, Draw_Motion_Events = 1
+       widget_control, info.w_draw, Draw_Button_Events = 0
+       info.set_zoom = 0 & info.scroll_x = 0 & info.scroll_y = 0
+     ENDIF
+     
+     ;; 3) check input compliance
+     fname = info.fname_input & image0 = * info.fr_image
+     sz = size(image0,/dim) & xdim=sz[0] & ydim=sz[1] & imgminsize=(xdim<ydim)
+     
+     ;; define required pointers for FOS
+     sc_m = ptr_new('') & sc_f = ptr_new('') & sc_g = ptr_new('') & sc_p = ptr_new('') & sc_w = ptr_new('')  ;; window edge length = kdim
+     sc_a = ptr_new('') & sc_b = ptr_new('') & sc_x = ptr_new('') & sc_y = ptr_new('') & sc_k = ptr_new('') & sc_n = ptr_new('')
+     cancel = ptr_new(1b)
+     ;; get the gsc settings
+     get_gsc, sc_m=sc_m, sc_f=sc_f, sc_g=sc_g, sc_p=sc_p, sc_w=sc_w, sc_a=sc_a, sc_b=sc_b,$
+      sc_x=sc_x, sc_y=sc_y, sc_k=sc_k, sc_n=sc_n, title = 'GraySpatCon (GSC): please select the GSC processing parameters', $
+      dir_guidossub=info.dir_guidossub, pdf_exe=info.pdf_exe, my_os=info.my_os, imgminsize=imgminsize, $
+      cancel = cancel, Group_Leader = event.top      
+
+     ;; check if cancel was selected then do nothing else apply the
+     ;; default or new kernel
+     IF * cancel NE 0b THEN BEGIN
+       ptr_free, cancel & cancel = 0b
+       ptr_free, sc_m & sc_m = 0b
+       ptr_free, sc_f & sc_f = 0b
+       ptr_free, sc_g & sc_g = 0b
+       ptr_free, sc_p & sc_p = 0b
+       ptr_free, sc_w & sc_w = 0b
+       ptr_free, sc_a & sc_a = 0b
+       ptr_free, sc_b & sc_b = 0b
+       ptr_free, sc_x & sc_x = 0b
+       ptr_free, sc_y & sc_y = 0b
+       ptr_free, sc_k & sc_k = 0b
+       ptr_free, sc_n & sc_n = 0b
+       GOTO, fin
+     ENDIF
+     ;; all returned settinsg are strings, assign, frre and delete the temporary pointers
+     gsc_f = strmid(*sc_f,0,1) & ptr_free, sc_f & sc_f = 0b
+     gsc_m = (strsplit(*sc_m,':',/extract))[0] & ptr_free, sc_m & sc_m = 0b
+     gsc_g = strmid(*sc_g,0,1) & ptr_free, sc_g & sc_g = 0b
+     gsc_p = strmid(*sc_p,0,1) & ptr_free, sc_p & sc_p = 0b
+     gsc_w = *sc_w & ptr_free, sc_w & sc_w = 0b
+     gsc_a = strmid(*sc_a,0,1) & ptr_free, sc_a & sc_a = 0b
+     gsc_b = strmid(*sc_b,0,1) & ptr_free, sc_b & sc_b = 0b
+     gsc_x = *sc_x & ptr_free, sc_x & sc_x = 0b
+     gsc_y = *sc_y & ptr_free, sc_y & sc_y = 0b
+     gsc_k = *sc_k & ptr_free, sc_k & sc_k = 0b
+     gsc_n = *sc_n & ptr_free, sc_n & sc_n = 0b
+     ptr_free, cancel & cancel = 0b    
+     
+     IF fix(sc_w) ge imgminsize THEN BEGIN
+       res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
+         string(10b) + 'Returning...', / information)
+       GOTO, fin
+     ENDIF
+     ;; we are ready for GSC now
+     widget_control, / hourglass
+     
+     ;; run GraySpatCon (Spatial Convolution metrics by K.Riitters)
+     pushd, info.dir_tmp
+     openw,1, 'gscpars.txt'
+     printf,1,'R ' + strtrim(sz[1],2)
+     printf,1,'C ' + strtrim(sz[0],2)
+     printf,1,'M ' + gsc_m
+     printf,1,'P ' + gsc_p
+     printf,1,'G ' + gsc_g
+     printf,1,'W ' + gsc_w
+     printf,1,'F ' + gsc_f
+     printf,1,'B ' + gsc_b
+     printf,1,'A ' + gsc_a
+     printf,1,'X ' + gsc_x
+     printf,1,'Y ' + gsc_y
+     printf,1,'K ' + gsc_k
+     close,1
+     
+     openw, 1, 'gscinput' & writeu,1, image0 & close,1 & image0=0
+
+     ;; run GraySpatCon
+     IF info.my_os EQ 'windows' THEN BEGIN
+       spatcon='..\spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
+     ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+       spatcon='../spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+     ENDIF ELSE BEGIN
+       spatcon='../spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
+     ENDELSE
+     ;; run grayspatcon in tmp
+     IF info.my_os EQ 'windows' THEN spawn, 'grayspatcon.exe', log, / hide ELSE spawn, './grayspatcon', log
+     
+     ;; get result
+     ;; if we get a GraySpatCon error then the last entry will not be "Normal Finish"
+     res = log[n_elements(log)-1] & res = strpos(strlowcase(res), 'normal finish') gt 0
+     if res eq 0 then begin
+       file_delete, 'gscinput', 'gscoutput', 'gscoutput.txt', 'gscpars.txt', /allow_nonexistent,/quiet
+       fx = 'gsc_error.txt' & openw, 9, fx
+       for idd = 1, n_elements(log)-1 do printf, 9, log[idd]
+       printf, 9, '  ' & close, 9
+       xdisplayfile, fx, height=file_lines(fx)+1, title = 'GraySpatCon error output:'
+       popd
+       goto, skip_gsc0
+     endif
+     IF gsc_g EQ '0' THEN BEGIN ;; we have an image output
+       im = bytarr(sz(0),sz(1))
+       if gsc_f eq '2' then im = float(im)
+       openr, 1, 'gscoutput' & readu,1, im & close,1             
+       file_delete, 'gscinput', 'gscoutput', 'gscpars.txt', /allow_nonexistent,/quiet
+       ;; write out the extra info into 'gscoutput.txt' to be used when saving the results
+       ;; write the same info style as for a global analysis
+       log2 = strmid(log,1,3)
+       fx = 'gscoutput.txt' & openw, 9, fx
+       printf, 9, 'Image output for metric ' +  gsc_m
+       printf, 9, 'For the parameter set:'
+       q = where(log2 EQ 'R =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'C =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'M =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'F =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'G =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'P =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'W =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'A =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'B =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'X =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'Y =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       q = where(log2 EQ 'K =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+       ;; add the info on missing data - NaN for float output
+       if gsc_f eq '2' and gsc_n eq 'Yes' then begin ;; we have a float output
+         IF gsc_m eq '44' OR gsc_m eq '45' OR gsc_m eq '50' THEN origv = '-9000000.0' ELSE origv = '-0.01'        
+         printf, 9, ' '  
+         printf, 9, 'Important note:'
+         printf, 9, 'The resulting GSC image may contain missing data, which were assigned with NaN'
+         printf, 9, 'during GTB post-processing to improve the visual display.'
+         printf, 9, 'The original GraySpatCon value for the pixels with NaN was: ' + origv
+       endif        
+       close, 9
+     
+       info.ctbl = 0 & info.autostretch_id = 1
+       loadct, info.ctbl, / silent
+       info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.is_dist = 0 & info.is_cs22 = 0
+       info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.is_influ = 0 & *info.extra = 0
+       info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 & info.disp_range_id = 0
+       
+       ;; post-process gsc float output: assign NaN for missing data if the user opted for this: gsc_n = Yes
+       IF gsc_f EQ '2' AND gsc_n EQ 'Yes' THEN BEGIN
+         ;; test for NaN gsc output (we should never get this...
+         q = WHERE(~FINITE(im), ct)
+         IF ct gt 0 THEN BEGIN
+           msg = 'NaN in GSC output found. Please send a Help -> Bug Report' +string(10b) + 'Exiting'
+           res = dialog_message(msg, / error)
+           popd & goto, fin
+         ENDIF
+         ;; metric 44, 45, 50 may provide -9e6, set those to NaN
+         IF gsc_m eq '44' OR gsc_m eq '45' OR gsc_m eq '50' THEN BEGIN
+           q = where(im eq -9.00000e+06, /l64, ct)
+           IF CT GT 0 THEN im[q] = !VALUES.F_NAN
+         ENDIF ELSE BEGIN ;; all other metrics may provide -0.01, set those to NaN
+           q = where(im eq -0.01, /l64, ct)
+           IF CT GT 0 THEN im[q] = !VALUES.F_NAN
+         ENDELSE                 
+       ENDIF       
+             
+       ;; return stuff into info GTB infostructure
+       * info.process = temporary(im)
+       * info.fr_image = * info.process
+
+     ENDIF ELSE BEGIN ;; we have the text output only: gscoutput.txt
+       res = file_info('gscoutput.txt')
+       IF res.exists EQ 0b THEN goto, skip_gsc0
+       xdisplayfile, 'gscoutput.txt', title = 'GSC' + gsc_m
+       ;; leave 'gscoutput.txt' to be used when saving the results
+       file_delete, 'gscinput', 'gscoutput', 'gscpars.txt', /allow_nonexistent,/quiet
+       ;; write out an index that we have no image output, needed later when saving
+       close, 9 & openw, 9, 'noGSCimage' & close, 9
+     ENDELSE
+     popd
+     
+     info.add_title = ' (GSC metric: ' + gsc_m + ')'        
+     skip_gsc0:
+          
+   END
+   
+   ;;*****************************************************************************************************
+ 
+
+   'batch_gsc':  BEGIN
+     tit = 'Select (Geo-)Tif-files'
+     im_file = dialog_pickfile(Title = tit, get_path = path2file, $
+       path = info.dir_data, default_extension = 'tif', / fix_filter, $
+       / must_exist, / multiple_files, filter = ['*.tif', '*.tiff'])
+     IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
+
+     ;; test that the directory of the selected files has no sub-directories
+     ;; this will also ensure no output file is opened in excel or thelike
+     pushd, path2file
+     list = file_search() & nl = n_elements(list) & nr_dir = 0
+     for idx = 0, nl-1 do begin
+       q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
+     endfor
+     IF nr_dir GT 0 THEN BEGIN
+       msg = 'The directory of your Batch GSC input files contains sub-directories.'  +  string(10b) +  string(10b) + $
+         'Please set up a new directory having Batch GSC input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     ENDIF
+     popd
+
+     ;; test that we can write into the parent directory or if it exists already
+     batch_type = 'batch_GSC'
+     dd = file_dirname(im_file[0], / mark_directory)
+     dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
+     ;; test if directory is not named like dir_batch
+     if file_basename(path2file) eq file_basename(dir_batch) then begin
+       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
+         "Please rename the directory to any other name."
+       res = dialog_message(msg, / information)
+       GOTO, fin
+     endif
+
+     res = file_test(dir_batch, /directory, /write)
+     if res eq 1 then begin ;; dir_batch already exists
+       msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
+         'already exists. All previous content will be erased before we continue.'+ string(10b) + $
+         "Please click 'Yes' to confirm or 'No' to exit"
+       res = dialog_message(msg,/question)
+       If res eq 'No' then goto, fin
+       ;; empty it
+       pushd, dir_batch
+       list = file_search() & nl = n_elements(list)
+       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+       popd
+     endif else begin ;; does not exist yet, create it
+       file_mkdir, dir_batch
+     endelse
+
+
+     ;;========================================================================
+     ;; reset the front image and block any events
+     ;;========================================================================
+     title = 'GSC Batch Processing'
+     goto, resetfront
+
+     backto_batch_gsc:
+
+     ;;========================================================================
+     ;; ok, the files are selected, get the  GSC-params
+     ;;========================================================================
+     sc_m = ptr_new('') & sc_f = ptr_new('') & sc_g = ptr_new('') & sc_p = ptr_new('') & sc_w = ptr_new('')  ;; window edge length = kdim
+     sc_a = ptr_new('') & sc_b = ptr_new('') & sc_x = ptr_new('') & sc_y = ptr_new('') & sc_k = ptr_new('') & sc_n = ptr_new('')
+     cancel = ptr_new(1b)
+     ;; get the gsc settings
+     get_gsc, sc_m=sc_m, sc_f=sc_f, sc_g=sc_g, sc_p=sc_p, sc_w=sc_w, sc_a=sc_a, sc_b=sc_b,$
+      sc_x=sc_x, sc_y=sc_y, sc_k=sc_k, sc_n=sc_n, title = 'GraySpatCon (GSC): please select the GSC processing parameters', $
+      dir_guidossub=info.dir_guidossub, pdf_exe=info.pdf_exe, my_os=info.my_os, imgminsize=0, $
+      cancel = cancel, Group_Leader = event.top      
+
+     ;; check if cancel was selected then do nothing else start
+     ;; batch processing with the selected settings
+     IF * cancel EQ 0b THEN BEGIN ;; get the values
+       gsc_f = strmid(*sc_f,0,1) & ptr_free, sc_f & sc_f = 0b
+       gsc_m = (strsplit(*sc_m,':',/extract))[0] & ptr_free, sc_m & sc_m = 0b
+       gsc_g = strmid(*sc_g,0,1) & ptr_free, sc_g & sc_g = 0b
+       gsc_p = strmid(*sc_p,0,1) & ptr_free, sc_p & sc_p = 0b
+       gsc_w = *sc_w & ptr_free, sc_w & sc_w = 0b
+       gsc_a = strmid(*sc_a,0,1) & ptr_free, sc_a & sc_a = 0b
+       gsc_b = strmid(*sc_b,0,1) & ptr_free, sc_b & sc_b = 0b
+       gsc_x = *sc_x & ptr_free, sc_x & sc_x = 0b
+       gsc_y = *sc_y & ptr_free, sc_y & sc_y = 0b
+       gsc_k = *sc_k & ptr_free, sc_k & sc_k = 0b
+       gsc_n = *sc_n & ptr_free, sc_n & sc_n = 0b
+       ptr_free, cancel & cancel = 0b
+     ENDIF ELSE BEGIN  ;; cancel was selected
+       ptr_free, cancel & cancel = 0b
+       ptr_free, sc_m & sc_m = 0b
+       ptr_free, sc_f & sc_f = 0b
+       ptr_free, sc_g & sc_g = 0b
+       ptr_free, sc_p & sc_p = 0b
+       ptr_free, sc_w & sc_w = 0b
+       ptr_free, sc_a & sc_a = 0b
+       ptr_free, sc_b & sc_b = 0b
+       ptr_free, sc_x & sc_x = 0b
+       ptr_free, sc_y & sc_y = 0b
+       ptr_free, sc_k & sc_k = 0b
+       ptr_free, sc_n & sc_n = 0b
+       GOTO, fin
+     ENDELSE
+     ;;========================================================================
+     ;; validate and process the images in a loop
+     desc = 'GTB_GSC, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+     ;; open logfile
+     fn_logfile = dir_batch + batch_type + '.log'
+     nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
+     openw, 9, fn_logfile
+     printf, 9, 'GSC batch processing logfile: ', systime()
+     printf, 9, 'Number of files to be processed: ', nr_im_files
+     printf, 9, '==============================================='
+     close, 9
+     msg = 'Processing selected images for GraySpatCon, please wait...'
+     progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
+     progressBar -> Start
+
+     FOR fidx = 0, nr_im_files - 1 DO BEGIN
+       counter = strtrim(fidx + 1, 2) + '/' + strtrim(nr_im_files, 2)
+
+       IF progressBar -> CheckCancel() THEN BEGIN
+         res = Dialog_Message('Batch-processing cancelled by user.')
+         openw, 9, fn_logfile, /append
+         printf, 9, 'Batch-processing cancelled by user.'
+         close, 9
+         progressBar -> Destroy
+         Obj_Destroy, progressBar
+         tvlct, rini, gini, bini
+         GOTO, fin
+       ENDIF
+
+       ;; validate the input, if not skip it without message
+       input = im_file(fidx)
+       res = strpos(input,' ') ge 0
+       IF res EQ 1 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid GSC input (empty space in directory path or input filename): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_gsc  ;; invalid input
+       ENDIF
+
+       res = query_tiff(input, tiffinfo, geotiff = geotiffinfo)
+       IF tiffinfo.type NE 'TIFF' THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid GSC input (not a TIFF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_gsc  ;; invalid input
+       ENDIF
+                    
+       ss = tiffinfo.dimensions & ssct = n_elements(ss)
+       IF res EQ 0 or ssct ne 2 THEN BEGIN ;;invalid file, wrong dimensions, image too big
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid GSC input file: '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_gsc  ;; invalid input
+       ENDIF
+       
+       result = tiffinfo.bits_per_sample LE 8
+       IF result EQ 0b THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid GSC input file (not of type Byte): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_gsc  ;; invalid input
+       ENDIF
+       
+       xdim=tiffinfo.dimensions[0] & ydim=tiffinfo.dimensions[1] & imgminsize=(xdim<ydim)
+       IF fix(sc_w) ge imgminsize THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid GSC input file (Kernel > x or y map dimension): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_gsc  ;; invalid input
+       ENDIF
+          
+       image0 = read_tiff(input) & sz = size(image0,/dim)       
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid GSC input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_gsc  ;; invalid input
+       ENDIF
+      
+       ;; now all is ok for processing
+       ;;=========================================================================================
+       time0 = systime( / sec)
+       
+       pushd, info.dir_tmp
+       openw,1, 'gscpars.txt'
+       printf,1,'R ' + strtrim(sz[1],2)
+       printf,1,'C ' + strtrim(sz[0],2)
+       printf,1,'M ' + gsc_m
+       printf,1,'P ' + gsc_p
+       printf,1,'G ' + gsc_g
+       printf,1,'W ' + gsc_w
+       printf,1,'F ' + gsc_f
+       printf,1,'B ' + gsc_b
+       printf,1,'A ' + gsc_a
+       printf,1,'X ' + gsc_x
+       printf,1,'Y ' + gsc_y
+       printf,1,'K ' + gsc_k
+       close,1
+
+       openw, 1, 'gscinput' & writeu,1, image0 & close,1 & image0 = 0
+       ;; run GraySpatCon
+       IF info.my_os EQ 'windows' THEN BEGIN
+         spatcon='..\spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
+       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+         spatcon='../spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+       ENDIF ELSE BEGIN
+         spatcon='../spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
+       ENDELSE
+       ;; run grayspatcon
+       IF info.my_os EQ 'windows' THEN spawn, 'grayspatcon.exe', log, / hide ELSE spawn, './grayspatcon', log
+     
+       ;; get result: if we get a GraySpatCon error then the last entry will not be "Normal Finish"
+       res = log[n_elements(log)-1] & res = strpos(strlowcase(res), 'normal finish') gt 0
+       if res eq 0 then begin
+         file_delete, 'gscinput', 'gscoutput', 'gscoutput.txt', 'gscpars.txt', /allow_nonexistent,/quiet
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'File: ' + input
+         printf, 9, 'GSC ERROR:'
+         for idd = 1, n_elements(log)-1 do printf, 9, log[idd]
+         close, 9
+         popd
+         goto, skip_batch_gsc
+       endif
+       
+       res = file_basename(input, '.tif')
+       fn_outb = dir_batch + res + '_gsc' + gsc_m 
+       IF gsc_g EQ '0' THEN BEGIN ;; we have an image output
+         image0 = bytarr(sz(0),sz(1)) & resfloat = 0
+         if gsc_f eq '2' then begin
+           image0 = float(image0) & resfloat = 1 
+         endif
+         openr, 1, 'gscoutput' & readu,1, image0 & close,1
+         ;; post-process gsc float output: assign NaN for missing data
+         IF gsc_f EQ '2' AND gsc_n EQ 'Yes' THEN BEGIN
+           ;; metric 44, 45, 50 may provide -9e6, set those to NaN
+           IF gsc_m eq '44' OR gsc_m eq '45' OR gsc_m eq '50' THEN BEGIN
+             q = where(image0 eq -9.00000e+06, /l64, ct)
+             IF CT GT 0 THEN image0[q] = !VALUES.F_NAN
+           ENDIF ELSE BEGIN ;; all other metrics may provide -0.01, set those to NaN
+             q = where(image0 eq -0.01, /l64, ct)
+             IF CT GT 0 THEN image0[q] = !VALUES.F_NAN
+           ENDELSE
+         ENDIF
+      
+         ;; write out the image
+         fn_out = fn_outb + '.tif'
+         IF (size(geotiffinfo))[0] gt 0 THEN BEGIN
+           write_tiff, fn_out, image0, geotiff = geotiffinfo, compression = 1, float = resfloat
+         ENDIF ELSE BEGIN
+           write_tiff, fn_out, image0, compression = 1, float = resfloat
+         ENDELSE
+         ;; add NODATA info
+         gednodata = ''
+         IF gsc_f EQ '1' THEN gednodata = '-a_nodata 255 ' ;; for byte output
+         IF gsc_f EQ '2' AND gsc_n EQ 'No' THEN BEGIN
+           gednodata = '-a_nodata -0.01 '
+           IF gsc_m eq '44' OR gsc_m eq '45' OR gsc_m eq '50' THEN gednodata = '-a_nodata -9000000 '
+         ENDIF        
+         image0 = 0
+         gedit = gedit + gednodata + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+         IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, / hide ELSE spawn, gedit + fn_out
+                  
+         ;; write the same 'gscoutput.txt' info style as for a global analysis
+         log2 = strmid(log,1,3)
+         fn_out = fn_outb + '.txt' & openw, 9, fn_out
+         printf, 9, 'Image output for metric ' +  gsc_m
+         printf, 9, 'For the parameter set:'
+         q = where(log2 EQ 'R =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'C =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'M =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'F =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'G =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'P =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'W =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'A =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'B =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'X =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'Y =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         q = where(log2 EQ 'K =', ct) & IF ct gt 0 THEN printf, 9, log[q[0]]
+         ;; add the info on missing data - NaN for float output
+         if gsc_f eq '2' AND gsc_n EQ 'Yes' then begin ;; we have a float output
+           IF gsc_m eq '44' OR gsc_m eq '45' OR gsc_m eq '50' THEN origv = '-9000000.0' ELSE origv = '-0.01'
+           printf, 9, ' '
+           printf, 9, 'Important note:'
+           printf, 9, 'The resulting GSC image may contain missing data, which were assigned with NaN'
+           printf, 9, 'during GTB post-processing to improve the visual display.'
+           printf, 9, 'The original GraySpatCon value for the pixels with NaN was: ' + origv
+         endif
+         close, 9
+         
+       ENDIF ELSE BEGIN ;; we have the text output only: gscoutput.txt
+         res = file_info('gscoutput.txt')
+         IF res.exists EQ 0b THEN goto, skip_batch_gsc
+         fn_out = fn_outb + '.txt'         
+         file_copy, 'gscoutput.txt', fn_out, /overwrite
+       ENDELSE
+       file_delete, 'gscinput', 'gscoutput', 'gscpars.txt', 'gscoutput.txt',/allow_nonexistent,/quiet
+       popd       
+       
+       openw, 9, fn_logfile, /append
+       printf, 9, ' '
+       printf, 9, '==============   ' + counter + '   =============='
+       printf, 9, 'File: ' + input
+       printf, 9, 'GSC comp.time [sec]: ', systime( / sec) - time0
+       close, 9
+       okfile = okfile + 1
+
+       skip_batch_gsc:
+       stepn = (fidx + 1.0)/nr_im_files * 100.0
+       progressBar -> Update, stepn
+     ENDFOR
+     progressBar -> Destroy
+     Obj_Destroy, progressBar
+
+     ;; inform that batch is done
+     proct = systime( / sec) - time00
+     IF proct GT 3600.0 THEN BEGIN
+       proct2 = proct - ulong(proct/3600)*3600
+       proctstr = strtrim(ulong(proct/3600.),2) + ' hrs, ' + strtrim(ulong(proct2/60.),2) + $
+         ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
+     ENDIF ELSE BEGIN
+       proctstr = strtrim(ulong(proct/60.),2) + $
+         ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
+     ENDELSE
+     IF proct LT 60.0 THEN proctstr = strtrim(ulong(proct),2) + ' secs'
+     openw, 9, fn_logfile, /append
+     printf, 9, ''
+     printf, 9, '==============================================='
+     printf, 9, 'GSC Batch Processing total comp.time: ', proctstr
+     printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
+     printf, 9, '==============================================='
+     close, 9
+
+     msg = 'GSC Batch Processing finished.' + string(10b) + $
+       'Total computation time: ' + proctstr + string(10b) + $
+       'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
+       'More information can be found in the logfile: ' + string(10b) + fn_logfile
+     res = dialog_message(msg, / information)
+
+     ;; reset the colortable to the settings before the batch processing
+     tvlct, rini, gini, bini
+     GOTO, fin
+   END
+
+ 
    ;;*****************************************************************************************************
 
    'batch_recode':  BEGIN    
@@ -7331,7 +8003,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid batch recode input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid batch recode input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_recode  ;; invalid input
        ENDIF
@@ -7341,7 +8014,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid recode input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid recode input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_recode  ;; invalid input
        ENDIF              
@@ -7350,11 +8024,24 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid recode input file: ', input
+         printf, 9, 'Skipping invalid recode input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_recode  ;; invalid input
        ENDIF
-       tmp = read_tiff(input) ;& tmp = byte(0 > tmp < 255)
+       tmp = read_tiff(input) & sz = size(tmp,/dim) ;& tmp = byte(0 > tmp < 255)
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid recode input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_recode  ;; invalid input
+       ENDIF
+
 
        ;; now all is ok for processing
        time0 = systime( / sec)
@@ -7403,7 +8090,8 @@ CASE strlowCase(eventValue) OF
        IF (size(geotiffinfo))[0] gt 0 THEN $
          write_tiff, fn_out, recoutput, geotiff = geotiffinfo, compression = 1 ELSE $
          write_tiff, fn_out, recoutput, compression = 1
-       recoutput = 0
+       recoutput = 0   
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log   
        okfile = okfile + 1
        openw, 9, fn_logfile, /append
        printf, 9, ' '
@@ -7522,8 +8210,7 @@ CASE strlowCase(eventValue) OF
 
       * info.fr_image = * info.process
       info.add_title = ' (LM, kdim=' + kdim_str + ')'
-      
-      
+          
       ;; open heatmap image
       IF info.my_os EQ 'apple' THEN BEGIN
         spawn, 'open ' + info.dir_tmp + 'heatmap.png'
@@ -7614,8 +8301,6 @@ CASE strlowCase(eventValue) OF
         file_mkdir, dir_batch
       endelse
 
-
-
       ;; files are now selected, reset the GUI
       ;;========================================================================
       ;; reset the front image and block any events
@@ -7661,7 +8346,8 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid LM input (empty space in directory path or input filename): ', input
+          printf, 9, 'Skipping invalid LM input (empty space in directory path or input filename): '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_lm  ;; invalid input
         ENDIF       
@@ -7671,7 +8357,8 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid LM input (not a TIFF image): ', input
+          printf, 9, 'Skipping invalid LM input (not a TIFF image): '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_lm  ;; invalid input
         ENDIF              
@@ -7680,19 +8367,33 @@ CASE strlowCase(eventValue) OF
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid LM input file: ', input
+          printf, 9, 'Skipping invalid LM input file: '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_lm  ;; invalid LM input
         ENDIF
 
-        image0 = read_tiff(input)  ;; read and check it
+        image0 = read_tiff(input) & sz = size(image0,/dim)   ;; read and check it
+        ;; check for single channel image
+        ;;===========================
+        IF n_elements(sz) NE 2 THEN BEGIN
+          openw, 9, fn_logfile, /append
+          printf, 9, ' '
+          printf, 9, '==============   ' + counter + '   =============='
+          printf, 9, 'Skipping invalid LM input (more than 1 band in the TIF image): '
+          printf, 9, input
+          close, 9
+          GOTO, skip_batch_lm  ;; invalid input
+        ENDIF
+
         LM_Compliance, input, image0, 'lm', info.immaxsizeg * 10, 0, result
         q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
         IF result EQ 0 OR kdim ge imgminsize THEN BEGIN
           openw, 9, fn_logfile, /append
           printf, 9, ' '
           printf, 9, '==============   ' + counter + '   =============='
-          printf, 9, 'Skipping invalid LM input file: ', input
+          printf, 9, 'Skipping invalid LM input file: '
+          printf, 9, input
           close, 9
           GOTO, skip_batch_lm  ;; invalid LM input
         ENDIF
@@ -7717,7 +8418,9 @@ CASE strlowCase(eventValue) OF
         IF (size(geotiffinfo))[0] gt 0 THEN $
           write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1 ELSE $
           write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
-        
+        gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+        IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
+
         ;; copy over the LM103class image
         fn_out = outdir + '/' + res + '_lm_' + kdim_str + '_103class.tif'
         close,1 & openr, 1, info.dir_tmp + 'lm103class'
@@ -7726,6 +8429,8 @@ CASE strlowCase(eventValue) OF
           write_tiff, fn_out, im, geotiff = geotiffinfo, description = desc, compression = 1 ELSE $
           write_tiff, fn_out, im, description = desc, compression = 1
         im = 0
+        gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+        IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
                 
         fn_out = outdir + '/' + res + '_lm_' + kdim_str + '_heatmap.sav'
         file_copy, info.dir_tmp + 'heatmap.sav', fn_out, /overwrite
@@ -8017,7 +8722,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Dominance input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid Dominance input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_lmms  ;; invalid input
        ENDIF
@@ -8027,7 +8733,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Dominance input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid Dominance input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_lmms  ;; invalid input
        ENDIF              
@@ -8036,12 +8743,25 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Dominance input file: ', input
+         printf, 9, 'Skipping invalid Dominance input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_lmms  ;; invalid input
        ENDIF
 
-       image0 = read_tiff(input)  ;; read and check it      
+       image0 = read_tiff(input) & sz = size(image0,/dim)   
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid Dominance input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_lmms  ;; invalid input
+       ENDIF       
+             
        LM_Compliance, input, image0, 'lm', info.immaxsizeg * 10, 0, result
        q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
        IF result EQ 0 OR imgminsize LT 500 THEN BEGIN
@@ -8134,6 +8854,8 @@ CASE strlowCase(eventValue) OF
          write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1 ELSE $
          write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
        im = 0
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
        z = res + '_lm_mscale_heatmap.csv'
        file_copy, info.dir_tmp + 'heatmap.csv', z, /overwrite
        z = res + '_lm_mscale_heatmap.png'
@@ -8151,7 +8873,9 @@ CASE strlowCase(eventValue) OF
          if ctmiss gt 0 then image0[qmiss]=0b
          IF (size(geotiffinfo))[0] gt 0 THEN $
            write_tiff, z, image0, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1 ELSE $
-           write_tiff, z, image0, red = r, green = g, blue = b, description = desc, compression = 1           
+           write_tiff, z, image0, red = r, green = g, blue = b, description = desc, compression = 1     
+         gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+         IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log      
          ;; the heatmap stuff
          z = res + '_lm_' + strtrim(kstr[isc],2)  + '_heatmap.csv'
          file_copy, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_heatmap.csv', z, /overwrite
@@ -8701,7 +9425,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid ' + spax + ' input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid ' + spax + ' input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_spa  ;; invalid input
        ENDIF
@@ -8711,7 +9436,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid ' + spax + ' input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid ' + spax + ' input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_spa  ;; invalid input
        ENDIF              
@@ -8720,18 +9446,32 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid ' + spax + ' input file: ', input
+         printf, 9, 'Skipping invalid ' + spax + ' input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_spa  ;; invalid input
        ENDIF
 
-       image0 = read_tiff(input)  ;; read and check it
+       image0 = read_tiff(input) & sz = size(image0,/dim)
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid ' + spax + ' input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_spa  ;; invalid input
+       ENDIF
+       
        MSPA_Compliance, input, image0, info.immaxsizeg*10, 0, result
        IF result EQ 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid ' + spax + ' input file: ', input
+         printf, 9, 'Skipping invalid ' + spax + ' input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_spa  ;; invalid input
        ENDIF
@@ -8910,6 +9650,8 @@ CASE strlowCase(eventValue) OF
        IF (size(geotiffinfo))[0] gt 0 THEN $
          write_tiff, fn_out, image0, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1 ELSE $
          write_tiff, fn_out, image0, red = r, green = g, blue = b, description = desc, compression = 1
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
 
        ;; write out statistics 
        fx = dir_batch + res + '_' + ev2 + '.txt' & file_delete,fx,/allow_nonexistent,/quiet
@@ -9320,6 +10062,7 @@ CASE strlowCase(eventValue) OF
            msgr = 'Empty space in directory path or input filename.'
            openw, 9, fn_logfile, /append
            printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
+           printf, 9, fname
            close, 9
            GOTO, skip_batch_CI  ;; invalid CI input
          ENDIF
@@ -9330,6 +10073,7 @@ CASE strlowCase(eventValue) OF
             msgr = 'Input map file format is not of type: ' + ftypes
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
+            printf, 9, fname
             close, 9
             GOTO, skip_batch_CI  ;; invalid CI input
          ENDIF
@@ -9340,6 +10084,7 @@ CASE strlowCase(eventValue) OF
             msgr = 'Input file has more than 1 image. Please load a non-stacked image.'
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
+            printf, 9, fname
             close, 9
             GOTO, skip_batch_CI  ;; invalid CI input
          ENDIF
@@ -9351,13 +10096,25 @@ CASE strlowCase(eventValue) OF
                   "Try using General Tools: Preprocessing: RGB -> Single Band" 
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
+            printf, 9, fname
             close, 9
             GOTO, skip_batch_CI  ;; invalid CI input
          ENDIF         
          
          ;; check min/max value in image
          ;;===========================
-         image0 = read_tiff(fname) & image0 = abs(image0) & mxx = max(image0, min = mii)
+         image0 = read_tiff(fname) & sz = size(image0,/dim)
+         ;; check for single channel image
+         ;;===========================
+         IF n_elements(sz) NE 2 THEN BEGIN
+           openw, 9, fn_logfile, /append
+           printf, 9, 'Skipping invalid ConeforInputs input (more than 1 band in the TIF image): '
+           printf, 9, fname
+           close, 9
+           GOTO, skip_batch_CI  ;; invalid input
+         ENDIF      
+         
+         image0 = abs(image0) & mxx = max(image0, min = mii)
          ;; rotate the image
          image0 = rotate(image0,7)
 
@@ -9365,6 +10122,7 @@ CASE strlowCase(eventValue) OF
             msgr = 'Map has no objects.'
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
+            printf, 9, fname
             close, 9
             GOTO, skip_batch_CI  ;; invalid CI input       
          ENDIF ELSE IF mxx LT 2 THEN BEGIN
@@ -9373,6 +10131,7 @@ CASE strlowCase(eventValue) OF
                   'for foreground objects having a value of 2.' 
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
+            printf, 9, fname
             close, 9
             GOTO, skip_batch_CI  ;; invalid CI input            
          ENDIF
@@ -9386,6 +10145,7 @@ CASE strlowCase(eventValue) OF
            msgr = 'Exceeded ConeforInputs maximum map dimensions: 5000x5000' 
             openw, 9, fn_logfile, /append
             printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
+            printf, 9, fname
             close, 9
             GOTO, skip_batch_CI  ;; invalid CI input
          ENDIF
@@ -9411,6 +10171,7 @@ CASE strlowCase(eventValue) OF
            msgr = 'Map has less than 2 objects.'
            openw, 9, fn_logfile, /append
            printf, 9,msgr & printf, 9,'Skipping invalid ConeforInputs input file.'
+           printf, 9, fname
            close, 9
            objects=0 & ext=0
            GOTO, skip_batch_CI  ;; invalid CI input
@@ -9430,6 +10191,8 @@ CASE strlowCase(eventValue) OF
          ;; FG-connectivity: 8 <=> euclidean distance;  4 <=> cityblock
          write_tiff, dir_batch + 'objects_' + fn_outbase + '.tif', objects, long=n_obj gt 255, compression = 1
          ;;write_tiff, dir_input + 'objects_' + fn_outbase + '.tif', rotate(objects,7), long=n_obj gt 255, compression = 1
+         IF info.my_os EQ 'windows' THEN spawn, gedit + dir_batch + 'objects_' + fn_outbase + '.tif', log, / hide ELSE $
+          spawn, gedit + dir_batch + 'objects_' + fn_outbase + '.tif', log
          fn_out = dir_batch + 'distance_' + fn_outbase + '.txt' & openw, 1, fn_out        
          obj_last=max(objects)
          
@@ -9680,6 +10443,7 @@ CASE strlowCase(eventValue) OF
          msgr = 'Empty space in directory path or input filename.'
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+         printf, 9, fname
          close, 9
          GOTO, skip_batch_mspaCI  ;; invalid CI input
        ENDIF
@@ -9691,6 +10455,7 @@ CASE strlowCase(eventValue) OF
          msgr = 'Input map file format is not of type: ' + ftypes
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+         printf, 9, fname
          close, 9
          GOTO, skip_batch_mspaCI  ;; invalid CI input
        ENDIF
@@ -9701,6 +10466,7 @@ CASE strlowCase(eventValue) OF
          msgr = 'Input file has more than 1 image. Please load a non-stacked image.'
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+         printf, 9, fname
          close, 9
          GOTO, skip_batch_mspaCI  ;; invalid CI input
        ENDIF
@@ -9712,6 +10478,7 @@ CASE strlowCase(eventValue) OF
            "Try using General Tools: Preprocessing: RGB -> Single Band"
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+         printf, 9, fname
          close, 9
          GOTO, skip_batch_mspaCI  ;; invalid CI input
        ENDIF
@@ -9733,6 +10500,7 @@ CASE strlowCase(eventValue) OF
          msgr = 'Input map is not of type Geotiff. '
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+         printf, 9, fname
          close, 9
          GOTO, skip_batch_mspaCI  ;; invalid CI input
        ENDIF   
@@ -9767,6 +10535,7 @@ CASE strlowCase(eventValue) OF
          msgr = 'Input map is not MSPA.'
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+         printf, 9, fname
          close, 9
          GOTO, skip_batch_mspaCI  ;; invalid CI input
        ENDIF
@@ -9774,19 +10543,30 @@ CASE strlowCase(eventValue) OF
          msgr = 'Foreground connectivity must be 8 for ' + guitit + ' image.'
          openw, 9, fn_logfile, /append
          printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+         printf, 9, fname
          close, 9
          GOTO, skip_batch_mspaCI  ;; invalid CI input
        ENDIF
        
        fx =  file_basename(fname) & pp=strpos(fx,'.',/reverse_search) & fx = strmid(fx,0,pp)
        fn_outbase = fx 
+       
+       ;; read the image
+       image0 = read_tiff(fname, geotiff = geotiffz) & sz = size(image0,/dim)
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, 'Skipping invalid ' + guitit + ' input (more than 1 band in the TIF image): '
+         printf, 9, fname
+         close, 9
+         GOTO, skip_batch_mspaCI  ;; invalid input
+       ENDIF
 
        ;; now all is ok for processing
        ;;===========================
-       time0 = systime( / sec)
-       
-       ;; read the image
-       image0 = read_tiff(fname, geotiff = geotiffz) & image0 = rotate(image0,7) & sz = size(image0, / dim)
+       time0 = systime( / sec)      
+       image0 = rotate(image0,7)
 
        ;; labeling must be done on extended image to avoid zeroed boundaries
        eew = m2 & eew2 = eew * 2
@@ -9812,6 +10592,7 @@ CASE strlowCase(eventValue) OF
            msgr = 'Network without links.'
            openw, 9, fn_logfile, /append
            printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+           printf, 9, fname
            close, 9
            GOTO, skip_batch_mspaCI  ;; invalid CI input
          ENDIF
@@ -9819,6 +10600,7 @@ CASE strlowCase(eventValue) OF
            msgr = 'Network without nodes.'
            openw, 9, fn_logfile, /append
            printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+           printf, 9, fname
            close, 9
            GOTO, skip_batch_mspaCI  ;; invalid CI input
          ENDIF
@@ -9925,11 +10707,13 @@ CASE strlowCase(eventValue) OF
          qq = strpos(fn_outbase,mspaext) & if qq lt 0 then fn_outbase = fn_outbase + mspaext
          fn = dir_batch + fn_outbase + '_nw.tif'
          write_tiff, fn, rotate(image0,7), red = r, green = g, blue = b, geotiff = geotiffz, compression = 1
+         IF info.my_os EQ 'windows' THEN spawn, gedit + fn, log, / hide ELSE spawn, gedit + fn, log
                  
          ;; 2) nw_nwdata (area) = nw_ids
          fn = dir_batch + fn_outbase + '_nw_nwdata.tif'
          write_tiff, fn, rotate(nw_ids,7), /long, geotiff = geotiffz, compression = 1        
-         
+         IF info.my_os EQ 'windows' THEN spawn, gedit + fn, log, / hide ELSE spawn, gedit + fn, log
+
          ;; 3) nw_stat
          fn = dir_batch + fn_outbase + '_nw.txt'
          openw, 1, fn
@@ -9954,6 +10738,7 @@ CASE strlowCase(eventValue) OF
            msgr = 'Network without links.'
            openw, 9, fn_logfile, /append
            printf, 9,msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+           printf, 9, fname
            close, 9
            GOTO, skip_batch_mspaCI  ;; invalid CI input
          ENDIF
@@ -9961,6 +10746,7 @@ CASE strlowCase(eventValue) OF
            msgr = 'Network without nodes.'
            openw, 9, fn_logfile, /append
            printf, 9, msgr & printf, 9,'Skipping invalid ' + guitit + ' input file.'
+           printf, 9, fname
            close, 9
            GOTO, skip_batch_mspaCI  ;; invalid CI input
          ENDIF
@@ -10133,6 +10919,7 @@ CASE strlowCase(eventValue) OF
          qq = strpos(fn_outbase,mspaext) & if qq lt 0 then fn_outbase = fn_outbase + mspaext
          fn = dir_batch + fn_outbase + '_cs.tif'
          write_tiff, fn, rotate(image0,7), red = r, green = g, blue = b, geotiff = geotiffz, compression = 1
+         IF info.my_os EQ 'windows' THEN spawn, gedit + fn, log, / hide ELSE spawn, gedit + fn, log
          
          ;; 2) + 3) cs_nodes, cs_conn
          imfilebase = dir_batch + fn_outbase + '_cs'
@@ -10143,6 +10930,7 @@ CASE strlowCase(eventValue) OF
            IF isuf EQ 0 THEN write_tiff, imfilebase + suffix(isuf), image0, /long, /signed, $
                geotiff = geotiffz, compression = 1 ELSE write_tiff, $
                imfilebase + suffix(isuf), image0, /float, geotiff = geotiffz, compression = 1
+           IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + suffix(isuf), log, / hide ELSE spawn, gedit + imfilebase + suffix(isuf), log
          ENDFOR
          
          ;; 4) cs.txt
@@ -10402,7 +11190,8 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid MSPA input (empty space in directory path or input filename): ', input
+           printf, 9, 'Skipping invalid MSPA input (empty space in directory path or input filename): '
+           printf, 9, input
            close, 9
            GOTO, skip_batch_mspa  ;; invalid input
          ENDIF  
@@ -10412,7 +11201,8 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid MSPA input (not a TIFF image): ', input
+           printf, 9, 'Skipping invalid MSPA input (not a TIFF image): '
+           printf, 9, input
            close, 9
            GOTO, skip_batch_mspa  ;; invalid input
          ENDIF
@@ -10421,7 +11211,8 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid MSPA input file: ', input
+           printf, 9, 'Skipping invalid MSPA input file: '
+           printf, 9, input
            close, 9
            GOTO, skip_batch_mspa  ;; invalid input
          ENDIF
@@ -10430,18 +11221,32 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid MSPA input file (map too big): ', input
+           printf, 9, 'Skipping invalid MSPA input file (map too big): '
+           printf, 9, input
            close, 9
            GOTO, skip_batch_mspa  ;; invalid input
          ENDIF
 
-         image0 = read_tiff(input)  ;; read and check it
+         image0 = read_tiff(input) & sz = size(image0,/dim)
+         ;; check for single channel image
+         ;;===========================
+         IF n_elements(sz) NE 2 THEN BEGIN
+           openw, 9, fn_logfile, /append
+           printf, 9, ' '
+           printf, 9, '==============   ' + counter + '   =============='
+           printf, 9, 'Skipping invalid MSPA input (more than 1 band in the TIF image): '
+           printf, 9, input
+           close, 9
+           GOTO, skip_batch_mspa  ;; invalid input
+         ENDIF
+
          MSPA_Compliance, input, image0, info.immaxsize, 0, result
          IF result EQ 0 THEN BEGIN
             openw, 9, fn_logfile, /append
             printf, 9, ' '
             printf, 9, '==============   ' + counter + '   =============='
-            printf, 9, 'Skipping invalid MSPA input file: ', input
+            printf, 9, 'Skipping invalid MSPA input file: '
+            printf, 9, input
             close, 9
             GOTO, skip_batch_mspa  ;; invalid input
          ENDIF
@@ -10536,6 +11341,8 @@ CASE strlowCase(eventValue) OF
            write_tiff, fn_out, image0, description = desc1, compression = 1, red = r, green = g, blue = b
          ENDELSE         
          image0 = 0
+         gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc1 + '" '
+         IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
 
          openw, 9, fn_logfile, /append
          printf, 9, ' '
@@ -12501,7 +13308,7 @@ CASE strlowCase(eventValue) OF
      printf, 9, '==============================================='
      close, 9
 
-     msg = 'Processing selected images for accounting, please wait...'
+     msg = 'Processing selected images for Accounting, please wait...'
      progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
      progressBar -> Start
 
@@ -12526,7 +13333,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid accounting input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid Accounting input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_acc  ;; invalid input
        ENDIF
@@ -12536,7 +13344,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid accounting input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid Accounting input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_acc  ;; invalid input
        ENDIF
@@ -12545,21 +13354,35 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid accounting input file: ', input
+         printf, 9, 'Skipping invalid Accounting input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_acc  ;; invalid input
        ENDIF
        is_geotiff = (size(geotiffinfo))[0]
 
-       im = read_tiff(input)  ;; read and check it
-       sz = size(im,/dim) & xdim = sz[0] & ydim = sz[1] & imgminsize=(xdim<ydim)
+       im = read_tiff(input)  & sz = size(im,/dim)       
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid Accounting input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_acc  ;; invalid input
+       ENDIF
+       
+       xdim = sz[0] & ydim = sz[1] & imgminsize=(xdim<ydim)
        ;; in batch mode we can process larger images compared to the GUI
        LM_Compliance, input, im, 'fad', info.immaxsizeg * 1000, 0, result    
        IF result EQ 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid  input file: ', input
+         printf, 9, 'Skipping invalid Accounting input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_acc  ;; invalid input
        ENDIF
@@ -12819,6 +13642,8 @@ CASE strlowCase(eventValue) OF
        IF is_geotiff EQ 0b THEN $
         write_tiff, imfilebase + '.tif', image0, red = r, green = g, blue = b, description = desc, compression = 1 ELSE $
         write_tiff, imfilebase + '.tif', image0, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '.tif', log, / hide ELSE spawn, gedit + imfilebase + '.tif', log
 
        ;; b) write out table and csv                    
        z = imfilebase + '.txt'
@@ -12833,12 +13658,16 @@ CASE strlowCase(eventValue) OF
        IF is_geotiff EQ 0b THEN $
         write_tiff, imfilebase + '_ids.tif', image0, /long, /signed, description = desc, compression = 1 ELSE $
         write_tiff, imfilebase + '_ids.tif', image0, geotiff = geotiffinfo, /long, /signed, description = desc, compression = 1
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '_ids.tif', log, / hide ELSE spawn, gedit + imfilebase + '_ids.tif', log       
          
        ;; d) image of area
        image0 = temporary(rotate(ext3, 7))
        IF is_geotiff EQ 0b THEN $
         write_tiff, imfilebase + '_pixels.tif', image0, /long, /signed, description = desc, compression = 1 ELSE $
         write_tiff, imfilebase + '_pixels.tif', image0, geotiff = geotiffinfo, /long, /signed, description = desc, compression = 1
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '_pixels.tif', log, / hide ELSE spawn, gedit + imfilebase + '_pixels.tif', log
        
        skip_idarea:
        popd
@@ -13389,7 +14218,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Euclidean Distance input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid Euclidean Distance input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_eucldist  ;; invalid input
        ENDIF
@@ -13399,7 +14229,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Euclidean Distance input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid Euclidean Distance input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_eucldist  ;; invalid input
        ENDIF
@@ -13408,17 +14239,31 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Euclidean Distance input file: ', input
+         printf, 9, 'Skipping invalid Euclidean Distance input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_eucldist  ;; invalid input
        ENDIF
 
-       image0 = read_tiff(input)  ;; read and check it
+       image0 = read_tiff(input) & sz = size(image0,/dim)       
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid Euclidean Distance input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_eucldist ;; invalid input
+       ENDIF
+       
        IF max(image0) NE 2b THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Euclidean Distance input file: ', input
+         printf, 9, 'Skipping invalid Euclidean Distance input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_eucldist  ;; invalid input
        ENDIF
@@ -13477,6 +14322,8 @@ CASE strlowCase(eventValue) OF
        ENDIF ELSE BEGIN
          write_tiff, fn_out, rotate(morphdist,7), description = desc0, compression = 1, /float
        ENDELSE
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc0 + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
        
        ;; write out the image (byte array) as seen in the viewport using the distance colors
        restore, info.dir_guidossub + 'distcolors.sav' & tvlct, r, g, b
@@ -13486,6 +14333,8 @@ CASE strlowCase(eventValue) OF
        ENDIF ELSE BEGIN
          write_tiff, fn_out, rotate(image0,7), red = r, green = g, blue = b, description = desc, compression = 1
        ENDELSE
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
 
        ;; add barplot of distance distribution
        ;; ====================================
@@ -13773,7 +14622,8 @@ CASE strlowCase(eventValue) OF
              openw, 9, fn_logfile, /append
              printf, 9, ' '
              printf, 9, '==============   ' + counter + '   =============='
-             printf, 9, 'Skipping invalid HMC input (empty space in directory path or input filename): ', input
+             printf, 9, 'Skipping invalid HMC input (empty space in directory path or input filename): '
+             printf, 9, input
              close, 9
              GOTO, skip_batch_hmc  ;; invalid input
            ENDIF
@@ -13783,7 +14633,8 @@ CASE strlowCase(eventValue) OF
              openw, 9, fn_logfile, /append
              printf, 9, ' '
              printf, 9, '==============   ' + counter + '   =============='
-             printf, 9, 'Skipping invalid HMC input (not a TIFF image): ', input
+             printf, 9, 'Skipping invalid HMC input (not a TIFF image): '
+             printf, 9, input
              close, 9
              GOTO, skip_batch_hmc  ;; invalid input
            ENDIF
@@ -13792,12 +14643,25 @@ CASE strlowCase(eventValue) OF
              openw, 9, fn_logfile, /append
              printf, 9, ' '
              printf, 9, '==============   ' + counter + '   =============='
-             printf, 9, 'Skipping invalid HMC input file: ', input
+             printf, 9, 'Skipping invalid HMC input file: '
+             printf, 9, input
              close, 9
              GOTO, skip_batch_hmc  ;; invalid input
            ENDIF
 
-           image0 = read_tiff(input)  ;; read and check it
+           image0 = read_tiff(input) & sz = size(image0,/dim)
+           ;; check for single channel image
+           ;;===========================
+           IF n_elements(sz) NE 2 THEN BEGIN
+             openw, 9, fn_logfile, /append
+             printf, 9, ' '
+             printf, 9, '==============   ' + counter + '   =============='
+             printf, 9, 'Skipping invalid HMC input (more than 1 band in the TIF image): '
+             printf, 9, input
+             close, 9
+             GOTO, skip_batch_hmc  ;; invalid input
+           ENDIF
+       
            q=size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
            ;; in batch mode we can process larger images compared to the GUI
            MSPA_Compliance, input, image0, info.immaxsizeg * 10, 0, result
@@ -13805,7 +14669,8 @@ CASE strlowCase(eventValue) OF
              openw, 9, fn_logfile, /append
              printf, 9, ' '
              printf, 9, '==============   ' + counter + '   =============='
-             printf, 9, 'Skipping invalid HMC input file: ', input
+             printf, 9, 'Skipping invalid HMC input file: '
+             printf, 9, input
              close, 9
              GOTO, skip_batch_hmc  ;; invalid input
            ENDIF
@@ -14489,14 +15354,14 @@ CASE strlowCase(eventValue) OF
 
 
    ;;===================================================================================================
-   'cost_recode':  BEGIN   ;;;;; Restoration Setup: resistance by land cover   ;;;;;;;;;;;;;;;;;;;;;;
+   'cost_recode':  BEGIN   ;;;;; Restoration Setup: resistance by landcover   ;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================
      msg = "Please assign the following resistance values:" + string(10b) + $
       '0: Blocking, can not be traversed (optional)' + string(10b) + $
       '2: Foreground (FG) objects, fixed at 2%' + string(10b) + $
-      '[3, 100]: land cover specific Background (BG) resistance' + string(10b) + string(10b) + $
+      '[3, 100]: landcover specific Background (BG) resistance' + string(10b) + string(10b) + $
       'Note: resistance values of 1 or > 100 are not allowed.'
-     tit = 'Restoration Planner Setup: assign land cover class specific resistance'
+     tit = 'Restoration Planner Setup: assign landcover class specific resistance'
      res = dialog_message(msg, title = tit, / information)
      goto, lc_recode
    END
@@ -15063,7 +15928,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Restoration Status input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid Restoration Status input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_RSS  ;; invalid input
        ENDIF
@@ -15073,18 +15939,32 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Restoration Status input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid Restoration Status input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_RSS  ;; invalid input
        ENDIF
 
-       image0 = read_tiff(input)  ;; read and check it
+       image0 = read_tiff(input) & sz = size(image0,/dim)       
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid Restoration Status input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_batch_RSS  ;; invalid input
+       ENDIF
+       
        sz = size(image0)
        IF sz[3] NE 1 THEN BEGIN ;; not byte
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Restoration Status input file (not byte): ', input
+         printf, 9, 'Skipping invalid Restoration Status input file (not byte): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_RSS
        ENDIF
@@ -15094,7 +15974,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Restoration Status input file (no FG-objects - 2b): ', input
+         printf, 9, 'Skipping invalid Restoration Status input file (no FG-objects - 2b): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_RSS
        ENDIF
@@ -15103,7 +15984,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Restoration Status input file (resistance > 100b): ', input
+         printf, 9, 'Skipping invalid Restoration Status input file (resistance > 100b): '
+         printf, 9, input
          close, 9
          GOTO, skip_batch_RSS
        ENDIF
@@ -15845,6 +16727,9 @@ CASE strlowCase(eventValue) OF
         endif else begin
           write_tiff,fname, rotate(cost,7), description = desc2, red = r, green = g, blue = b, compression=1
         endelse
+        gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc2 + '" '
+        IF info.my_os EQ 'windows' THEN spawn, gedit + fname, log, / hide ELSE spawn, gedit + fname, log
+
         ;; back to MSPA-colors
         restore, info.dir_guidossub + 'mspacolorston.sav' & tvlct, r, g, b
         ;; end cost
@@ -15891,6 +16776,8 @@ CASE strlowCase(eventValue) OF
         endif else begin
           write_tiff,fname, rotate(imlcp,7), description = desc, red = r, green = g, blue = b, compression=1
         endelse
+        gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+        IF info.my_os EQ 'windows' THEN spawn, gedit + fname, log, / hide ELSE spawn, gedit + fname, log
         
         ;; build average distance of restore pixels
         quality = mean(morphdist[lcp[rp]])
@@ -16190,7 +17077,6 @@ CASE strlowCase(eventValue) OF
       marktmp = marker 
       q2b = where(marker eq 2b,ct_q2b)
       if ct_q2b gt 0 then marktmp[q2b] = 0b      
-;;;      write_tiff,'marker1.tif',marktmp,compression=1
       ;; marker1 with extended frame of missing (3b)
       ext = bytarr(sz[1] + eew2, sz[2] + eew2) + 3b
       ext[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1] = marktmp      
@@ -16634,7 +17520,8 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid Entropy input (empty space in directory path or input filename): ', input
+           printf, 9, 'Skipping invalid Entropy input (empty space in directory path or input filename): '
+           printf, 9, input
            close, 9
            GOTO, skip_frag1  ;; invalid input
          ENDIF
@@ -16644,7 +17531,8 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid Entropy input (not a TIFF image): ', input
+           printf, 9, 'Skipping invalid Entropy input (not a TIFF image): '
+           printf, 9, input
            close, 9
            GOTO, skip_frag1  ;; invalid input
          ENDIF
@@ -16653,12 +17541,25 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid Entropy input file: ', input
+           printf, 9, 'Skipping invalid Entropy input file: '
+           printf, 9, input
            close, 9
            GOTO, skip_frag1  ;; invalid input
          ENDIF
 
-         image0 = read_tiff(input)  ;; read and check it
+         image0 = read_tiff(input)  & sz = size(image0,/dim)
+         ;; check for single channel image
+         ;;===========================
+         IF n_elements(sz) NE 2 THEN BEGIN
+           openw, 9, fn_logfile, /append
+           printf, 9, ' '
+           printf, 9, '==============   ' + counter + '   =============='
+           printf, 9, 'Skipping invalid Entropy input (more than 1 band in the TIF image): '
+           printf, 9, input
+           close, 9
+           GOTO, skip_frag1  ;; invalid input
+         ENDIF
+         
          q=size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
          ;; in batch mode we can process larger images compared to the GUI         
          MSPA_Compliance, input, image0, info.immaxsizeg * 10, 0, result
@@ -16666,7 +17567,8 @@ CASE strlowCase(eventValue) OF
            openw, 9, fn_logfile, /append
            printf, 9, ' '
            printf, 9, '==============   ' + counter + '   =============='
-           printf, 9, 'Skipping invalid Entropy input file: ', input
+           printf, 9, 'Skipping invalid Entropy input file: '
+           printf, 9, input
            close, 9
            GOTO, skip_frag1  ;; invalid input
          ENDIF
@@ -16764,6 +17666,7 @@ CASE strlowCase(eventValue) OF
          ENDIF ELSE BEGIN
            write_tiff, fn_out, entro, red = r, green = g, blue = b,compression = 1
          ENDELSE
+         IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
          image0 = 0 & entro = 0
          okfile = okfile + 1
          openw, 9, fn_logfile, /append
@@ -17021,7 +17924,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Contagion input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid Contagion input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_frag2  ;; invalid input
        ENDIF
@@ -17031,7 +17935,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Contagion input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid Contagion input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_frag2  ;; invalid input
        ENDIF
@@ -17040,12 +17945,25 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Contagion input file: ', input
+         printf, 9, 'Skipping invalid Contagion input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_frag2  ;; invalid input
        ENDIF
 
-       im0 = read_tiff(input)  ;; read and check it
+       im0 = read_tiff(input)  & sz = size(im0,/dim)
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid Contagion input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_frag2  ;; invalid input
+       ENDIF
+     
        q=size(im0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
        ;; in batch mode we can process larger images compared to the GUI
        MSPA_Compliance, input, im0, info.immaxsizeg * 10, 0, result
@@ -17054,7 +17972,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Contagion input file: ', input
+         printf, 9, 'Skipping invalid Contagion input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_frag2  ;; invalid input
        ENDIF
@@ -17125,6 +18044,7 @@ CASE strlowCase(eventValue) OF
        ENDIF ELSE BEGIN
          write_tiff, fn_out, im, red = r, green = g, blue = b,compression = 1
        ENDELSE
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
        im = 0
        okfile = okfile + 1
        openw, 9, fn_logfile, /append
@@ -17413,14 +18333,14 @@ CASE strlowCase(eventValue) OF
          GOTO, fin
        ENDIF
 
-
        input = im_file(fidx)
        res = strpos(input,' ') ge 0
        IF res EQ 1 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid parcellation input (empty space in directory path or input filename): ', input
+         printf, 9, 'Skipping invalid Parcellation input (empty space in directory path or input filename): '
+         printf, 9, input
          close, 9
          GOTO, skip_parcellation  ;; invalid input
        ENDIF
@@ -17430,7 +18350,8 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid parcellation input (not a TIFF image): ', input
+         printf, 9, 'Skipping invalid Parcellation input (not a TIFF image): '
+         printf, 9, input
          close, 9
          GOTO, skip_parcellation  ;; invalid input
        ENDIF
@@ -17439,18 +18360,32 @@ CASE strlowCase(eventValue) OF
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid parcellation input file: ', input
+         printf, 9, 'Skipping invalid Parcellation input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_parcellation  ;; invalid input
        ENDIF
 
-       im0 = read_tiff(input)  ;; read and check it
+       im0 = read_tiff(input) & sz = size(im0,/dim)  
+       ;; check for single channel image
+       ;;===========================
+       IF n_elements(sz) NE 2 THEN BEGIN
+         openw, 9, fn_logfile, /append
+         printf, 9, ' '
+         printf, 9, '==============   ' + counter + '   =============='
+         printf, 9, 'Skipping invalid Parcellation input (more than 1 band in the TIF image): '
+         printf, 9, input
+         close, 9
+         GOTO, skip_parcellation  ;; invalid input
+       ENDIF
+     
        Labelall_Compliance, input, im0, info.immaxsizeg * 10, 0, result
        IF result EQ 0 THEN BEGIN
          openw, 9, fn_logfile, /append
          printf, 9, ' '
          printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Parcellation input file: ', input
+         printf, 9, 'Skipping invalid Parcellation input file: '
+         printf, 9, input
          close, 9
          GOTO, skip_parcellation  ;; invalid input
        ENDIF
@@ -20151,7 +21086,7 @@ CASE strlowCase(eventValue) OF
       widget_control, / hourglass
       IF info.my_os EQ 'windows' THEN BEGIN
         pushd, info.dir_guidos
-        spawn, 'start GuidosToolbox_Manual.pdf', / nowait
+        spawn, 'start GuidosToolbox_Manual.pdf', / nowait, /hide
         popd
         GOTO, fin
       ENDIF ELSE BEGIN ;; Linux
@@ -20172,7 +21107,7 @@ CASE strlowCase(eventValue) OF
       widget_control, / hourglass
       IF info.my_os EQ 'windows' THEN BEGIN
         pushd, info.dir_guidos + 'MSPAstandalone'
-        spawn, 'start MSPA_Guide.pdf', / nowait
+        spawn, 'start MSPA_Guide.pdf', / nowait, /hide
         popd
         GOTO, fin
       ENDIF ELSE BEGIN ;; Linux
@@ -20180,6 +21115,27 @@ CASE strlowCase(eventValue) OF
         spawn, cmd + ' &'
         GOTO, fin
       ENDELSE
+   END
+
+   ;;*****************************************************************************************************
+
+   'gsc_guide':  BEGIN
+     IF info.my_os EQ 'apple' THEN BEGIN
+       spawn, 'open ' + info.dir_guidossub + 'spatcon/GRAYSPATCON_Guide.pdf'
+       GOTO, fin
+     ENDIF
+
+     widget_control, / hourglass
+     IF info.my_os EQ 'windows' THEN BEGIN
+       pushd, info.dir_guidossub + 'spatcon'
+       spawn, 'start GRAYSPATCON_Guide.pdf', / nowait, /hide
+       popd
+       GOTO, fin
+     ENDIF ELSE BEGIN ;; Linux
+       cmd = info.pdf_exe + ' "' + info.dir_guidossub + 'spatcon/GRAYSPATCON_Guide.pdf' + '"'
+       spawn, cmd + ' &'
+       GOTO, fin
+     ENDELSE
    END
 
 
@@ -20696,7 +21652,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, January 2023' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, April 2023' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -21005,6 +21961,7 @@ case eventvalue of
   'batch_parcellation': goto, backto_batch_parcellation
   'batch_accounting': goto, backto_batch_accounting
   'batch_mspa': goto, backto_batch_mspa
+  'batch_gsc': goto, backto_batch_gsc
   'batch_spa': goto, backto_batch_spa
   'mspatile': goto, backto_mspatile
   'batch_pf': goto, backto_batch_pf
@@ -21315,6 +22272,17 @@ fnsaves = 'The following files were saved: ' + string(10b)
 ;; add generic software info
 desc = 'GTB, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
 desc0 = desc
+
+;; define gedit
+tagsw = 'TIFFTAG_SOFTWARE='+'"'+"GTB, https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/" +'" '
+IF info.my_os EQ 'windows' THEN BEGIN
+  gedit = info.windrive + ' & cd "' + info.dir_fwtools + '" & setfw.bat & '
+  gedit = gedit + 'cd "' + info.dir_tmp + '" & gdal_edit -mo ' + tagsw    
+ENDIF ELSE BEGIN ;; linux/apple
+  if strlen(info.sysgdal) gt 0 then $
+    gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
+  gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
+ENDELSE
 ;;=======================================================================
 IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
   fname = info.title & pp = strpos(fname, '.', / reverse_search)
@@ -21383,7 +22351,7 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
   c_trans = strtrim(info.mspa_param3_id - 0, 2)
   c_intext = strtrim(info.mspa_param4_id - 0, 2)
   mspaext = '_' + c_FGconn + '_' + c_size + '_' + c_trans + '_' + c_intext
-  prefix='' & is_lmms = 0 & is_lm = 0 & is_fos = 0 & is_fad = 0 & is_spa = 0 & is_eucldist = 0 & is_acc = 0 & is_restore=0
+  prefix='' & is_lmms = 0 & is_lm = 0 & is_fos = 0 & is_fad = 0 & is_spa = 0 & is_eucldist = 0 & is_acc = 0 & is_restore=0 & is_gsc = 0
   rss_exists = (file_info(info.dir_tmp + 'rss.csv')).exists
 
 
@@ -21541,10 +22509,20 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
      file_copy, info.dir_tmp + 'rss.csv', z, /overwrite
      fnsaves = fnsaves + z + string(10b)   
      fname = fname + '_rss'
+  ENDIF ELSE IF strpos(info.add_title,'(GSC metric: ') GT 0 THEN BEGIN ;; grayspatcon output
+     is_gsc = 1
+     fname = info.fname_input & pp = strpos(fname, '.', / reverse_search)
+     IF pp GT 0 THEN fname = strmid(fname, 0, pp)
+     tt = strmid(info.add_title,14) 
+     pp = strpos(tt, ')') & tt = strmid(tt,0,pp)
+     fname = fname + '_gsc' + tt       
+     res = (file_info(info.dir_tmp + 'noGSCimage')).exists
+     if res then goto, fin ;; skip directly to statistics output only
    ENDIF ELSE BEGIN
     fname = fname + '_result'
   ENDELSE
 endif
+gednodata = ''
 
 IF strmid(fileaction, 0, 4) EQ 'read' THEN BEGIN
   ;; reset label_groups to be not active
@@ -21952,7 +22930,15 @@ CASE fileaction OF
       widget_control, info.w_iminfo2, / sensitive
    END
 
+
+
+
+
+
+   ;;============================================================
+   ;;============================================================
    ;;  S A V E   O P T I O N S
+   ;;============================================================
    ;;============================================================
    'save_display':BEGIN
       wshow, !D.Window & tvlct, r, g, b, / get
@@ -22061,7 +23047,8 @@ CASE fileaction OF
         z = strmid(im_file,0,strlen(im_file)-4) + '_viewport.tif' & fname_cost = z
         write_tiff, z, image0, red = r, green = g, blue = b, $
           geotiff = * info.geotiffinfo, description = desc, compression = 1
-        ;write_png, z, image0, r, g, b, /order
+        gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+        IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
         fnsaves = fnsaves + z + string(10b)
         goto,fin
       endif
@@ -22124,6 +23111,8 @@ CASE fileaction OF
         if eventvalue eq 'save_generic' then begin ;; output tif
           if eventvalue2 eq 'save_generic_tif' then begin
             write_tiff, z, image0, red = r, green = g, blue = b, description = desc, compression = 1
+            gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
           endif else begin
             if is_fos eq 0 then z = dir_test + fname + '_mscale.png' else z = dir_test + fname + '.png'
             if is_eucldist eq 1 then z = dir_test + fname + '_viewport.png'
@@ -22133,6 +23122,8 @@ CASE fileaction OF
         endif else begin ;; geotiff         
           write_tiff, z, image0, red = r, green = g, blue = b, description = desc, $
             geotiff = * info.geotiffinfo, compression = 1
+          gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+          IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
         endelse                           
         fnsaves = fnsaves + z + string(10b)
         
@@ -22171,6 +23162,8 @@ CASE fileaction OF
             if eventvalue eq 'save_generic' then begin ;; output tif
               if eventvalue2 eq 'save_generic_tif' then begin
                 write_tiff, z, image0, red = r, green = g, blue = b, description = desc, compression = 1
+                gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+                IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
               endif else begin
                 z = dir_test + fn_lmms + strtrim(kstr[isc],2)  + '.png'
                 write_png, z, image0, r, g, b, /order
@@ -22178,6 +23171,8 @@ CASE fileaction OF
             endif else begin ;; geotiff
               write_tiff, z, image0, red = r, green = g, blue = b, $
                 geotiff = * info.geotiffinfo, description = desc, compression = 1
+              gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+              IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
             endelse
             ;; the heatmap stuff
             z = dir_test + fn_lmms + strtrim(kstr[isc],2)  + '_heatmap.csv'
@@ -22221,11 +23216,15 @@ CASE fileaction OF
           if eventvalue eq 'save_generic' then begin ;; output tif
             if eventvalue2 eq 'save_generic_tif' then begin
               write_tiff, z, image0, description = desc, compression = 1
+              gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+              IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
             endif else begin
               write_png, z, image0, /order
             endelse
           endif else begin ;; geotiff
             write_tiff, z, image0, description = desc, geotiff = * info.geotiffinfo, compression = 1
+            gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
           endelse          
           fnsaves = fnsaves + z + string(10b)   
           
@@ -22277,8 +23276,12 @@ CASE fileaction OF
           z = dir_test + fname + '.tif'
           if eventvalue eq 'save_generic' then begin ;; output tif or png always as tif because png can't do float
             write_tiff, z, image0, description = desc, compression = 1, /float
+            gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
           endif else begin ;; geotiff
             write_tiff, z, image0, description = desc, geotiff = * info.geotiffinfo, compression = 1, /float
+            gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
           endelse
           fnsaves = fnsaves + z + string(10b)
           
@@ -22314,6 +23317,8 @@ CASE fileaction OF
           if eventvalue eq 'save_generic' then begin ;; output tif
             if eventvalue2 eq 'save_generic_tif' then begin
               write_tiff, z, image0, red = r, green = g, blue = b, description = desc, compression = 1
+              gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+              IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
             endif else begin
               z = dir_test + fname + '_' + strtrim(kdim_str[isc],2)  + '.png'
               write_png, z, image0, r, g, b, /order
@@ -22321,6 +23326,8 @@ CASE fileaction OF
           endif else begin ;; geotiff
             write_tiff, z, image0, red = r, green = g, blue = b, $
               geotiff = * info.geotiffinfo, description = desc, compression = 1
+            gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
           endelse         
         endfor
         scales = 0 & image0 = 0             
@@ -22397,12 +23404,17 @@ CASE fileaction OF
               write_tiff, z, image0, red = r, green = g, blue = b, $
               geotiff = * info.geotiffinfo, description = desc, compression = 1 else $
               write_tiff, z, image0, geotiff = * info.geotiffinfo, description = desc, compression = 1
+              if is_gsc then gednodata = '-a_nodata 255 '
+              gedit = gedit + gednodata + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+              IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log             
               if prefix eq '_reconnect_' then begin ;; add the reconnected path as binary image for MSPA-analysis
                 lcp = where(image0 eq 80b,ct_lcp, /l64)
                 imt = *info.orig_image & imt = rotate(imt, 7)
                 if ct_lcp gt 0 then imt[lcp] = 2b
                 ztmp = strmid(z,0,strlen(z)-4) + '4MSPA+NW.tif'
-                write_tiff, ztmp, imt, geotiff = * info.geotiffinfo, description = desc, compression = 1                
+                write_tiff, ztmp, imt, geotiff = * info.geotiffinfo, description = desc, compression = 1
+                gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+                IF info.my_os EQ 'windows' THEN spawn, gedit + ztmp, log, / hide ELSE spawn, gedit + ztmp, log                
                 fnsaves = fnsaves + ztmp + string(10b)
               endif
               
@@ -22413,19 +23425,33 @@ CASE fileaction OF
             sig = 0 & descx = desc
           endelse                    
           write_tiff, z, image0, geotiff = * info.geotiffinfo, description = descx, compression = 1, signed=sig, $
-                     float = dtype EQ 'float', $
-                     short = dtype EQ 'integer', $
-                     long = dtype EQ 'long integer', $
+                     float = dtype EQ 'float', short = dtype EQ 'integer', long = dtype EQ 'long integer', $
                      l64 = dtype EQ '64-bit integer'
+           ;; add image description and potentially gsc-info on nodata
+           if is_gsc then begin
+             ;; we should have this file now:
+             fq = info.dir_tmp + 'gscoutput.txt' & res = (file_info(fq)).exists
+             if res then begin
+                fl = file_lines(fq) 
+                ;; add nodata info only for non-NaN processing, equivalent to file length less than 17 lines                
+                if fl lt 17 then begin ;; implies we have NOT set NaN and hence regular GSC output
+                  ttt = strarr(fl) & close, 5 & openr, 5, fq & readf, 5, ttt & close, 5
+                  ;; output is float because byte was dealt with above, now get metric-specific value for missing data
+                  gsc_m = strtrim(strmid(ttt[0],1,/reverse),2)
+                  IF gsc_m eq '44' OR gsc_m eq '45' OR gsc_m eq '50' THEN origv = '-9000000.0' ELSE origv = '-0.01' 
+                  gednodata = '-a_nodata ' + origv + ' '   
+                endif                              
+             endif ;; end file exists           
+           endif ;; end gsc                    
+           gedit = gedit + gednodata + '-mo TIFFTAG_IMAGEDESCRIPTION="'+descx + '" '
+           IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
         endelse
       ENDIF ELSE BEGIN ;; zoom and geotiff
          ;; 1) get the geotiff for the zoomed region with gdal
          ;; define gdal_translate
          IF info.my_os EQ 'windows' THEN BEGIN
             gtrans = info.windrive + ' & cd "' + info.dir_fwtools + '" & setfw.bat & '
-            gtrans = gtrans + 'cd "' + info.dir_tmp + $
-                     '" & gdal_translate -co ' + $
-                     '"COMPRESS=LZW" -srcwin '
+            gtrans = gtrans + 'cd "' + info.dir_tmp + '" & gdal_translate -co ' + '"COMPRESS=LZW" -srcwin '
          ENDIF ELSE BEGIN ;; linux/apple
             if strlen(info.sysgdal) gt 0 then $
               gtrans = 'unset LD_LIBRARY_PATH; gdal_translate -co ' + '"COMPRESS=LZW" -srcwin ' else $
@@ -22436,8 +23462,7 @@ CASE fileaction OF
          gtrans = gtrans + strtrim(xoff, 2) + ' ' + strtrim(yoff, 2) + $
                   ' ' + strtrim(dx, 2) + ' ' + strtrim(dy, 2) + ' ' + $
                   info.fname_input + ' ' + info.dir_tmp + 'tmpdat.tif'
-         IF info.my_os EQ 'windows' THEN $
-          spawn, gtrans, log, / hide ELSE spawn, gtrans, log
+         IF info.my_os EQ 'windows' THEN spawn, gtrans, log, / hide ELSE spawn, gtrans, log
 
          ;; 2) final: copy the geoheader to the data:
          ;; final name: im_file
@@ -22448,18 +23473,39 @@ CASE fileaction OF
             write_tiff, z, image0, red = r, green = g, blue = b, $
             geotiff = geotiffz, description = desc, compression = 1  else $
             write_tiff, z, image0, geotiff = geotiffz, description = desc, compression = 1
-         endif else begin
-         if dtype EQ 'integer' or dtype EQ 'float' or dtype EQ 'long integer' or dtype EQ '64-bit integer' then begin
-           sig = 1 & descx = desc0
-         endif else begin
-           sig = 0 & descx = desc
-         endelse                    
-         write_tiff, z, image0, description = descx, compression = 1, geotiff = geotiffz, signed=sig,$
-                   float = dtype EQ 'float', $
-                   short = dtype EQ 'integer', $
-                   long = dtype EQ 'long integer', $
-                   l64 = dtype EQ '64-bit integer'
-         endelse
+            if is_gsc then gednodata = '-a_nodata 255 '
+            gedit = gedit + gednodata + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
+
+          endif else begin
+            if dtype EQ 'integer' or dtype EQ 'float' or dtype EQ 'long integer' or dtype EQ '64-bit integer' then begin
+              sig = 1 & descx = desc0
+            endif else begin
+              sig = 0 & descx = desc
+            endelse
+            write_tiff, z, image0, description = descx, compression = 1, geotiff = geotiffz, signed=sig,$
+              float = dtype EQ 'float', short = dtype EQ 'integer', long = dtype EQ 'long integer', $
+              l64 = dtype EQ '64-bit integer'
+
+            ;; add image description and potentially gsc-info on nodata
+            if is_gsc then begin
+              ;; we should have this file now:
+              fq = info.dir_tmp + 'gscoutput.txt' & res = (file_info(fq)).exists
+              if res then begin
+                 fl = file_lines(fq) 
+                 ;; add nodata info only for non-NaN processing, equivalent to file length less than 17 lines                
+                 if fl lt 17 then begin ;; implies we have NOT set NaN and hence regular GSC output
+                   ttt = strarr(fl) & close, 5 & openr, 5, fq & readf, 5, ttt & close, 5
+                   ;; output is float because byte was dealt with above, now get metric-specific value for missing data
+                   gsc_m = strtrim(strmid(ttt[0],1,/reverse),2)
+                   IF gsc_m eq '44' OR gsc_m eq '45' OR gsc_m eq '50' THEN origv = '-9000000.0' ELSE origv = '-0.01' 
+                   gednodata = '-a_nodata ' + origv + ' '   
+                 endif                              
+              endif ;; end file exists           
+            endif ;; end gsc                    
+            gedit = gedit + gednodata + '-mo TIFFTAG_IMAGEDESCRIPTION="'+descx + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
+          endelse
       ENDELSE
       fnsaves = fnsaves + z + string(10b)
       fname = im_file
@@ -22594,7 +23640,9 @@ CASE fileaction OF
         IF dtype EQ 'byte' THEN BEGIN
           if info.ctbl ne 0 then $
             write_tiff, im_file, image0, red = r, green = g, blue = b, description = desc, compression = 1 else $
-            write_tiff, im_file, image0, description = desc, compression = 1      
+            write_tiff, im_file, image0, description = desc, compression = 1
+          gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+          IF info.my_os EQ 'windows' THEN spawn, gedit + im_file, log, / hide ELSE spawn, gedit + im_file, log   
         ENDIF ELSE BEGIN
           if dtype EQ 'integer' or dtype EQ 'long integer' or dtype EQ '64-bit integer' then sig=1 else sig=0
           write_tiff, im_file, image0, description = desc, compression = 1, signed=sig, $
@@ -22602,12 +23650,16 @@ CASE fileaction OF
             short = dtype EQ 'integer', $
             long = dtype EQ 'long integer', $
             l64 = dtype EQ '64-bit integer'
+          gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+          IF info.my_os EQ 'windows' THEN spawn, gedit + im_file, log, / hide ELSE spawn, gedit + im_file, log
         ENDELSE
       ENDIF ELSE BEGIN ;; zoom
         IF dtype EQ 'byte' then begin
           if info.ctbl ne 0 then $
             write_tiff, im_file, image0, red = r, green = g, blue = b, description = desc, compression = 1  else $
             write_tiff, im_file, image0, description = desc, compression = 1
+          gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+          IF info.my_os EQ 'windows' THEN spawn, gedit + im_file, log, / hide ELSE spawn, gedit + im_file, log
         endif else begin
           if dtype EQ 'integer' or dtype EQ 'long integer' or dtype EQ '64-bit integer' then sig=1 else sig=0
           write_tiff, im_file, image0, description = desc, compression = 1, signed=sig,$
@@ -22615,6 +23667,8 @@ CASE fileaction OF
             short = dtype EQ 'integer',  $
             long = dtype EQ 'long integer', $
             l64 = dtype EQ '64-bit integer'
+          gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+          IF info.my_os EQ 'windows' THEN spawn, gedit + im_file, log, / hide ELSE spawn, gedit + im_file, log
         endelse
       ENDELSE
       fnsaves = fnsaves + im_file + string(10b)
@@ -23050,6 +24104,19 @@ fin:
 ;; when saving check if addional output should be written out
 IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
    fname0 = fname
+
+   IF is_gsc gt 0 THEN begin
+     pp = strpos(fname0, '.', / reverse_search) & fnbase = fname0
+     IF pp GT 0 THEN fnbase = strmid(fname0, 0, pp)
+     fname = fnbase + '.txt' & path = info.dir_data
+     IF n_elements(path2file) GT 0 THEN path = path2file
+     fx = info.dir_tmp + 'gscoutput.txt'
+     res = file_info(fx) & res = res.exists
+     IF res EQ 1b THEN file_copy, fx, fname, /overwrite
+     fnsaves = fnsaves + fname + string(10b)
+     res = dialog_message(fnsaves, / information)   
+     goto,finall
+   endif
    
    IF is_spa gt 0 THEN begin
      pp = strpos(fname0, '.', / reverse_search) & fnbase = fname0
@@ -23193,19 +24260,27 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
        ;; no geotiff
        IF info.is_geotiff EQ 0b THEN BEGIN
          write_tiff, imfilebase + '.tif', image0, /long, /signed, description = desc, compression = 1
+         gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+         IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '.tif', log, / hide ELSE spawn, gedit + imfilebase + '.tif', log
          fnsaves = fnsaves + imfilebase + '.tif' + string(10b)
          IF info.is_influ eq 3 then begin
           write_tiff, imfilebase3 + '.tif', image3, /long, description = desc, compression = 1
+          gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+          IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase3 + '.tif', log, / hide ELSE spawn, gedit + imfilebase3 + '.tif', log
           fnsaves = fnsaves + imfilebase3 + '.tif' + string(10b)
          endif
        ENDIF ELSE BEGIN ;; we have geotiff info
          IF szoom EQ 0b THEN BEGIN
            write_tiff, imfilebase + '.tif', image0, $
              geotiff = * info.geotiffinfo, /long, /signed, description = desc, compression = 1
-             fnsaves = fnsaves + imfilebase + '.tif' + string(10b)
+           gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+           IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '.tif', log, / hide ELSE spawn, gedit + imfilebase + '.tif', log
+           fnsaves = fnsaves + imfilebase + '.tif' + string(10b)
            IF info.is_influ eq 3 and prefix eq '_proximity_' then begin
             write_tiff, imfilebase3 + '.tif', image3, $
              geotiff = * info.geotiffinfo, /long, description = desc, compression = 1
+             gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+             IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase3 + '.tif', log, / hide ELSE spawn, gedit + imfilebase3 + '.tif', log            
              fnsaves = fnsaves + imfilebase3 + '.tif' + string(10b)
            endif
          ENDIF ELSE BEGIN ;; zoom and geotiff
@@ -23235,10 +24310,14 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
            file_delete, info.dir_tmp + 'tmpdat.tif', / quiet & imtmp = 0
            write_tiff, imfilebase + '.tif', image0, description = desc, $
              compression = 1, geotiff = geotiffz, /long, /signed
+             gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+             IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '.tif', log, / hide ELSE spawn, gedit + imfilebase + '.tif', log
              fnsaves = fnsaves + imfilebase + '.tif' + string(10b)
            IF info.is_influ eq 3 and prefix eq '_proximity_' then begin
             write_tiff, imfilebase3 + '.tif', image3, description = desc, $
              compression = 1, geotiff = geotiffz, /long
+             gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+             IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase3 + '.tif', log, / hide ELSE spawn, gedit + imfilebase3 + '.tif', log
              fnsaves = fnsaves + imfilebase3 + '.tif' + string(10b)
            endif            
          ENDELSE
@@ -23364,7 +24443,9 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
          write_tiff,fname, rotate(image0,7), description = desc, geotiff = * info.geotiffinfo, red = r, green = g, blue = b, compression = 1
        endif else begin
          write_tiff,fname, rotate(image0,7), description = desc, red = r, green = g, blue = b, compression=1
-       endelse        
+       endelse 
+       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+       IF info.my_os EQ 'windows' THEN spawn, gedit + fname, log, / hide ELSE spawn, gedit + fname, log       
      ENDIF
      IF info.is_cost EQ 2 THEN BEGIN ;; check if we save a optimum (5) path, then add the actual cost image too
        p = strpos(tmpfile2[0],'_AB.tif')
@@ -23402,11 +24483,15 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
       ;; no geotiff
       IF info.is_geotiff EQ 0b THEN BEGIN
          write_tiff, imfilebase + '.tif', image0, /long, description = desc, compression = 1
+         gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+         IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '.tif', log, / hide ELSE spawn, gedit + imfilebase + '.tif', log
          fnsaves = fnsaves + imfilebase + '.tif' + string(10b)
       ENDIF ELSE BEGIN ;; we have geotiff info
          IF szoom EQ 0b THEN BEGIN
             write_tiff, imfilebase + '.tif', image0, description = desc, $
                         geotiff = * info.geotiffinfo, /long, compression = 1
+            gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '.tif', log, / hide ELSE spawn, gedit + imfilebase + '.tif', log
          ENDIF ELSE BEGIN ;; zoom and geotiff
             ;; 1) get the geotiff for the zoomed region with gdal
             ;; define gdal_translate
@@ -23434,6 +24519,8 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
             file_delete, info.dir_tmp + 'tmpdat.tif', / quiet & imtmp = 0
             write_tiff, imfilebase + '.tif', image0, description = desc, $
                         compression = 1, geotiff = geotiffz, /long
+            gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + '.tif', log, / hide ELSE spawn, gedit + imfilebase + '.tif', log
          ENDELSE
          fnsaves = fnsaves + imfilebase + '.tif' + string(10b)
       ENDELSE
@@ -23487,6 +24574,8 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
             ENDIF ELSE BEGIN
                write_tiff, imfilebase + suffix(isuf), image0, / float, description = desc, compression = 1
             ENDELSE
+            gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+            IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + suffix(isuf), log, / hide ELSE spawn, gedit + imfilebase + suffix(isuf), log
          ENDIF ELSE BEGIN ;; we do have geotiff info
             IF szoom EQ 0b THEN BEGIN
                IF isuf EQ 0 THEN BEGIN
@@ -23496,6 +24585,8 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
                   write_tiff, imfilebase + suffix(isuf), image0, /float, $
                               geotiff = * info.geotiffinfo, description = desc, compression = 1
                ENDELSE
+               gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+               IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + suffix(isuf), log, / hide ELSE spawn, gedit + imfilebase + suffix(isuf), log
             ENDIF ELSE BEGIN ;; zoom and geotiff
                ;; 1) get the geotiff for the zoomed region with gdal
                ;; define gdal_translate
@@ -23529,6 +24620,8 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
                   write_tiff, imfilebase + suffix(isuf), image0, description = desc, $
                               compression = 1, geotiff = geotiffz, /float
                ENDELSE
+               gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+               IF info.my_os EQ 'windows' THEN spawn, gedit + imfilebase + suffix(isuf), log, / hide ELSE spawn, gedit + imfilebase + suffix(isuf), log
             ENDELSE
          ENDELSE
          fnsaves = fnsaves + imfilebase + suffix(isuf) + string(10b)
@@ -23765,6 +24858,17 @@ rsf = info.resfac
 ;; set temporary custom path switch to allow moving in enlarged zoom window when doing restoration paths 
 IF info.is_cost EQ 3 AND event.type EQ 3 THEN info.is_cost = 7
 IF info.is_cost EQ 9 AND event.type EQ 3 THEN info.is_cost = 79
+
+;; define gedit
+tagsw = 'TIFFTAG_SOFTWARE='+'"'+"GTB, https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/" +'" '
+IF info.my_os EQ 'windows' THEN BEGIN
+  gedit = info.windrive + ' & cd "' + info.dir_fwtools + '" & setfw.bat & '
+  gedit = gedit + 'cd "' + info.dir_tmp + '" & gdal_edit -mo ' + tagsw
+ENDIF ELSE BEGIN ;; linux/apple
+  if strlen(info.sysgdal) gt 0 then $
+    gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
+  gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
+ENDELSE
 
 IF event.type EQ 2 AND info.set_zoom EQ 0 THEN BEGIN
     
@@ -25172,6 +26276,8 @@ IF NOT condi THEN BEGIN
         write_tiff, fn_out, rotate(marker,7), geotiff = * info.geotiffinfo , description = desc, compression = 1 ELSE $
         write_tiff, fn_out, rotate(marker,7), description = desc, compression = 1
       marker = 0
+      gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+      IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
       msg = 'The marker image was saved as: ' + string(10b) + fn_out + string(10b) + 'Returning...'
       res = dialog_message(msg, title='Setup Marker Image',/ information)
     endif
@@ -25718,7 +26824,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.102
+gtb_version = 3.103
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -26043,6 +27149,7 @@ button = Widget_Button(w_batchk, Value = 'Landscape Mosaic', Event_Pro = 'guidos
 button = Widget_Button(w_batchk, Value = 'Density', Event_Pro = 'guidos_processing', uvalue = 'batch_pf')
 button = Widget_Button(w_batchk, Value = 'Clustering', Event_Pro = 'guidos_processing', uvalue = 'batch_fac',/separator)
 button = Widget_Button(w_batchk, Value = 'Contagion', Event_Pro = 'guidos_processing', uvalue = 'batch_pff')
+button = Widget_Button(w_batchpat, Value = 'GraySpatCon', Event_Pro = 'guidos_processing', uvalue = 'batch_gsc',/separator)
 
 ;; Network
 w_batchnw = Widget_button(w_batch, Value = 'Graph Theory Network: GTN(MSPA)', / menu)
@@ -26246,6 +27353,7 @@ button = Widget_Button(w_pa_k1, Value = 'Density',  uvalue = 'kernel_PF')
 w_pa_k2 = Widget_Button(w_pa_kernel, Value = 'Counting Adjacencies', / Menu)
 button = Widget_Button(w_pa_k2, Value = 'Clustering', uvalue = 'kernel_fac')
 button = Widget_Button(w_pa_k2, Value = 'Contagion', uvalue = 'kernel_pff')
+button = Widget_Button(w_pa_pattern, Value = 'GraySpatCon', uvalue = 'grayspatcon', /Separator)
 
 
 w_pa_connectivity = Widget_Button(w_pa, Value = 'Graph Theory Network: GTN(MSPA)', / Menu)
@@ -26281,7 +27389,7 @@ w_pa_cost = Widget_Button(w_pa, Value = 'Restoration Planner', / Menu)
 button = Widget_Button(w_pa_cost, Value = 'Overview', uvalue = 'overview_resplanner')
 w_pa_costpre = Widget_Button(w_pa_cost, Value = 'Setup Tools', / menu, /Separator)
 button = Widget_Button(w_pa_costpre, Value = 'Fixed BG-Resistance', uvalue = 'cost_fixed')
-button = Widget_Button(w_pa_costpre, Value = 'Land Cover -> Resistance', uvalue = 'cost_recode')
+button = Widget_Button(w_pa_costpre, Value = 'Landcover -> Resistance', uvalue = 'cost_recode')
 button = Widget_Button(w_pa_costpre, Value = 'Distance -> Resistance', uvalue = 'cost_disres')
 button = Widget_Button(w_pa_costpre, Value = 'Pixel -> Resistance', uvalue = 'cost_pixel')
 button = Widget_Button(w_pa_costpre, Value = 'Line -> Resistance', uvalue = 'cost_line')
@@ -26304,6 +27412,7 @@ w_help = widget_button(w_menubar, value = 'Help', / help, / menu, $
 w_help_docu = widget_button(w_help, value = 'GTB Documentation', /menu)
 button = widget_button(w_help_docu, value = 'GTB Manual', uvalue = 'guidos_manual')
 button = widget_button(w_help_docu, value = 'MSPA Guide', uvalue = 'mspa_guide')
+button = widget_button(w_help_docu, value = 'GSC Guide', uvalue = 'gsc_guide')
 button = widget_button(w_help_docu, value = 'Changelog', uvalue = 'gt_changelog')
 button = widget_button(w_help_docu, value = 'EULA', uvalue = 'gt_eula')
 
