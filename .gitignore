@@ -13,4 +13,4 @@ __pycache__/
 .idea/
 
 # mac os files
-.DS_Store
+**/.DS_Store
