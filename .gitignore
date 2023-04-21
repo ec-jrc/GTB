@@ -1,0 +1,16 @@
+# documentation build
+docs/_build
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# visual studio code
+.vscode/
+
+# pycharm idea folder
+.idea/
+
+# mac os files
+.DS_Store
