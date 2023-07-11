@@ -21,7 +21,7 @@
 ;; to the programming language of your choice.
 ;;
 ;; GTB homepage: https://forest.jrc.ec.europa.eu/en/activities/lpa/gtb/
-;;
+;; GitHub: https://github.com/ec-jrc/GTB
 ;;=======================================================================
 compile_opt idl2
 ;;=======================================================================
@@ -1577,11 +1577,14 @@ tagsw = 'TIFFTAG_SOFTWARE='+'"'+"GTB, https://forest.jrc.ec.europa.eu/en/activit
 IF info.my_os EQ 'windows' THEN BEGIN
   gedit = info.windrive + ' & cd "' + info.dir_fwtools + '" & setfw.bat & '
   gedit = gedit + 'cd "' + info.dir_tmp + '" & gdal_edit -mo ' + tagsw
-ENDIF ELSE BEGIN ;; linux/apple
+ENDIF ELSE IF info.my_os EQ 'linux' THEN BEGIN
   if strlen(info.sysgdal) gt 0 then $
     gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
   gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
+ENDIF ELSE BEGIN ;; apple
+  gedit = '/Library/Frameworks/Python.framework/Versions/3.9/bin/gdal_edit.py -mo ' + tagsw
 ENDELSE
+
 
 ;; What kind of processing do you need?
 Widget_Control, event.id, Get_UValue = eventValue
@@ -21652,13 +21655,13 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, April 2023' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, July 2023' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
-                  '- spatcon, recode (K.Riitters)' + string(10b) + gdd
+                  '- (gray)spatcon, recode (K.Riitters)' + string(10b) + gdd
       ;; add info on image size
-      mspamax = '10000' & mbavail = 'N/A'
+      mspamax = '10,000' & mbavail = 'N/A'
       if info.my_os eq 'linux' then begin
         ;; find out how much available RAM (MB) we have: free+buffers+cache
         spawn,"free|awk 'FNR == 2 {print $7}'", mbavail & mbavail = float(mbavail[0])/1024 ;; available
@@ -21674,14 +21677,16 @@ CASE strlowCase(eventValue) OF
         info.immaxsize = uint(mbavail/19) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
       endif 
       str_about = str_about + string(10b) + string(10b) + 'Maximum map dimension [pixels]: ' + string(10b) + $
-        '- GTB: 30000 x 30000' + string(10b) + $
-        '- Contortion/ConeforInputs: 5000 x 5000' + string(10b) + $
+        '- GTB: 30,000 x 30,000' + string(10b) + $
+        '- Contortion/ConeforInputs: 5,000 x 5,000' + string(10b) + $
         '- MSPA: ' + mspamax + ' x ' + mspamax + string(10b) + $
         '- For MSPA-processing of larger images please use: ' + string(10b) + $
-        '  GWB (GuidosToolbox Workbench), or slow and less ideal:' + string(10b) + $
-        '  File -> Batch Process -> Pattern -> ' + string(10b) + $
-        '          Morphological -> MSPA Tiling' + string(10b) + string(10b) + $
-        'Additional information is available under: ' + string(10b) + $
+        '     the Linux or macOS version of GTB, ' + string(10b) + $
+        '     or very slow and less ideal:' + string(10b) + $
+        '     File -> Batch Process -> Pattern -> ' + string(10b) + $
+        '             Morphological -> MSPA Tiling' + string(10b) + $
+        '     NOTE: use GWB for operational processing!' + string(10b) + $
+        '- Additional information is available under: ' + string(10b) + $
         '     Help -> GTB Documentation '
       
       ;; define output depending on info panel or for bug reporting
@@ -22278,11 +22283,14 @@ tagsw = 'TIFFTAG_SOFTWARE='+'"'+"GTB, https://forest.jrc.ec.europa.eu/en/activit
 IF info.my_os EQ 'windows' THEN BEGIN
   gedit = info.windrive + ' & cd "' + info.dir_fwtools + '" & setfw.bat & '
   gedit = gedit + 'cd "' + info.dir_tmp + '" & gdal_edit -mo ' + tagsw    
-ENDIF ELSE BEGIN ;; linux/apple
+ENDIF ELSE IF info.my_os EQ 'linux' THEN BEGIN ;; linux
   if strlen(info.sysgdal) gt 0 then $
     gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
   gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
+ENDIF ELSE BEGIN ;; apple
+  gedit = '/Library/Frameworks/Python.framework/Versions/3.9/bin/gdal_edit.py -mo ' + tagsw
 ENDELSE
+
 ;;=======================================================================
 IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
   fname = info.title & pp = strpos(fname, '.', / reverse_search)
@@ -24864,10 +24872,12 @@ tagsw = 'TIFFTAG_SOFTWARE='+'"'+"GTB, https://forest.jrc.ec.europa.eu/en/activit
 IF info.my_os EQ 'windows' THEN BEGIN
   gedit = info.windrive + ' & cd "' + info.dir_fwtools + '" & setfw.bat & '
   gedit = gedit + 'cd "' + info.dir_tmp + '" & gdal_edit -mo ' + tagsw
-ENDIF ELSE BEGIN ;; linux/apple
+ENDIF ELSE IF info.my_os EQ 'linux' THEN BEGIN ;; linux
   if strlen(info.sysgdal) gt 0 then $
     gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
   gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
+ENDIF ELSE BEGIN ;; apple
+  gedit = '/Library/Frameworks/Python.framework/Versions/3.9/bin/gdal_edit.py -mo ' + tagsw
 ENDELSE
 
 IF event.type EQ 2 AND info.set_zoom EQ 0 THEN BEGIN
@@ -26824,7 +26834,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.103
+gtb_version = 3.200
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -27758,13 +27768,14 @@ CASE my_os OF
     osxgdal = file_test('/Library/Frameworks/GDAL.framework/Versions/Current', /Directory)
     IF osxgdal eq 0 THEN BEGIN
       st = "IMPORTANT: GDAL libraries are required but were NOT found. " + $
-        string(10b) + "Please install the latest package: GDAL Complete" + $
+        string(10b) + "Please install the latest package: " + $
+        string(10b) + "GDAL Complete 3.2 (requiring Python 3.9) " + $
         string(10b) + "available at the following URL:" + $
-        string(10b) + "https://www.kyngchaos.com/software/frameworks" + $
+        string(10b) + "https://www.kyngchaos.com/software/archive/gdal-complete/" + $
         string(10b) + "  " + $
         string(10b) + "GuidosToolbox will now exit."
       res = dialog_message(st, title='GTB startup check:',/ error)
-      spawn, 'open https://www.kyngchaos.com/software/frameworks'
+      spawn, 'open https://www.kyngchaos.com/software/archive/gdal-complete/'
       exit
     ENDIF
 

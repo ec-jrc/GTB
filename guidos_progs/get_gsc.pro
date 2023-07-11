@@ -111,8 +111,8 @@ CASE strlowCase(eventValue) OF
         bsel = (strsplit(info.ms_b,':',/extract))[0] & bsel = fix(bsel)
         msel = (strsplit(info.ms_m,':',/extract))[0] & msel = fix(msel)
         ;; we have 3 conditions to deal with
-        ;; 1) bounded metrics: 2, 3, 6, 8, 10-15, 20-24, 31-38, 40, 42, 49
-        marr1 = strtrim([2,3,6,8,10,11,12,13,14,15,20,21,22,23,24,31,32,33,34,35,36,37,38,40,42,49],2)
+        ;; 1) bounded metrics: 2, 3, 6, 8, 10-15, 20-24, 31-38, 40, 42, 49, 52
+        marr1 = strtrim([2,3,6,8,10,11,12,13,14,15,20,21,22,23,24,31,32,33,34,35,36,37,38,40,42,49,52],2)
         ;; 3) no-stretch metrics: 1, 9, 16, 17, 18, 19, 25, 27
         marr3 = strtrim([1,9,16,17,18,19,25,27],2)
         ;; 2) unbounded metrics: those not in arr1 or arr3: 4, 5, 7, 26, 28-30, 39, 41, 43-48, 50, 51
@@ -167,8 +167,8 @@ CASE strlowCase(eventValue) OF
        bsel = (strsplit(info.ms_b,':',/extract))[0] & bsel = fix(bsel)
        msel = (strsplit(info.ms_m,':',/extract))[0] & msel = fix(msel)
        ;; we have 3 conditions to deal with
-       ;; 1) bounded metrics: 2, 3, 6, 8, 10-15, 20-24, 31-38, 40, 42, 49
-       marr1 = strtrim([2,3,6,8,10,11,12,13,14,15,20,21,22,23,24,31,32,33,34,35,36,37,38,40,42,49],2)
+       ;; 1) bounded metrics: 2, 3, 6, 8, 10-15, 20-24, 31-38, 40, 42, 49, 52
+       marr1 = strtrim([2,3,6,8,10,11,12,13,14,15,20,21,22,23,24,31,32,33,34,35,36,37,38,40,42,49,52],2)
        ;; 3) no-stretch metrics: 1, 9, 16, 17, 18, 19, 25, 27
        marr3 = strtrim([1,9,16,17,18,19,25,27],2)
        ;; 2) unbounded metrics: those not in arr1 or arr3: 4, 5, 7, 26, 28-30, 39, 41, 43-48, 50, 51
@@ -251,8 +251,8 @@ CASE strlowCase(eventValue) OF
      bsel = (strsplit(sc_b,':',/extract))[0] & bsel = fix(bsel)
      msel = (strsplit(info.ms_m,':',/extract))[0] & msel = fix(msel)
      ;; we have 3 conditions to deal with
-     ;; 1) bounded metrics: 2, 3, 6, 8, 10-15, 20-24, 31-38, 40, 42, 49
-     marr1 = strtrim([2,3,6,8,10,11,12,13,14,15,20,21,22,23,24,31,32,33,34,35,36,37,38,40,42,49],2)
+     ;; 1) bounded metrics: 2, 3, 6, 8, 10-15, 20-24, 31-38, 40, 42, 49, 52
+     marr1 = strtrim([2,3,6,8,10,11,12,13,14,15,20,21,22,23,24,31,32,33,34,35,36,37,38,40,42,49,52],2)
      ;; 3) no-stretch metrics: 1, 9, 16, 17, 18, 19, 25, 27
      marr3 = strtrim([1,9,16,17,18,19,25,27],2)
      ;; 2) unbounded metrics: those not in arr1 or arr3: 4, 5, 7, 26, 28-30, 39, 41, 43-48, 50, 51
@@ -365,7 +365,7 @@ gsc_m_arr = ['1:Mean', '2:EvennessOrderedAdj', '3:EvennessUnorderedAdj', '4:Entr
   '31:UniformityUnorderedAdj', '32:Homogeneity', '33:InverseDifference', '34:SimilarityRMax', '35:SimilarityRGlobal', '36:SimilarityRWindows', $
   '37:DominanceOrderedAdj', '38:DominanceUnorderedAdj', '39:DifferenceEntropy', '40:DifferenceEvenness', '41:SumEntropy', '42:SumEvenness', $
   '43:AutoCorrelation', '44:Correlation', '45:ClusterShade', '46:ClusterProminence', '47:RootMeanSquare', '48:AverageAbsDeviation', $
-  '49:kContagion', '50:Skewness', '51:Kurtosis']
+  '49:kContagion', '50:Skewness', '51:Kurtosis', '52:Clustering']
 w_gsc_m = Widget_combobox(llpart10, Value = gsc_m_arr, UValue = 'gsc_m')
 
 ;; F-Precision

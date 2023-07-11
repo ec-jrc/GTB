@@ -3,7 +3,7 @@
 	GraySpatCon.c 
 	Spatial convolution of a gray-scale input map, supporting dichotomous, nominal, and ordinal input data.
 	Kurt Riitters
-	Version 1.1.1, April 2023
+	Version 1.2.0, June 2023
 ************************************************************************ 
 DISCLAIMER:
 The author(s), their employer(s), the archive host(s), nor any part of the United States federal government
@@ -119,6 +119,8 @@ Version and changes:
 		For the metrics which are calculated as floating point values, the output values are rounded to 5 decimal digits for float output,
 		and conversions to byte values use the rounded values. This is also done when comparing intermediate values to the value 0.0
 		for metrics 26, 44, 50, 51.
+1.2.0 June 2023
+		Added metric 52 "clustering" from Peter Vogt
 ************************************************************************
  */
  /* Programming notes
@@ -298,6 +300,8 @@ Version and changes:
 	skewness of pixel values
 51.	Kurtosis. Kurtosis
 	kurtosis of pixel values
+52. Clustering. Clustering
+		Peter Vogt's clustering metric.
 ************************************************************************
  */
 // libraries
@@ -869,6 +873,9 @@ long int Check_Parameters_Set_Controls()
 			break;
 		case 51:	// kurtosis of pixel values
 			control.freq_type = 1; control.bounded = 1;
+			break;
+		case 52:	// clustering 
+			control.freq_type = 2; control.bounded = 2; // bounded in [0,1]
 			break;
 		default:
 			printf("\nGraySpatCon: Error -- Metric number (parameter _M_) %ld is not available.", parameters.metric); return(1);
@@ -6204,6 +6211,85 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				//
 			}
 			break;
+		}
+		case 52:{ 	// Peter's metric "Clustering". Same as metric 28 except replacing in two places "temp_int2 = abs(index1 - index2);         // |i-j|”
+					//		with "temp_int2 = ( 1.0* (index1 + index2) ) / 2.0;   // average of two pixel values”
+			metric_value = -0.01;
+			if(parameters.exclude_zero == 0){
+				// No need to know the number of different byte values in the window;
+				// find the number of non-missing adjacencies by subtracting the missing ones
+				num_adjacencies = 0;
+				num_missing = 0;
+				// find sum of missing column, excluding last (missing) row
+				for(index1 = 0; index1 < 101; index1++) {	// excludes missing row
+					num_missing += (*(freqptr2 + (102*index1)+101));	// count missing column
+				}
+				// find sum of missing row, including last (missing) column
+				for(index1 = 0; index1 < 102; index1++) {	// includes last column
+					num_missing += (*(freqptr2 + (101*102) + index1));
+				}
+				num_adjacencies = max_nadj - num_missing;
+				if(num_adjacencies  == 0) {  // all adjacencies are missing
+					metric_value = -0.01;
+					break;
+				}
+				// accumulate Pij * ((i+j)/2) as 'numerator'
+				inv_num_adjacencies = 1.0 / (1.0 * num_adjacencies);  // divisor is the total number of non-missing adjacencies
+				numerator = 0.0; 		// sum of the Pij * ((i+j)/2)
+				for(index1 = 0; index1 < 101; index1++) {	// excludes missing values
+					for(index2 = 0; index2 < 101; index2++) {	// excludes missing values
+						temp_int = (*(freqptr2 + ((index1 * 102) + index2)));	// number of adjacencies
+						if(temp_int > 0) { 	
+							temp_float2 = (1.0 * (index1 + index2))/2.0; 	// (i+j)/2
+							temp_float = inv_num_adjacencies * temp_int;	// Pij
+							numerator += (temp_float *  temp_float2);
+						}
+					}
+				}
+				temp_out = 0.01 * numerator;  // re-scale to 0,1
+				metric_value = roundf(temp_out * 100000) / 100000;
+				break;
+			}
+			if(parameters.exclude_zero == 1){ 	// clustering, excluding 0
+				// No need to know the number of different byte values in the window; 
+				// find the number of non-missing adjacencies by subtracting the missing ones
+				num_adjacencies = 0;
+				num_missing = 0;
+				// find sum of missing and zero columns, excluding first (zero) and last (missing) rows
+				for(index1 = 1; index1 < 101; index1++) {	// excludes missing row
+					num_missing += (*(freqptr2 + (102*index1)+0));		// count zero column
+					num_missing += (*(freqptr2 + (102*index1)+101));	// count missing column
+				}
+				// find sum of the zero row, including last (missing) column
+				for(index1 = 0; index1 < 102; index1++) {	// includes last column
+					num_missing += (*(freqptr2 + index1));
+				}
+				// find sum of missing row, including last (missing) column
+				for(index1 = 0; index1 < 102; index1++) {	// includes last column
+					num_missing += (*(freqptr2 + (101*102) + index1));
+				}
+				num_adjacencies = max_nadj - num_missing;
+				if(num_adjacencies  == 0) {  // all adjacencies are missing
+					metric_value = -0.01;
+					break;
+				}
+				// accumulate Pij * ((i+j)/2 as 'numerator'
+				inv_num_adjacencies = 1.0 / (1.0 * num_adjacencies);  // divisor is the total number of non-missing adjacencies
+				numerator = 0.0; 		// sum of the Pij * ((i+j)/2
+				for(index1 = 1; index1 < 101; index1++) {	// excludes 0 and missing values
+					for(index2 = 1; index2 < 101; index2++) {	// excludes 0 and missing values
+						temp_int = (*(freqptr2 + ((index1 * 102) + index2)));
+						if(temp_int > 0) { 
+							temp_float2 = (1.0 * (index1 + index2))/2.0; 	// (i+j)/2
+							temp_float = inv_num_adjacencies * temp_int;	// Pij
+							numerator += (temp_float *  temp_float2);
+						}
+					}
+				}
+				temp_out = 0.01 * numerator;  // re-scale to 0,1
+				metric_value = roundf(temp_out * 100000) / 100000;
+				break;
+			}
 		}
 		default:{	// missing if no metric is calculated
 			metric_value = -0.01;
