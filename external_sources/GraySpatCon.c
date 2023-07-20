@@ -3,7 +3,7 @@
 	GraySpatCon.c 
 	Spatial convolution of a gray-scale input map, supporting dichotomous, nominal, and ordinal input data.
 	Kurt Riitters
-	Version 1.2.0, June 2023
+	Version 1.2.1, July 2023
 ************************************************************************ 
 DISCLAIMER:
 The author(s), their employer(s), the archive host(s), nor any part of the United States federal government
@@ -121,6 +121,10 @@ Version and changes:
 		for metrics 26, 44, 50, 51.
 1.2.0 June 2023
 		Added metric 52 "clustering" from Peter Vogt
+1.2.1 July 2023
+		Fixed bug in routine Global_Analysis. The missing adjacencies were not tallied, resulting in incorrect calculation of adjacency
+		metrics in Metric_Calculator (which calculates non-missing adjacencies by subtracting the missing adjacencies). The equivalent
+		code in Moving_Window requires no changes.
 ************************************************************************
  */
  /* Programming notes
@@ -6347,20 +6351,16 @@ float Global_Analysis()
 	if( (freq_type == 2) || (freq_type == 3) ){ 			// accumulating adjacency values
 		// make one pass (in 3 loopsets) through the matrix to count the adjacencies between different byte values  
 		// These adjacency counts will be accumulated "with regard to order"
-		// Any adjacencies involving a missing value will not be counted 
 		// The first loopset excludes last row and last column
 		for(r = 0; r < nrows - 1; r++) { 
 			for (c = 0; c < ncols - 1; c++) { 
 				t1 = Matrix_1 [r] [c];     /* The type of this cell */ 
-				if(t1 == 101) {continue;}  /* Skip if missing value*/ 
 				t2 = Matrix_1 [r+1] [c];   /* The type of the cell below */ 
-				if(t2 == 101) {continue;}  /* Skip if missing value*/ 
 				/* Increment the matrix of counts for that join */ 
 				temp2 = (t1 * 102) + t2; // number of byte values in 0,101 is 102
 				(*(freqptr2 + temp2))++; 
 				/* Now do the same thing for the cell to the right */ 
 				t2 = Matrix_1 [r] [c+1]; 
-				if(t2 == 101) {continue;}  
 				temp2 = (t1 * 102) + t2; 
 				(*(freqptr2 + temp2))++; 
 			} 
@@ -6368,9 +6368,7 @@ float Global_Analysis()
 	/*   Second loopset covers last row; no need to look to the cell below in this case*/ 
 		for(c = 0; c < ncols - 1; c++) { 
 			t1 = Matrix_1 [nrows - 1] [c];     /* The type of this cell */ 
-			if(t1 == 101) {continue;} /* Skip if missing value*/ 
 			t2 = Matrix_1 [nrows - 1] [c + 1]; /* The type of cell to the right */ 
-			if(t2 == 101) {continue;} /* Skip if missing*/ 
 			/* Increment the matrix of counts for that join, and the total*/ 
 			temp2 = (t1 * 102) + t2; 
 			(*(freqptr2 + temp2))++; 
@@ -6378,9 +6376,7 @@ float Global_Analysis()
 	/*   Third loopset covers last column; no need to look to the right */ 
 		for(r = 0; r < nrows - 1; r++)  { 
 			t1 = Matrix_1 [r] [ncols - 1];   /* type of this cell */ 
-			if(t1 == 101) {continue;} /* Skip if missing value*/ 
 			t2 = Matrix_1 [r+1] [ncols - 1]; /* The type of the cell below */ 
-			if(t2 == 101) {continue;} /* Skip if missing*/ 
 			/* Increment the matrix of counts for that join, and the total*/ 
 			temp2 = (t1 * 102) + t2; 
 			(*(freqptr2 + temp2))++; 
