@@ -40,7 +40,12 @@ CASE strlowCase(eventValue) OF
        ;; don't do anything here
    END 
    'restore': BEGIN ;; load existing recode table
-     res = dialog_pickfile(Title = "Restore recode table 'GTBrecode_*.sav'", get_path = path2file, $
+     if info.batch eq 1 then begin
+       outpref0 =  "Restore recode table 'GTBbatchrecode_*.sav'"
+     endif else begin
+       outpref0 =  "Restore recode table 'GTBrecode_*.sav'"
+     endelse
+     res = dialog_pickfile(Title = outpref0, get_path = path2file, $
        default_extension = 'sav', / must_exist, filter = ['*.sav'], /fix_filter, /read)
      IF res EQ '' THEN GOTO, fin  ;; no name or 'cancel' selected
      ;; test to see if a .sav file was selected
@@ -92,12 +97,24 @@ CASE strlowCase(eventValue) OF
      endif
    END
    'save': BEGIN ;; save recode table
-     res = dialog_pickfile(Title = "Save recode table to 'GTBrecode_*.sav'", file = 'GTBrecode_myrecode.sav', get_path = path2file, $
+     if info.batch eq 1 then begin
+       outpref0 = 'GTBbatchrecode_*.sav' 
+       outpref1 = 'GTBbatchrecode_myrecode.sav'
+     endif else begin
+       outpref0 = 'GTBrecode_*.sav'
+       outpref1 = 'GTBrecode_myrecode.sav'
+     endelse    
+     res = dialog_pickfile(Title = "Save recode table to '" + outpref0 + "'", file = outpref1, get_path = path2file, $
        / overwrite_prompt, / write, default_extension = 'sav', filter = ['*.sav'], / fix_filter)
      IF res EQ '' THEN GOTO, fin  ;; no name or 'cancel' selected
      ;; verify the correct naming scheme
-     fbn = file_basename(res) & prefix = strmid(fbn,0,10)
-     IF prefix NE 'GTBrecode_' THEN res = file_dirname(res) + path_sep() + 'GTBrecode_' + fbn     
+     fbn = file_basename(res) 
+     if info.batch eq 1 then prefix = strmid(fbn,0,15) else prefix = strmid(fbn,0,10)
+     if info.batch eq 1 then begin
+       IF prefix NE 'GTBbatchrecode_' THEN res = file_dirname(res) + path_sep() + 'GTBbatchrecode_' + fbn 
+     endif else begin
+       IF prefix NE 'GTBrecode_' THEN res = file_dirname(res) + path_sep() + 'GTBrecode_' + fbn 
+     endelse        
      widget_control, info.w_x, get_value=upv & *info.seltab = upv
      save, upv, filename = res
      msg = 'The recodetable was saved as:' +string(10b) + res

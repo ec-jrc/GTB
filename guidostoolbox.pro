@@ -1826,7 +1826,6 @@ CASE strlowCase(eventValue) OF
       ENDELSE
    END
 ;;*****************************************************************************************************
-
    'disp_colors':  BEGIN
       clcl_set = event.index
       ctbl_old = info.disp_colors_id
@@ -1899,7 +1898,32 @@ CASE strlowCase(eventValue) OF
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0                
          END
-         12:BEGIN ;; user-defined
+         12:BEGIN ;; LM_BGR
+           restore, info.dir_guidossub + 'lmcolors_BGR.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
+         13:BEGIN ;; LM_DIV
+           restore, info.dir_guidossub + 'lmcolors_DIV.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
+         14:BEGIN ;; LM_AGR
+           restore, info.dir_guidossub + 'lmcolors_AGR.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
+         15:BEGIN ;; LM_NAT
+           restore, info.dir_guidossub + 'lmcolors_NAT.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
+         16:BEGIN ;; LM_DEV
+           restore, info.dir_guidossub + 'lmcolors_DEV.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
+         17:BEGIN ;; user-defined
             ;; minimize Tlb and switch off interfering motion events
             widget_control, info.w_draw, Draw_Motion_Events = 0
             Widget_Control, Info.tlb, Iconify = 1
@@ -1924,7 +1948,7 @@ CASE strlowCase(eventValue) OF
             Widget_Control, Info.tlb, Iconify = 0
             widget_control, info.w_draw, Draw_Motion_Events = 1
          END
-         13:BEGIN ;; Save/Restore option
+         18:BEGIN ;; Save/Restore option
            msg = ['Please select:', '', 'Yes: save the current colortable (Note: the prefix ', $
             "       'GTBcolors_' will be added automatically)", '',$
             'No: load a GTB-generated colortable (GTBcolors_*.sav)','',$
@@ -1984,7 +2008,7 @@ CASE strlowCase(eventValue) OF
             ;; all ok, now load the custom colors
             tvlct, r_gtb, g_gtb, b_gtb           
             ;; set to be in custom colortable
-            info.disp_colors_id = 12
+            info.disp_colors_id = 17
             info.ctbl = - 1 & info.autostretch_id = 0
             widget_control, info.w_disp_colors, set_combobox_select = info.disp_colors_id
             ;; set notification switch
@@ -3527,13 +3551,13 @@ CASE strlowCase(eventValue) OF
    'setup_recodetable':  BEGIN
      ;; let the user define a recode table for later use
      cancel = ptr_new(1b) & seltab = ptr_new(1b)
-     msg = "Define a recode table from scratch or click on 'Restore'" + string(10b) + 'and load/modify an existing GTBrecode_*.sav table' + string(10b) + string(10b)+ $
-        '1) Enter the new value in [0, 255] in the first column, then leave the cell to apply the changed value.' + string(10b) + string(10b) + $
-        '2) ' + "When done, click the 'Save' button to write out your recode table for later use." + string(10b) + string(10b) + $
+     msg = "Define a batch recode table or click on 'Restore'" + string(10b) + 'and load/modify an existing GTBbatchrecode_*.sav table' + string(10b) + $
         "Note: "  + string(10b) + $
-        "For maximum compatibility, the recode table must cover all possible entries in [0, 255] byte!"
-     result = dialog_message(title = 'Setup Recode', / information, msg)
-     tit = "Setup recode values in [0, 255]"
+        "For maximum compatibility, the recode table *** must *** cover all possible entries in [0, 255] byte!" + string(10b) + string(10b) + $
+        '1) Enter the new value in [0, 255] in the first column, then leave the cell to apply the changed value.' + string(10b) + string(10b) + $
+        '2) ' + "When done, click the 'Save' button to write out your recode table for later use." 
+     result = dialog_message(title = 'Setup Batch Recode', / information, msg)
+     tit = "Recode class values in [0, 255]" 
 
      ;; get the selected mapping
      pushd,info.dir_data
@@ -7889,13 +7913,13 @@ CASE strlowCase(eventValue) OF
      ;; in batch mode recode we must use an array with all possible byte values, (set in get_xrecode)
      ;; to ensure it will work on all possible values in the input images
      cancel = ptr_new(1b) & seltab = ptr_new(1b)    
-     msg = "Define a recode table from scratch or click on 'Restore'" + string(10b) + 'and load/modify an existing GTBrecode_*.sav table' + string(10b) + string(10b)+ $
+     msg = "Define a batch recode table or click on 'Restore'" + string(10b) + 'and load/modify an existing GTBbatchrecode_*.sav table' + string(10b) + $
+       "Note: "  + string(10b) + $
+       "For maximum compatibility, the recode table *** must *** cover all possible entries in [0, 255] byte!" + string(10b) + string(10b) + $     
        '1) Enter the new value in [0, 255] in the first column, then leave the cell to apply the changed value.' + string(10b) + string(10b) + $
-       '2) ' + "When done, click the 'Accept' button to use your recode table for batch-processing." + $
-       string(10b) + string(10b) + 'Note: '  + string(10b) + $
-       'For maximum compatibility, the recode table must cover all possible entries in [0, 255] byte!'
+       '2) ' + "When done, click the 'Accept' button to use your recode table for batch-processing."             
      result = dialog_message(title = 'Batch Recode', / information, msg)
-     tit = "Recode class values in [0, 255]"
+     tit = "Recode class values in [0, 255]" 
 
      ;; get the selected mapping
      pushd,info.dir_data
@@ -21655,7 +21679,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, July 2023' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, September 2023' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -22604,8 +22628,8 @@ CASE fileaction OF
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_ACC") & q=q[0] & if q gt 0 then newimis_acc = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_LM,") & q=q[0] & if q gt 0 then newimis_lm = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_EUC") & q=q[0] & if q gt 0 then newimis_dist = 1
-      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_p222 = 1
-      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAC") & q=q[0] & if q gt 0 then newimis_p222 = 1
+      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_fos = 1
+      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAC") & q=q[0] & if q gt 0 then newimis_fos = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_CON") & q=q[0] & if q gt 0 then newimis_p222 = 1
       q=where(strmid(log,0,35) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_DRES") & q=q[0] & if q gt 0 then newimis_disres = 1 
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_RES") & q=q[0] & if q gt 0 then newimis_res = 1
@@ -22648,33 +22672,93 @@ CASE fileaction OF
             GOTO, fin
          ENDELSE
       ENDIF ELSE IF s[0] EQ 2 THEN BEGIN
-         info.ctbl = 0 & info.disp_colors_id = 0
+         info.ctbl = 0 & info.disp_colors_id = 0 ;; default to grayscale
          
          ;; test for original (M)SPA or other ACC, FAD/FOS, LM, Restore image
          if (size(newimis_mspa))[2] eq 1 OR (size(newimis_acc))[2] eq 1 OR (size(newimis_spa))[2] eq 1 OR (size(newimis_res))[2] eq 1 then begin
            info.disp_colors_id = 3 & info.ctbl = - 1 & info.autostretch_id = 0 
          endif  
          if (size(newimis_dist))[2] eq 1 then begin
-           info.disp_colors_id = 4 & info.ctbl = - 1
+           info.disp_colors_id = 4 & info.ctbl = - 1  & info.autostretch_id = 0 
          endif
          if (size(newimis_disres))[2] eq 1 then begin
-           info.disp_colors_id = 11 & info.ctbl = - 1
+           info.disp_colors_id = 11 & info.ctbl = - 1  & info.autostretch_id = 0 
          endif
          if (size(newimis_p222))[2] eq 1 OR (size(newimis_cos))[2] eq 1 then begin
            info.disp_colors_id = 5 & info.ctbl = - 1 & info.autostretch_id = 0 
          endif
          if (size(newimis_fadms))[2] eq 1 OR (size(newimis_fos))[2] eq 1 then begin
-           info.disp_colors_id = 8 & info.ctbl = - 1 
+           info.disp_colors_id = 8 & info.ctbl = - 1  & info.autostretch_id = 0 
          endif
          if (size(newimis_lm))[2] eq 1 then begin
-           info.disp_colors_id = 7 & info.ctbl = - 1 
+           ;; set 19-class image to LM or 103-class image to LM_XXX colortable
+           if max(image0) LT 40 then info.disp_colors_id = 7 else info.disp_colors_id = 12 
+           info.ctbl = - 1  & info.autostretch_id = 0 
          endif
-         
       ENDIF ELSE BEGIN
          msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          GOTO, fin
       ENDELSE
+      
+      CASE info.disp_colors_id OF
+        0:BEGIN ;; grayscale
+          loadct,0
+        END
+        1:BEGIN ;; rainbow
+          loadct,39
+        END
+        1:BEGIN ;; temperature
+          loadct,3 
+        END
+        3:BEGIN ;; classification
+          IF info.mspa_param3_id EQ 1b THEN $
+            restore, info.dir_guidossub + 'mspacolorston.sav' ELSE $
+            restore, info.dir_guidossub + 'mspacolorstoff.sav'
+        END
+        4:BEGIN ;; distance
+          restore, info.dir_guidossub + 'distcolors.sav'
+        END
+        5:BEGIN ;; entropy
+          restore, info.dir_guidossub + 'entropycolors.sav' 
+        END
+        6:BEGIN ;; contortion
+          restore, info.dir_guidossub + 'contcolors.sav'
+        END
+        7:BEGIN ;; LM
+          restore, info.dir_guidossub + 'lmcolors.sav' 
+        END
+        8:BEGIN ;; FAD_6class
+          restore, info.dir_guidossub + 'fadcolors.sav'
+        END
+        9:BEGIN ;; FAD_5class
+          restore, info.dir_guidossub + 'fadcolors5.sav' 
+        END
+        10:BEGIN ;; FAD_2class
+          restore, info.dir_guidossub + 'fe47colors.sav' 
+        END
+        11:BEGIN ;; Resistance
+          restore, info.dir_guidossub + 'resistcolors.sav'
+        END
+        12:BEGIN ;; LM_BGR
+          restore, info.dir_guidossub + 'lmcolors_BGR.sav'
+        END
+        13:BEGIN ;; LM_DIV
+          restore, info.dir_guidossub + 'lmcolors_DIV.sav'
+        END
+        14:BEGIN ;; LM_AGR
+          restore, info.dir_guidossub + 'lmcolors_AGR.sav'
+        END
+        15:BEGIN ;; LM_NAT
+          restore, info.dir_guidossub + 'lmcolors_NAT.sav'
+        END
+        16:BEGIN ;; LM_DEV
+          restore, info.dir_guidossub + 'lmcolors_DEV.sav' 
+        END
+      ENDCASE   
+      tvlct, r, g, b     
+         
+      ;; end test
       
       ;; get projname and EPSG code (caution: the EPSG code is not always well defined)
       ;; search for presence of GEOGCS
@@ -26834,7 +26918,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.200
+gtb_version = 3.201
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -27226,7 +27310,7 @@ w_c2i = Widget_Button(w_conv, Value = 'Convert -> Integer', uvalue = 'mspainp_c2
 w_c2l = Widget_Button(w_conv, Value = 'Convert -> Long', uvalue = 'mspainp_c2l')
 w_c2s = Widget_Button(w_mspainp, Value = 'RGB -> Single Band', uvalue = 'mspainp_c2s')
 w_c2ge = Widget_Button(w_mspainp, Value = 'Reproject for GoogleEarth', uvalue = 'mspainp_c2ge')
-button = Widget_Button(w_mspainp, Value = 'Setup Recode Table', uvalue = 'setup_recodetable')
+button = Widget_Button(w_mspainp, Value = 'Setup Batch Recode Table', uvalue = 'setup_recodetable')
 w_recode = Widget_Button(w_mspainp, Value = 'Recode Classes', uvalue = 'mspainp_recode')
 button = Widget_Button(w_mspainp, Value = 'Recode Pixel', uvalue = 'mspainp_recodepixel')
 button = Widget_Button(w_mspainp, Value = 'Recode Line', uvalue = 'mspainp_recodeline')
@@ -27475,14 +27559,14 @@ w_autostretch = CW_BGROUP(w_lp11111, 'Autostretch', / NONEXCLUSIVE, uvalue = 'au
 w_iminfo = widget_button(w_lp11111, Value = 'Original Image', uvalue = 'Original Image')
 w_iminfo2 = widget_button(w_lp11111, Value = 'Image Info', uvalue = 'mspainp_info')
 
-
 ;; colortable
 w_lp1112 = widget_base(w_lp111, / column);, / frame)
 w_ctbl = widget_base(w_lp1112, / column, / frame)
 button = $
   widget_label(w_ctbl, value = 'Select Colortable', / align_center)
 tls = ['Greyscale', 'Rainbow', 'Temperature', 'Classification', $
-  'Distance', 'Normalized', 'Contortion', 'LM', 'FOS_6', 'FOS_5', 'FOS-APP_2', 'Resistance', 'User-defined', 'Save/Restore']
+  'Distance', 'Normalized', 'Contortion', 'LM', 'FOS_6', 'FOS_5', 'FOS-APP_2', 'Resistance', $
+  'LM_BGR', 'LM_DIV', 'LM_AGR', 'LM_NAT', 'LM_DEV', 'User-defined', 'Save/Restore']
 w_disp_colors  = Widget_Combobox(w_ctbl, Value = tls, UVALUE = 'disp_colors')
 
 ;; zoom factor and factor
