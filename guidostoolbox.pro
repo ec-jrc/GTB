@@ -1898,32 +1898,38 @@ CASE strlowCase(eventValue) OF
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0                
          END
-         12:BEGIN ;; LM_BGR
-           restore, info.dir_guidossub + 'lmcolors_BGR.sav'
-           tvlct, r, g, b
-           info.ctbl = - 1 & info.autostretch_id = 0
-         END
-         13:BEGIN ;; LM_DIV
-           restore, info.dir_guidossub + 'lmcolors_DIV.sav'
-           tvlct, r, g, b
-           info.ctbl = - 1 & info.autostretch_id = 0
-         END
-         14:BEGIN ;; LM_AGR
+         12:BEGIN ;; LM_AGR
            restore, info.dir_guidossub + 'lmcolors_AGR.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         15:BEGIN ;; LM_NAT
+         13:BEGIN ;; LM_NAT
            restore, info.dir_guidossub + 'lmcolors_NAT.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         16:BEGIN ;; LM_DEV
+         14:BEGIN ;; LM_DEV
            restore, info.dir_guidossub + 'lmcolors_DEV.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         17:BEGIN ;; user-defined
+         15:BEGIN ;; LM_BGR
+           restore, info.dir_guidossub + 'lmcolors_BGR.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
+         16:BEGIN ;; LM_DIV
+           restore, info.dir_guidossub + 'lmcolors_DIV.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
+         17:BEGIN ;; LM_ANT
+           restore, info.dir_guidossub + 'lmcolors_ANT.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
+
+         18:BEGIN ;; user-defined
             ;; minimize Tlb and switch off interfering motion events
             widget_control, info.w_draw, Draw_Motion_Events = 0
             Widget_Control, Info.tlb, Iconify = 1
@@ -1948,7 +1954,7 @@ CASE strlowCase(eventValue) OF
             Widget_Control, Info.tlb, Iconify = 0
             widget_control, info.w_draw, Draw_Motion_Events = 1
          END
-         18:BEGIN ;; Save/Restore option
+         19:BEGIN ;; Save/Restore option
            msg = ['Please select:', '', 'Yes: save the current colortable (Note: the prefix ', $
             "       'GTBcolors_' will be added automatically)", '',$
             'No: load a GTB-generated colortable (GTBcolors_*.sav)','',$
@@ -2008,7 +2014,7 @@ CASE strlowCase(eventValue) OF
             ;; all ok, now load the custom colors
             tvlct, r_gtb, g_gtb, b_gtb           
             ;; set to be in custom colortable
-            info.disp_colors_id = 17
+            info.disp_colors_id = 18
             info.ctbl = - 1 & info.autostretch_id = 0
             widget_control, info.w_disp_colors, set_combobox_select = info.disp_colors_id
             ;; set notification switch
@@ -4502,9 +4508,17 @@ CASE strlowCase(eventValue) OF
           restore, info.dir_guidossub + 'fadcolors.sav' & tvlct, r, g, b
         endif
         if (size(newimis_lm))[2] eq 1 then begin
-          info.disp_colors_id = 7 & info.ctbl = - 1
-          restore, info.dir_guidossub + 'lmcolors.sav' & tvlct, r, g, b
+          ;; set 19-class image to LM or 103-class image to LM_XXX colortable
+          if max(* info.process) LT 40 then begin
+            info.disp_colors_id = 7 
+            restore, info.dir_guidossub + 'lmcolors.sav' 
+          endif else begin
+            info.disp_colors_id = 12
+            restore, info.dir_guidossub + 'lmcolors_AGR.sav'
+          endelse
+           tvlct, r, g, b & info.ctbl = - 1          
         endif
+               
         res = file_info(info.dir_tmp2 + 'origcolors.sav')
         IF res.exists EQ 1b THEN BEGIN
           restore, info.dir_tmp2 + 'origcolors.sav' & tvlct, r, g, b
@@ -9931,7 +9945,7 @@ CASE strlowCase(eventValue) OF
 
       print, 'MSPA comp.time [sec]: ', systime( / sec) - time0
 
-      ;;get the result, update the GUIDOS info, clean dir_tmp
+      ;;get the result, update the GTB info, clean dir_tmp
       pushd, info.dir_tmp
       ;; Fedora-fix, for whatever reason they rename the output.tif to something else
       fedora=(file_search('*outputmorph.tif'))[0]
@@ -9939,9 +9953,13 @@ CASE strlowCase(eventValue) OF
       image0 = read_tiff('outputmorph.tif')
       file_delete, 'inputmorph.tif', 'outputmorph.tif', / quiet
       ;;
-      ;; rotate image back to orintation in Guidos!!!
+      ;; rotate image back to orientation in GTB!!!
       ;;
       image0 = rotate(image0,7)
+      ;; huge image?
+      IF c_size EQ '1' THEN BEGIN
+        q = where(image0 EQ 2b, ct, /l64) & IF ct GT 0 THEN image0[q] = 0b
+      ENDIF
       iFG = ulong64(total(image0 eq 100b or image0 eq 220b)) + FGp
 
       popd
@@ -11318,6 +11336,10 @@ CASE strlowCase(eventValue) OF
          ;; add the statistics if they were set in the GUI
          IF statsout EQ 1b THEN BEGIN
             image0 = read_tiff(info.dir_tmp + 'outputmorph.tif')
+            ;; huge image?
+            IF c_size EQ '1' THEN BEGIN
+              q = where(image0 EQ 2b, ct, /l64) & IF ct GT 0 THEN image0[q] = 0b
+            ENDIF
             simplestats, image0, fconn, ttrans, tintext, info.do_label_groups_id, st
             fn_out_stats = dir_batch + res + '_' + c_FGconn + '_' + c_size + $
                            '_' + c_trans + '_' + c_intext + '.txt'            
@@ -11351,6 +11373,10 @@ CASE strlowCase(eventValue) OF
          ;;get the result and clean dir_tmp
          pushd, info.dir_tmp
            image0 = read_tiff('outputmorph.tif')
+           ;; huge image?
+           IF c_size EQ '1' THEN BEGIN
+             q = where(image0 EQ 2b, ct, /l64) & IF ct GT 0 THEN image0[q] = 0b
+           ENDIF
            file_delete, 'inputmorph.tif', 'outputmorph.tif', / quiet
          popd
 
@@ -21449,9 +21475,9 @@ CASE strlowCase(eventValue) OF
                ;; inform about new Guidos version
                newGTB = 'GuidosToolbox' + strtrim(newv_base,2)
                IF info.my_os EQ 'windows' THEN BEGIN
-                 IF (info.sysarch EQ 64) THEN newGTB = newGTB + '_64windows.exe' ELSE newGTB = newGTB + '_32windows.exe'
+                 newGTB = newGTB + '_64windows.exe' 
                ENDIF ELSE BEGIN
-                 IF info.my_os eq 'apple' THEN newGTB = newGTB + '_OSX.dmg' ELSE newGTB = newGTB + '_linux.run'
+                 IF info.my_os eq 'apple' THEN newGTB = newGTB + '_OSX.dmg' ELSE newGTB = newGTB + '_rpm/deb/run'
                ENDELSE
 
                str = 'New release: GuidosToolbox ' + strtrim(newv_base,2) + ' available.' + string(10b) + $
@@ -21488,36 +21514,39 @@ CASE strlowCase(eventValue) OF
                fn = oUrl -> Get(FILENAME = ginst_file)
                url_cont8:
                OBJ_DESTROY, oUrl
+               
+               if info.my_os ne 'linux' then begin ;; download the unique macOS or Windows installer
+                 ;; If the url object throws an error it will be caught here
+                 CATCH, errorStatus
+                 IF (errorStatus NE 0) THEN BEGIN
+                   CATCH, / CANCEL
+                   goto, url_cont7
+                 ENDIF
 
-               ;; If the url object throws an error it will be caught here
-               CATCH, errorStatus
-               IF (errorStatus NE 0) THEN BEGIN
-                 CATCH, / CANCEL
-                 goto, url_cont7
-               ENDIF
+                 oProgressbar = Obj_New('cgprogressbar', TITLE='Downloading new GTB release')
+                 oUrl = OBJ_NEW('IDLnetUrl', URL_SCHEME = 'https', PROXY_HOSTNAME = info.proxhost, PROXY_PORT = info.proxport, $
+                   URL_HOSTNAME = 'ies-ows.jrc.ec.europa.eu/gtb/GTB/'+GTB_archive,$
+                   URL_USERNAME = '', URL_PASSWORD = '', CALLBACK_FUNCTION ='UrlBigFileGetCallbackStatus', $
+                   CALLBACK_DATA=oProgressbar)
+                 VersionFileName = GTB_file
+                 oProgressbar->Start
+                 retrievedFilePath = oUrl->Get(FILENAME=VersionFileName)
+                 oUrl->GetProperty, RESPONSE_CODE=RespCode
+                 oUrl->CloseConnections
+                 url_cont7:
+                 OBJ_DESTROY, oUrl
+                 oProgressbar->Destroy                
+               endif
 
-               oProgressbar = Obj_New('cgprogressbar', TITLE='Downloading new GTB release')
-               oUrl = OBJ_NEW('IDLnetUrl', URL_SCHEME = 'https', PROXY_HOSTNAME = info.proxhost, PROXY_PORT = info.proxport, $
-                 URL_HOSTNAME = 'ies-ows.jrc.ec.europa.eu/gtb/GTB/'+GTB_archive,$
-                 URL_USERNAME = '', URL_PASSWORD = '', CALLBACK_FUNCTION ='UrlBigFileGetCallbackStatus', $
-                 CALLBACK_DATA=oProgressbar)
-               VersionFileName = GTB_file
-               oProgressbar->Start
-               retrievedFilePath = oUrl->Get(FILENAME=VersionFileName)
-               oUrl->GetProperty, RESPONSE_CODE=RespCode
-               oUrl->CloseConnections
-               url_cont7:
-               OBJ_DESTROY, oUrl
-               oProgressbar->Destroy
-               
-               ;; b) inform about the new release
-               str = 'New release ' + newGTB  + string(10b) + $
-                 'has been downloaded into the directory: ' + string(10b) + downdir + string(10b) + string(10b) + $
-                 'Please read the installation instructions ' + string(10b) + $
-                 'before upgrading to the new version.'
-               res = dialog_message(title = 'GTB update information', / information, str)
-               
-               
+               if info.my_os ne 'linux' then begin
+                 ;; b) inform about the new release
+                 str = 'New release ' + newGTB  + string(10b) + $
+                   'has been downloaded into the directory: ' + string(10b) + downdir + string(10b) + string(10b) + $
+                   'Please read the installation instructions ' + string(10b) + $
+                   'before upgrading to the new version.'
+                 res = dialog_message(title = 'GTB update information', / information, str)
+               endif 
+                           
                ;; c) open the downdir
                pushd, '..'
                IF info.my_os EQ 'apple' THEN BEGIN
@@ -21538,8 +21567,9 @@ CASE strlowCase(eventValue) OF
                ENDIF ELSE BEGIN ;; Linux
                  cmd = info.pdf_exe + ' "' + ginst_file + '"'
                  spawn, cmd + ' &'
+                 res = dialog_message(title = 'GTB update information', $
+                   / information, 'Please download your OS-specific GTB installer and follow the installation instructions')
                ENDELSE
-
                popd      
              GOTO, fin
                            
@@ -21679,7 +21709,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, September 2023' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, October 2023' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -22740,21 +22770,24 @@ CASE fileaction OF
         11:BEGIN ;; Resistance
           restore, info.dir_guidossub + 'resistcolors.sav'
         END
-        12:BEGIN ;; LM_BGR
-          restore, info.dir_guidossub + 'lmcolors_BGR.sav'
-        END
-        13:BEGIN ;; LM_DIV
-          restore, info.dir_guidossub + 'lmcolors_DIV.sav'
-        END
-        14:BEGIN ;; LM_AGR
+        12:BEGIN ;; LM_AGR
           restore, info.dir_guidossub + 'lmcolors_AGR.sav'
         END
-        15:BEGIN ;; LM_NAT
+        13:BEGIN ;; LM_NAT
           restore, info.dir_guidossub + 'lmcolors_NAT.sav'
         END
-        16:BEGIN ;; LM_DEV
+        14:BEGIN ;; LM_DEV
           restore, info.dir_guidossub + 'lmcolors_DEV.sav' 
         END
+        15:BEGIN ;; LM_BGR
+          restore, info.dir_guidossub + 'lmcolors_BGR.sav'
+        END
+        16:BEGIN ;; LM_DIV
+          restore, info.dir_guidossub + 'lmcolors_DIV.sav'
+        END
+        17:BEGIN ;; LM_ANT
+          restore, info.dir_guidossub + 'lmcolors_ANT.sav'
+        END      
       ENDCASE   
       tvlct, r, g, b     
          
@@ -26918,7 +26951,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.201
+gtb_version = 3.202
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -27566,7 +27599,7 @@ button = $
   widget_label(w_ctbl, value = 'Select Colortable', / align_center)
 tls = ['Greyscale', 'Rainbow', 'Temperature', 'Classification', $
   'Distance', 'Normalized', 'Contortion', 'LM', 'FOS_6', 'FOS_5', 'FOS-APP_2', 'Resistance', $
-  'LM_BGR', 'LM_DIV', 'LM_AGR', 'LM_NAT', 'LM_DEV', 'User-defined', 'Save/Restore']
+  'LM_AGR', 'LM_NAT', 'LM_DEV', 'LM_BGR', 'LM_DIV', 'LM_ANT', 'User-defined', 'Save/Restore']
 w_disp_colors  = Widget_Combobox(w_ctbl, Value = tls, UVALUE = 'disp_colors')
 
 ;; zoom factor and factor
