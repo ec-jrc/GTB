@@ -3,7 +3,7 @@ GTB
 version: V2.8 or later
 ========================================================================================
 
-Copyright (C) 2018-2023 European Union
+Copyright (C) 2018-2024 European Union
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

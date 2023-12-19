@@ -18894,7 +18894,11 @@ CASE strlowCase(eventValue) OF
         res = dialog_message(msg, / information)
         GOTO, fin
       ENDIF     
-      ;; check sav-file
+      
+      ;; skip the FOS/FAD sav-file test when doing simple or MCD change
+      if eventValue2 eq 'change_simple' or eventValue2 eq 'change_morph' then GOTO, bothfosapp
+      
+      ;; check sav-file when doing FOS/FAD analysis
       tt = strmid(im2_file,0, strlen(im2_file)-4)+'.sav'
       res = file_info(tt)
       IF res.exists NE 1b THEN BEGIN
@@ -21266,9 +21270,10 @@ CASE strlowCase(eventValue) OF
         'homepage_crs': webl = ' https://www.nrcan.gc.ca/node/9309'
         'homepage_gda': webl = ' https://gdal.org'
         'homepage_cfr': webl = ' http://conefor.org'
+        'homepage_euf': webl = ' https://forest-observatory.ec.europa.eu'
+        'homepage_atl': webl = ' https://forest.jrc.ec.europa.eu/european-atlas/'
         'homepage_opf': webl = ' http://www.openforis.org'
         'homepage_spl': webl = ' https://sepal.io'
-        'homepage_atl': webl = ' https://forest.jrc.ec.europa.eu/european-atlas/'        
         ELSE: GOTO, fin
       ENDCASE
       
@@ -21709,7 +21714,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, October 2023' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, December 2023' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -26951,7 +26956,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.202
+gtb_version = 3.300
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -26959,7 +26964,7 @@ IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
    return
 ENDIF
 
-;; Catch any error in the guidos program.
+;; Catch any error in the GTB program.
 Catch, theError
 IF theError NE 0 THEN BEGIN
    Catch, / Cancel
@@ -27557,6 +27562,7 @@ button = widget_button(w_help_online2, value = 'GDAL', uvalue = 'homepage_gda')
 button = widget_button(w_help_online2, value = 'CCRS Tutorial', uvalue = 'homepage_crs')
 button = widget_button(w_help_online2, value = 'OpenForis', uvalue = 'homepage_opf')
 button = widget_button(w_help_online2, value = 'SEPAL', uvalue = 'homepage_spl')
+button = widget_button(w_help_online2, value = 'EUFO', uvalue = 'homepage_euf')
 button = widget_button(w_help_online2, value = 'TreeAtlas', uvalue = 'homepage_atl')
 button = Widget_Button(w_help_online2, Value = 'IMPACT Toolbox', uvalue = 'homepage_itb')
 button = Widget_Button(w_help_online2, Value = 'Conefor', uvalue = 'homepage_cfr')
