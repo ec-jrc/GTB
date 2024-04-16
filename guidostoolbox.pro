@@ -493,7 +493,7 @@ PRO simplestats, image0, fconn, ttrans, tintext, cg, st
 ;;
 ;; Background              gray        220/220/220     100   0
 ;; Opening                 gray        220/220/220     0   (if intext=0)
-;; CoreOpening           darkgrey      136/136/136     100 (if intext=1)
+;; CoreOpening           darkgray      136/136/136     100 (if intext=1)
 ;; BorderOpening           gray        194/194/194     220 (if intext=1)
 ;;
 ;; Missing                 white       255/255/255     129   129
@@ -696,7 +696,7 @@ tt2 = 0
 d_branch = 100.0 / d_area * d_branch
 f_branch = d_branch * byforeg
 
-;; background - grey
+;; background - gray
 d_bg = 100.0 / d_area * allbackg
 
 ;; missing - white
@@ -1562,6 +1562,7 @@ info.prev_disp_colors_id = info.disp_colors_id
 info.prev_autostretch_id = info.autostretch_id
 tvlct, r, g, b, / get
 info.prev_r = r & info.prev_g = g & info.prev_b = b
+info.prev_is_orig = info.is_orig
 info.prev_is_mspa = info.is_mspa
 info.prev_is_fragm = info.is_fragm
 info.prev_is_contort = info.is_contort
@@ -1664,9 +1665,10 @@ endif
 ;;*****************************************************************************************************
 ;;*****************************************************************************************************
 ;;*****************************************************************************************************
+openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', eventvalue: ' + eventvalue2 + ', ' + eventValue + info.bline & free_lun, unit
 
 CASE strlowCase(eventValue) OF
-   'compress_tif':  BEGIN
+   'compress_tif':  BEGIN ;; xxxx
       
       msg = 'Please select one, or more TIF-files for file compression:' + string(10b) + $
         'TIF-files, which are already compressed will be skipped.' + string(10b) + $
@@ -1682,7 +1684,10 @@ CASE strlowCase(eventValue) OF
       im_files = dialog_pickfile(Title = tit, get_path = path2file, $
         path = info.dir_data, default_extension = 'tif', / fix_filter, $
         / must_exist, / multiple_files, FILTER = filters)
-      IF im_files[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
+      IF im_files[0] EQ '' THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: user selected nothing' + msg + info.bline & free_lun, unit
+        GOTO, fin ;; 'cancel' selected
+      ENDIF
 
       ;; test that the directory of the selected files has no sub-directories
       ;; this will also ensure no output file is opened in excel or thelike
@@ -1701,6 +1706,7 @@ CASE strlowCase(eventValue) OF
           res = Dialog_Message('TIF-Compression cancelled by user.')
           progressBar -> Destroy
           Obj_Destroy, progressBar
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
 
@@ -1750,13 +1756,15 @@ CASE strlowCase(eventValue) OF
       msg = 'TIF-Compression finished.' + string(10b) + $
         'Compressed files: ' + strtrim(okfile,2) + '/' + strtrim(nr_im_files,2)
       res = dialog_message(msg, title = 'TIF-Compression tool', / information)
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
+
       GOTO, fin
 
    END
    ;;*****************************************************************************************************
 
    ;; set current data directory
-   'set_dd': BEGIN
+   'set_dd': BEGIN ;; xxxx
      
      msg = 'Please select:' + string(10b) + $
        'Yes: to define a new default data directory' + string(10b) + $
@@ -1769,16 +1777,21 @@ CASE strlowCase(eventValue) OF
        ;; assign and store the new data dir path
        save, dir_data, filename = info.dir_guidossub + 'gtbdd.sav'
        info.dir_data = dir_data
-       info.add_title = ' - Default data directory: ' + dir_data      
+       info.add_title = ' - Default data directory: ' + dir_data  
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', restore default data directory: ' + dir_data + info.bline & free_lun, unit   
      ENDIF ELSE BEGIN
        ;; define a new default data dir
        datapath = info.dir_data
        dir_data = dialog_pickfile(/directory, get_path = path2file, path = datapath, /must_exist, title = 'Select default data directory')
-       IF dir_data EQ '' THEN GOTO, fin ;; cancel selected
+       IF dir_data EQ '' THEN BEGIN
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + msg + info.bline & free_lun, unit
+         GOTO, fin ;; cancel selected
+       ENDIF
        ;; assign and store the new data dir path
        save, dir_data, filename = info.dir_guidossub + 'gtbdd.sav'
        info.dir_data = dir_data
        info.add_title = ' - Default data directory: ' + dir_data
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', set new default data directory: ' + dir_data + info.bline & free_lun, unit      
      ENDELSE
      
    END
@@ -1790,7 +1803,7 @@ CASE strlowCase(eventValue) OF
    ;;-----------------------------------------------------------------------
    ;;*****************************************************************************************************
     
-   'selsubregion':  BEGIN
+   'selsubregion':  BEGIN ;; xxxx
       widget_control, info.w_selsubregion, get_value = ssr
       ;; user clicked on 'Zoom mode'
       ;; enable zoom specific settings and set button label to 'Quit zoom'
@@ -1810,6 +1823,7 @@ CASE strlowCase(eventValue) OF
          if info.is_cost eq 3 then info.is_cost = 7
          if info.is_cost eq 9 then info.is_cost = 79
          widget_control, / hourglass
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', activate zoomfactor' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF ELSE BEGIN ;; set button label from 'Quit' back to 'Zoom mode'
          info.selsubregion_id = 0
@@ -1823,17 +1837,19 @@ CASE strlowCase(eventValue) OF
          widget_control, info.w_draw, Draw_Button_Events = 0
          info.set_zoom = 0 & info.scroll_x = 0 & info.scroll_y = 0
          widget_control, / hourglass
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', deactivate zoomfactor' + info.bline & free_lun, unit
       ENDELSE
    END
 ;;*****************************************************************************************************
-   'disp_colors':  BEGIN
+
+   'disp_colors':  BEGIN  ;; xxxx
       clcl_set = event.index
       ctbl_old = info.disp_colors_id
       info.disp_colors_id = clcl_set
 
       CASE clcl_set OF
 
-         0:BEGIN ;; grey
+         0:BEGIN ;; gray
             info.ctbl = 0
          END
          1:BEGIN ;; rainbow
@@ -1969,7 +1985,10 @@ CASE strlowCase(eventValue) OF
              ;; reset to the previous colortable
              info.disp_colors_id = ctbl_old
              widget_control, info.w_disp_colors, set_combobox_select = ctbl_old
-             IF ctbl_file EQ '' THEN GOTO, fin ;; 'cancel' selected
+             IF ctbl_file EQ '' THEN BEGIN
+               openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled ' + msg + info.bline & free_lun, unit
+               GOTO, fin ;; 'cancel' selected
+             ENDIF
              ;; verify the correct naming scheme
              fbn = file_basename(ctbl_file) & prefix = strmid(fbn,0,10)
              IF prefix NE 'GTBcolors_' THEN ctbl_file = file_dirname(ctbl_file) + info.os_sep + 'GTBcolors_' + fbn 
@@ -1977,6 +1996,7 @@ CASE strlowCase(eventValue) OF
              save, r_gtb, g_gtb, b_gtb, filename = ctbl_file 
              msg = 'The colortable was saved as:' +string(10b) + ctbl_file    
              q = dialog_message(msg,/information) 
+             openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
              GOTO, fin
            
            ENDIF ELSE IF res EQ 'No' THEN BEGIN
@@ -1988,7 +2008,8 @@ CASE strlowCase(eventValue) OF
               ;; reset to the previously used colortable
               info.disp_colors_id = ctbl_old
               widget_control, info.w_disp_colors, set_combobox_select = ctbl_old
-              GOTO, fin 
+              openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user restored previous ctbl' + info.bline & free_lun, unit
+              GOTO, fin
             ENDIF
             ;; add a test to see if the selected file has in fact the required .sav extension
             ;; if not it is not valid
@@ -1996,8 +2017,9 @@ CASE strlowCase(eventValue) OF
             IF suffix NE '.sav' THEN BEGIN
               msg = 'Wrong file selected. Please select a ' +string(10b) + $
                 'GTB-generated colortable (GTBcolors_*.sav)'
-              res = dialog_message(msg,/error)             
-              goto, fin
+              res = dialog_message(msg,/error)
+              openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+              GOTO, fin
             ENDIF                     
             restore, ctbl_file
             ;; verify that the three exist and are valid
@@ -2009,6 +2031,7 @@ CASE strlowCase(eventValue) OF
               msg = 'Invalid colortable detected. Please select a ' +string(10b) + $
                 'GTB-generated colortable (GTBcolors_*.sav)'
               res = dialog_message(msg,/error)
+              openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
               GOTO, fin
             ENDIF
             ;; all ok, now load the custom colors
@@ -2019,15 +2042,17 @@ CASE strlowCase(eventValue) OF
             widget_control, info.w_disp_colors, set_combobox_select = info.disp_colors_id
             ;; set notification switch
             colorreset=1
-
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', restored colortable: ' + ctbl_file + info.bline & free_lun, unit
            ENDIF ELSE BEGIN
              ;; Cancel selected, reset to the previously used colortable
              info.disp_colors_id = ctbl_old
              widget_control, info.w_disp_colors, set_combobox_select = ctbl_old
+             openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user restored previous ctbl' + info.bline & free_lun, unit
              GOTO, fin
            ENDELSE           
          END
       ENDCASE
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', set colortable: ' + strtrim(clcl_set,2) + info.bline & free_lun, unit
       GOTO, redisplay
    END
 
@@ -2035,7 +2060,7 @@ CASE strlowCase(eventValue) OF
 
    ;; MSPA-Foreground Connectivity
    ;;======================
-   'mspa_param1':  BEGIN 
+   'mspa_param1':  BEGIN ;; xxxx
       if info.is_dist or info.is_influ or info.is_cost GE 2 then begin ;; enforce 8-conn for dist, influence zone and proximity
         info.mspa_param1_id = 1
         widget_control, info.w_mspa_param1, set_value = info.mspa_param1_id
@@ -2050,12 +2075,14 @@ CASE strlowCase(eventValue) OF
             msg = "Please first setup your map via either:" + string(10b) + $
                 "'Add Custom Path' or 'Find Optimum Path'"
             res = dialog_message(msg, / error)
-            GOTO, fin           
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+            GOTO, fin          
           ENDIF        
           restore, info.dir_tmp + 'customLCP.sav'
           info.add_title = inatit
           ;; reset custom path setup
           if info.is_cost eq 4 then info.is_cost = 3
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', restored: ' + info.dir_tmp + 'customLCP.sav' + info.bline & free_lun, unit
           GOTO, contnormal
         
         ENDIF ELSE IF strpos(info.add_title,'FGConn for Path setup') GT 0 THEN BEGIN                       
@@ -2075,6 +2102,7 @@ CASE strlowCase(eventValue) OF
                 msg = "Please first setup your map via either:" + string(10b) + $
                   "'Add Custom Path' or 'Find Optimum Path'"
                 res = dialog_message(msg, / error)
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: Optimum Path: ' + msg + info.bline & free_lun, unit
                 GOTO, fin
               ENDIF
               restore, info.dir_tmp + 'customLCP.sav'
@@ -2127,6 +2155,7 @@ CASE strlowCase(eventValue) OF
                   string(10b) + 'Returning...'
                 res = dialog_message(msg, /information)
                 close,1
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
                 goto,fin
               ENDIF
 
@@ -2180,6 +2209,7 @@ CASE strlowCase(eventValue) OF
                 res = dialog_message(msg, / information) & popd 
                 progressBar -> Destroy
                 Obj_Destroy, progressBar
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
                 GOTO, fin
               endif
 
@@ -2340,6 +2370,7 @@ CASE strlowCase(eventValue) OF
              info.autostretch_id = 0
              * info.process = temporary(image0)
              * info.fr_image = * info.process
+             openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' +tit + info.bline & free_lun, unit
 
              GOTO, contnormal
 
@@ -2373,6 +2404,7 @@ CASE strlowCase(eventValue) OF
                 'Please select: ' + string(10b) + $
                   'Yes: to setup the Reconnect Marker Image, or' + string(10b) + $
                   'No: to quit.'
+                  openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
                 goto, markstart                              
               endif else if info.is_cost eq 3 or info.is_cost eq 9 then begin 
                 msg = 'Draw the reconnect path using either:' + string(10b) + $
@@ -2380,6 +2412,7 @@ CASE strlowCase(eventValue) OF
                   '- Right mouse button pressed (straight line).'
                 res = dialog_message(msg, title='Custom Path setup',/ information)
                 widget_control, info.w_draw, Draw_Button_Events = 1 ;; enable click button events
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
                 goto, fin            
               endif
               
@@ -2407,7 +2440,7 @@ CASE strlowCase(eventValue) OF
 
    ;; MSPA-Size
    ;;======================
-   'mspa_param2':  BEGIN     
+   'mspa_param2':  BEGIN     ;; xxxx
         ;; quit the zoom mode
         IF info.selsubregion_id EQ 1 THEN BEGIN 
          info.selsubregion_id = 0
@@ -2458,6 +2491,7 @@ CASE strlowCase(eventValue) OF
       ;if info.is_mspa eq 1b then goto, set2original else goto,fin
       if info.is_mspa or info.is_contort gt 0 then goto, set2original else goto,fin
       skipnewsize:
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', new mspa param 2: ' + newsize + info.bline & free_lun, unit
    END
 
    ;;*****************************************************************************************************
@@ -2465,10 +2499,11 @@ CASE strlowCase(eventValue) OF
 
    ;; MSPA - transition
    ;;======================
-   'mspa_param3':  BEGIN
+   'mspa_param3':  BEGIN ;; xxxx
       if info.is_dist or info.is_influ gt 0 then begin ;; enforce 8-conn for dist, influence zone and proximity
         info.mspa_param3_id = 1
         widget_control, info.w_mspa_param3, set_value = info.mspa_param3_id
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', enforce 8-conn' + info.bline & free_lun, unit
         GOTO, fin
       endif
       ;; get the currently selected option
@@ -2500,6 +2535,7 @@ CASE strlowCase(eventValue) OF
          c_FG = strmid(info.add_title,z)
          info.add_title = ' (MSPA: ' + c_FGconn + '_' + eew + '_' + c_trans + '_' + c_intext + c_FG
       ENDIF
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', new mspa param 3: ' + strtrim(info.mspa_param3_id,2) + info.bline & free_lun, unit
       GOTO, redisplay
    END
 
@@ -2508,7 +2544,7 @@ CASE strlowCase(eventValue) OF
 
    ;; MSPA - intext
    ;;===================
-   'mspa_param4':  BEGIN
+   'mspa_param4':  BEGIN ;; xxxx
       ;; test for PF, FAC
       if (info.is_fragm GT 1 and info.is_fragm LT 3) then begin
         ;; switch off label groups so we start from the original spatcon image
@@ -2595,6 +2631,7 @@ CASE strlowCase(eventValue) OF
                   'spreadsheet application is showing the file:' + string(10b) + file_basename(fx2) + string(10b) + string(10b) +$
                   'Please close your spreadsheet application' + string(10b) + 'Then run the process again.'
                 res = dialog_message(msg, / error)
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
                 GOTO, fin
               endif else begin
                 file_copy, fx, fx2,/allow, /overwrite
@@ -2636,6 +2673,7 @@ CASE strlowCase(eventValue) OF
       info.mspa_param4_id = (event.select EQ 1)
       info.do_label_groups_id = 0b
       widget_control, info.w_do_label_groups, set_value = info.do_label_groups_id
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', new mspa param 4: ' + strtrim(info.mspa_param4_id,2) + info.bline & free_lun, unit
       if info.is_mspa eq 1b then goto, set2original else goto,fin
    END
 
@@ -2644,7 +2682,7 @@ CASE strlowCase(eventValue) OF
 
    ;; Core groups, t1, t2
    ;;=======================
-   'label_t1v':  BEGIN
+   'label_t1v':  BEGIN ;; xxxx
       ;; the purpose of this event handler is to set the value for label_t1.
       if event.index le 0 then begin ;; user-specified value, correct for wrong input
         x = ulong(abs(event.str)) 
@@ -2688,6 +2726,7 @@ CASE strlowCase(eventValue) OF
         if info.is_contort eq 1 then widget_control, info.w_label_t1, set_value = [newval,'25', '50','100']
         if info.is_dist then widget_control, info.w_label_t1, set_value = [newval,'5', '10','15']
       endif
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', newval: ' + newval + info.bline & free_lun, unit
 
       ;; if threshold has changed and label-groups is active: disable label-groups
       ;; we must reset to original in order to apply the new labels to the original image!
@@ -2701,7 +2740,7 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
 
-   'label_t2v':  BEGIN
+   'label_t2v':  BEGIN ;; xxxx
    ;; the purpose of this event handler is to set the label t2 value.
    if event.index le 0 then begin ;; user-specified value
      x = ulong(abs(event.str)) 
@@ -2752,6 +2791,7 @@ CASE strlowCase(eventValue) OF
      if info.is_contort eq 1 then widget_control, info.w_label_t2, set_value = [newval,'300', '800', '2000']
      if info.is_dist then widget_control, info.w_label_t2, set_value = [newval,'20', '30', '50']
    endif
+   openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', newval: ' + newval + info.bline & free_lun, unit
    ;; if threshold has changed and label-groups is active: disable label-groups and reset to unlabeled
    ;; we must reset to original in order to apply the new labels to the original image!
    if info.do_label_groups_id eq 1b then begin
@@ -2766,7 +2806,7 @@ CASE strlowCase(eventValue) OF
 
    ;; DATA DISPLAY RANGE
    ;;===================
-   'disp_range':  BEGIN
+   'disp_range':  BEGIN ;; xxxx
       ;; get the currently selected option
 ;      widget_control, info.w_disp_range, get_value = range_set
 ;      IF info.disp_range_id EQ range_set THEN GOTO, fin ELSE $
@@ -2781,12 +2821,14 @@ CASE strlowCase(eventValue) OF
             info.app_dtype = info.dtypes(size( * info.fr_image, / type))
             * info.fr_image = ( * info.fr_image - * info.data_min) * norm
             * info.process = ( * info.process - * info.data_min) * norm
+            info.is_orig = 0
          END
 
          0:BEGIN  ;; apparent values
             * info.fr_image = * info.fr_image / norm + * info.data_min
             * info.process = * info.process / norm + * info.data_min
             ;; reset to the datatype before the normalization
+            info.is_orig = 0
 
             CASE info.app_dtype OF
                'byte':BEGIN
@@ -2813,7 +2855,7 @@ CASE strlowCase(eventValue) OF
             ENDCASE
          END
       ENDCASE
-
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', info.disp_range_id: ' + info.disp_range_id + info.bline & free_lun, unit
       GOTO, redisplay
    END
 
@@ -2822,11 +2864,11 @@ CASE strlowCase(eventValue) OF
 
    ;; AUTOSTRETCH DATA
    ;;===================
-   'autostretch':  BEGIN
+   'autostretch':  BEGIN ;; xxxx
       ;; store the previous and get the currently selected option
       temp = (event.select EQ 1)
       info.prev_autostretch_id = info.autostretch_id
-      info.autostretch_id = temp
+      info.autostretch_id = temp      
       GOTO, redisplay
    END
 
@@ -2839,7 +2881,7 @@ CASE strlowCase(eventValue) OF
    ;; *************  CONVOLUTION  *********************
    ;;--------------------------------------------------------------------
    ;;=============  MEDIAN  =============================
-   'median':  BEGIN
+   'median':  BEGIN ;; xxxx
       qqstr = strmid(eventValue2,6,2) & qq = fix(qqstr)
       widget_control, / hourglass
       * info.fr_image = Median( * info.fr_image, qq)
@@ -2848,12 +2890,13 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
 
    ;;=============  BOXCAR  =============================
-   'boxcar':  BEGIN
+   'boxcar':  BEGIN ;; xxxx
       qqstr = strmid(eventValue2,6,1) & qq = fix(qqstr)
       widget_control, / hourglass
       * info.fr_image = smooth( * info.fr_image, qq, / Edge_Truncate)
@@ -2862,11 +2905,12 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0   
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;=============  LEE  =============================
-   'lee':  BEGIN
+   'lee':  BEGIN ;; xxxx
       qqstr = strmid(eventValue2,3,1) & qq = fix(qqstr)
       widget_control, / hourglass
       * info.fr_image = leefilt( * info.fr_image, qq)
@@ -2875,11 +2919,12 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;=============  SIGMA  =============================
-   'sigma':  BEGIN
+   'sigma':  BEGIN ;; xxxx
      widget_control, / hourglass
       * info.fr_image = $
        sigma_filter( * info.fr_image, n_sigma = 1, radius = 2, / all)
@@ -2888,12 +2933,13 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive      
    END
 
 
    ;;=============  HILBERT  =============================
-   'hilbert':  BEGIN
+   'hilbert':  BEGIN ;; xxxx
      widget_control, / hourglass
       * info.fr_image =  bytscl(hilbert( * info.fr_image, 1))
       info.add_title = ' (Hilbert)'
@@ -2901,11 +2947,12 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;=============  USER-DEFINED  =============================
-   'user_def':  BEGIN
+   'user_def':  BEGIN ;; xxxx
       ;; define a pointer to the default kernel, 3x3
       kdim = 3 & def_kernel = replicate( - 1, kdim, kdim)
       def_kernel(kdim / 2, kdim / 2) = - (fix(total(def_kernel)) + 1)
@@ -2924,18 +2971,18 @@ CASE strlowCase(eventValue) OF
            res = dialog_message(msg, / information)
            ptr_free, cancel & cancel = 0b
            ptr_free, selected_kernel & selected_kernel = 0b
+           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
            GOTO, fin
          endif
          widget_control, / hourglass
-         * info.fr_image = $
-          convol( * info.fr_image, * selected_kernel, / NAN, / center, $
-                  / edge_truncate)
-          
+         * info.fr_image = convol( * info.fr_image, * selected_kernel, / NAN, / center, / edge_truncate)        
          info.add_title = ' (User-defined, kdim: ' + strtrim(sk[0],2) + 'x' + strtrim(sk[1],2) + ')'
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + info.add_title + info.bline & free_lun, unit
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN  ;; cancel was selected
          ptr_free, cancel & cancel = 0b
@@ -2952,7 +2999,7 @@ CASE strlowCase(eventValue) OF
    ;; *************  EQUALIZATION  *********************
    ;;--------------------------------------------------------------------
    ;;=============  CONTRAST  =============================
-   'contrast':  BEGIN
+   'contrast':  BEGIN ;; xxxx
       ;; minimize Tlb and switch off interfering motion events
       widget_control, info.w_draw, Draw_Motion_Events = 0
       Widget_Control, Info.tlb, Iconify = 1
@@ -2968,17 +3015,17 @@ CASE strlowCase(eventValue) OF
          * info.process = temporary(result)
          tmp = * info.fr_image
          ;; apply the stretching to fullres
-         * info.fr_image = $
-          BytScl(tmp, Top = xc_top, Max = xc_max, Min = xc_min)
+         * info.fr_image = BytScl(tmp, Top = xc_top, Max = xc_max, Min = xc_min)
          info.autostretch_id = 0 & tmp = 0
          info.add_title = ' (Contrast)'
-         ;; reset to default greyscale settings
+         ;; reset to default grayscale settings
          loadct, 0 & info.ctbl = 0 & info.disp_colors_id = 0
          info.disp_range_id = 0
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          ;; put back the colors we were using
@@ -2992,31 +3039,33 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'histequal':  BEGIN
+   'histequal':  BEGIN ;; xxxx
       * info.fr_image = hist_equal( * info.fr_image)
       info.add_title = ' (Histogram equalization)'
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'adapthistequal': BEGIN
+   'adapthistequal': BEGIN ;; xxxx
       * info.fr_image = adapt_hist_equal( * info.fr_image)
       info.add_title = ' (Adaptive histogram equalization)'
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'thresholding':  BEGIN
+   'thresholding':  BEGIN ;; xxxx
       image0 = * info.fr_image
       ;; check if threshold has already been applied before
       q = where(image0 gt 0b and image0 lt 255b, ct, /l64)
@@ -3024,8 +3073,7 @@ CASE strlowCase(eventValue) OF
          mess = 'Thresholding was already applied and can only '
          mess = mess + 'be performed once.' + string(10b) + $
                 'Do you want to reload and threshold the original image?'
-         res = $
-          dialog_message(mess, / question)
+         res = dialog_message(mess, / question)
          IF strlowcase(res) EQ 'yes' THEN BEGIN
             * info.fr_image = * info.orig_image
          ENDIF ELSE BEGIN
@@ -3051,13 +3099,14 @@ CASE strlowCase(eventValue) OF
          tmp = BytScl(tmp GE xt_min, Top = xt_top)
          * info.fr_image = temporary(tmp gt 0b)
          info.add_title =  ' (Threshold: ' + strtrim(xt_min,2) + " < FG)"
-         ;; reset to default greyscale settings
+         ;; reset to default grayscale settings
          loadct, 0 & info.ctbl = 0 & info.disp_colors_id = 0
          info.autostretch_id = 1 & info.disp_range_id = 0
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          ;; put back the colors we were using
@@ -3071,7 +3120,7 @@ CASE strlowCase(eventValue) OF
 
    ;; edge enhance options
    ;;--------------------------------------------------------------------
-   'canny_gr':  BEGIN
+   'canny_gr':  BEGIN ;; xxxx
       canny, * info.fr_image, 10, 10, 10, 10, 1, 1, 1, 1, gr, df
       * info.fr_image = temporary(gr)
       info.add_title = ' (Canny gradient)'
@@ -3079,12 +3128,13 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'canny_df':  BEGIN
+   'canny_df':  BEGIN ;; xxxx
       canny, * info.fr_image, 10, 10, 10, 10, 1, 1, 1, 1, gr, df
       * info.fr_image = temporary(df)
       info.add_title = ' (Canny difference)'
@@ -3092,48 +3142,52 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'laplace':  BEGIN
+   'laplace':  BEGIN ;; xxxx
       * info.fr_image = laplace( * info.fr_image)
       info.add_title = ' (Laplace)'
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'roberts':  BEGIN
+   'roberts':  BEGIN ;; xxxx
       * info.fr_image = roberts( * info.fr_image)
       info.add_title = ' (Roberts)'
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'sobel':  BEGIN
+   'sobel':  BEGIN ;; xxxx
       * info.fr_image = sobel( * info.fr_image)
       info.add_title = ' (Sobel)'
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'sharpen':  BEGIN
+   'sharpen':  BEGIN ;; xxxx
       ;; define a pointer to the default kernel, 3x3
       kdim = 3 & def_kernel = replicate( - 1, kdim, kdim)
       def_kernel(kdim / 2, kdim / 2) = - (fix(total(def_kernel)) + 1)
@@ -3148,13 +3202,14 @@ CASE strlowCase(eventValue) OF
          * info.fr_image = $
           sharpen( bytscl( * info.fr_image), kernel = * selected_kernel)
          info.add_title = ' (Sharpen)'
-         ;; reset to default greyscale settings
+         ;; reset to default grayscale settings
          loadct, 0 & info.ctbl = 0 & info.disp_colors_id = 0
          info.autostretch_id = 1 & info.disp_range_id = 0
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
          info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN  ;; cancel was selected
          ptr_free, cancel & cancel = 0b
@@ -3169,7 +3224,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'unsharp_mask':  BEGIN
+   'unsharp_mask':  BEGIN ;; xxxx
       qqstr = strmid(eventValue2,12,1) & qq = fix(qqstr)
       * info.fr_image = Smooth( * info.fr_image, qq) - * info.fr_image
       info.add_title = ' (Unsharp, Box ' + qqstr +')'
@@ -3177,24 +3232,26 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'skeleton':  BEGIN
+   'skeleton':  BEGIN ;; xxxx
       * info.fr_image = bytscl(sobel( bytscl( * info.fr_image)) GE 254b)
       info.add_title = ' (Skeleton)'
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 
       info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
       info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;; morphological filters
    ;;--------------------------------------------------------------------
-   'morph':  BEGIN
+   'morph':  BEGIN ;; xxxx
       ;; minimize Tlb and switch off interfering motion events
       widget_control, info.w_draw, Draw_Motion_Events = 0
       Widget_Control, Info.tlb, Iconify = 1
@@ -3211,13 +3268,14 @@ CASE strlowCase(eventValue) OF
          ;; apply the treshold to fullres
          * info.fr_image = temporary(resultfr)
          info.add_title = ' (Morphological)'
-         ;; reset to default greyscale settings
+         ;; reset to default grayscale settings
          loadct, 0 & info.ctbl = 0 & info.disp_colors_id = 0
          info.autostretch_id = 1 & info.disp_range_id = 0
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.is_nwconnect = 0 & info.is_cs22 = 0 & info.is_fragm = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          ;; put back the colors we were using
@@ -3232,7 +3290,7 @@ CASE strlowCase(eventValue) OF
    ;;============================================================
    ;; prepare input image menu
    ;;============================================================
-   'mspainp_info':  BEGIN
+   'mspainp_info':  BEGIN ;; xxxx
       sysinfofile:
       ;; show useful info: datatype, dimension, uniq image values, projection
       widget_control, info.w_draw, Draw_Motion_Events = 0
@@ -3340,58 +3398,64 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_c2b':  BEGIN
+   'mspainp_c2b':  BEGIN ;; xxxx
      ;; get max-value of map and warn if larger than 255 or negative
      IF (* info.data_max gt 255.0) OR (* info.data_min lt 0.0) THEN BEGIN
        msg = "Map has negative values or larger than 255, Byte conversion aborted," + $
          string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      * info.fr_image = byte(* info.fr_image) & info.add_title = ' (Byte)'
      ;; reset the MSPA
      info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
      info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+     info.is_orig = 0
      widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'mspainp_c2i':  BEGIN
+   'mspainp_c2i':  BEGIN ;; xxxx
      ;; get max-value of map and warn if larger or smaller than 32768
      IF (* info.data_max gt 32768.0) OR (* info.data_min lt -32768.0) THEN BEGIN
        msg = "Map has values outside of [-32768, 32768]. Integer conversion aborted," + $
          string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      * info.fr_image = fix(round(* info.fr_image)) & info.add_title = ' (Integer)'
      ;; reset the MSPA
      info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
      info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+     info.is_orig = 0
      widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'mspainp_c2l':  BEGIN
+   'mspainp_c2l':  BEGIN ;; xxxx
      ;; get max-value of map and warn if larger or smaller than 32768
      IF (* info.data_max le 32768.0) AND (* info.data_min ge -32768.0) THEN BEGIN
        msg = "Map has values within [-32768, 32768]. Use Integer conversion instead," + $
          string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      * info.fr_image = round(* info.fr_image) & info.add_title = ' (Long)'
      ;; reset the MSPA
      info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
      info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+     info.is_orig = 0
      widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'mspainp_c2s':  BEGIN
+   'mspainp_c2s':  BEGIN ;; xxxx
       image0 = * info.fr_image & s = size(image0)
       IF s[0] EQ 3 THEN BEGIN ;; 3-dim image
          IF s[1] EQ 3 THEN BEGIN ;; 3 band image
@@ -3402,6 +3466,7 @@ CASE strlowCase(eventValue) OF
          ENDIF ELSE BEGIN
             msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
          ENDELSE
       ENDIF ELSE IF s[0] EQ 2 THEN BEGIN
@@ -3409,6 +3474,7 @@ CASE strlowCase(eventValue) OF
       ENDIF ELSE BEGIN
          msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDELSE
       * info.fr_image = temporary(image0) & info.add_title = " (RGB -> Single Band)"
@@ -3416,12 +3482,13 @@ CASE strlowCase(eventValue) OF
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
       info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'mspainp_c2ge':  BEGIN   
+   'mspainp_c2ge':  BEGIN  ;; xxxx
      finp = info.fname_input    
      foutp = strpos(finp, '.', / reverse_search) & foutp = strmid(finp, 0, foutp) + '_EPSG4326.tif'
      ;; the output file must not exist and we must specify the s_srs, at least for this old version of gdalwarp...
@@ -3449,20 +3516,22 @@ CASE strlowCase(eventValue) OF
          'for further processing and/or exporting the image as a' + string(10b) + $
          'Google Earth image overlay (File -> Save Image -> KML)' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
      ENDIF ELSE BEGIN
         ;; something went wrong
         msg = 'Reprojecting to EPSG:4326 failed with this error: ' + string(10b)
         for i=0, n_elements(error_result)-1 do msg = msg + error_result[i] + string(10b)
         msg =  msg + 'Returning...'
         res = dialog_message(msg, / information)
-     ENDELSE
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+     ENDELSE    
      GOTO, fin
 
    END
 
    ;;*****************************************************************************************************
 
-   'mspainp_recode':  BEGIN
+   'mspainp_recode':  BEGIN  ;; xxxx
       ;; open a table to allow re=assigning of byte values
       ;; this option is only available if the data is in byte format
       
@@ -3506,7 +3575,8 @@ CASE strlowCase(eventValue) OF
           '[3, 100]: landcover specific Background (BG) resistance' + string(10b) + string(10b) + $
           'Note: resistance values of 1 or > 100 are not allowed.'
           res = dialog_message(msg, title=tit,/ error)
-          GOTO, fin      
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+          GOTO, fin     
         ENDIF 
         info.is_cost = 0
       ENDIF ;; end of lc_recode
@@ -3554,7 +3624,7 @@ CASE strlowCase(eventValue) OF
    END
 
    ;;*****************************************************************************************************
-   'setup_recodetable':  BEGIN
+   'setup_recodetable':  BEGIN  ;; xxxx
      ;; let the user define a recode table for later use
      cancel = ptr_new(1b) & seltab = ptr_new(1b)
      msg = "Define a batch recode table or click on 'Restore'" + string(10b) + 'and load/modify an existing GTBbatchrecode_*.sav table' + string(10b) + $
@@ -3575,13 +3645,14 @@ CASE strlowCase(eventValue) OF
    END
 
    ;;*****************************************************************************************************  
-   'mspainp_recodepixel':  BEGIN
+   'mspainp_recodepixel':  BEGIN ;; xxxx
      ;; this option is only available if the data is in byte format
      tit = 'Recode pixel setup:'
      IF info.datatype NE 'byte' THEN BEGIN
        msg = 'This option is only applicable for images with data type Byte.' + string(10b) + 'Returning...'
-       res = dialog_message(msg, title = tit, / information)    
-       GOTO, fin     
+       res = dialog_message(msg, title = tit, / information)   
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+       GOTO, fin    
      ENDIF
      q = size(* info.fr_image,/dim) & xdim = q[0] & ydim = q[1]
      
@@ -3624,6 +3695,7 @@ CASE strlowCase(eventValue) OF
          'x-location;   y-location;   class value' + $
        string(10b) + string(10b) + 'Returning...'
        res = dialog_message(msg, title = tit, / error)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -3652,12 +3724,13 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_recodeline':  BEGIN
+   'mspainp_recodeline':  BEGIN  ;; xxxx
      ;; this option is only available if the data is in byte format
      tit = 'Recode line setup:'
      IF info.datatype NE 'byte' THEN BEGIN
        msg = 'This option is only applicable for images with data type Byte.' + string(10b) + 'Returning...'
        res = dialog_message(msg, title = tit, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      q = size(* info.fr_image,/dim) & xdim = q[0] & ydim = q[1]
@@ -3685,12 +3758,13 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_recoderoi':  BEGIN
+   'mspainp_recoderoi':  BEGIN ;; xxxx
      ;; this option is only available if the data is in byte format
      IF info.datatype NE 'byte' THEN BEGIN
        tit = 'Recode ROI setup:'
        msg = 'This option is only applicable for images with data type Byte.' + string(10b) + 'Returning...'
        res = dialog_message(msg, title = tit, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
          
@@ -3709,7 +3783,10 @@ CASE strlowCase(eventValue) OF
        tit = 'Define ROIs & quit window when done. NOTE: area/length measures are approximate.'
        mask = ROIMask(image0, title=tit, Indices=roiIndices)
        roi = where(mask eq 1b, ct_roi, /l64)
-       if ct_roi eq 0 then GOTO, fin ;; nothing defined
+       if ct_roi eq 0 then BEGIN
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', no ROIs defined by user' + info.bline & free_lun, unit
+         GOTO, fin ;; nothing defined
+       endif
 
        ;; let the user assign a resistance value for all those rois defined earlier
        image0 = imageSubset
@@ -3766,7 +3843,10 @@ CASE strlowCase(eventValue) OF
        tit = 'Define ROIs & quit window when done. NOTE: area/length measures are approximate.'
        mask = ROIMask(image0, title=tit, Indices=roiIndices)
        roi = where(mask eq 1b, ct_roi, /l64)
-       if ct_roi eq 0 then GOTO, fin ;; nothing defined
+       if ct_roi eq 0 then begin
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', no ROIs defined by user' + info.bline & free_lun, unit
+         GOTO, fin ;; nothing defined
+       endif 
 
        ;; let the user assign a new value for all those rois defined earlier
        image0 = * info.fr_image
@@ -3813,7 +3893,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-  'mspainp_costmarker':  BEGIN
+  'mspainp_costmarker':  BEGIN ;; xxxx
      msg = 'The marker image requires a 3-step setup: ' + string(10b) + $
       'Step 1: define start object A (polygon/point, 1 byte)' + string(10b) + $
       'Step 2: define target object B (polygon/point, 2 byte)' + string(10b) + $
@@ -3849,6 +3929,7 @@ CASE strlowCase(eventValue) OF
      IF info.datatype NE 'byte' THEN BEGIN
        msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      
@@ -3860,10 +3941,11 @@ CASE strlowCase(eventValue) OF
    
   ;;*****************************************************************************************************
 
-   'mspainp_thresh':  BEGIN
+   'mspainp_thresh':  BEGIN ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       ;; we need at least pixels > 2 byte else there is no point doing this
@@ -3872,6 +3954,7 @@ CASE strlowCase(eventValue) OF
          mess = 'No pixel values larger than 2 byte (= FG) found.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
          res = dialog_message(mess, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + mess + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       ;; we need at least 3 different values else there is no point doing this
@@ -3880,6 +3963,7 @@ CASE strlowCase(eventValue) OF
          mess = 'Map has less than 3 uniq values.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
          res = dialog_message(mess, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + mess + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -3904,12 +3988,13 @@ CASE strlowCase(eventValue) OF
           ((BytScl(tmp GE xt_min, Top = xt_top)) EQ 255b) + 1b
          tt = strtrim(fix(xt_min), 2)
          info.add_title = ' (Threshold: ' + tt + "b < FG)" & tmp = 0
-         ;; reset to default greyscale settings
+         ;; reset to default grayscale settings
          loadct, 0 & info.ctbl = 0 & info.disp_colors_id = 0
          info.autostretch_id = 1 & info.disp_range_id = 0
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b
          info.do_mspa_stats_id = 0 & info.is_nw = 0 & info.is_cost = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          ;; put back the colors we were using
@@ -3923,10 +4008,11 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_group':  BEGIN
+   'mspainp_group':  BEGIN ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       ;; we need at least pixels values > 2 byte else there is no point doing this
@@ -3935,6 +4021,7 @@ CASE strlowCase(eventValue) OF
          mess = 'No pixel values larger than 2 byte (= FG) found.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
          res = dialog_message(mess, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + mess + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       ;; we need at least 3 different values else there is no point doing this
@@ -3943,6 +4030,7 @@ CASE strlowCase(eventValue) OF
          mess = 'Map has less than 3 uniq values.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
          res = dialog_message(mess, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + mess + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -3972,12 +4060,13 @@ CASE strlowCase(eventValue) OF
             tmp(q) = mask & * info.fr_image = temporary(tmp)
             info.autostretch_id = 1
             info.add_title = ' ([' + str_mi + 'b, ' + str_ma + "b] -> " + tt + ')'
-            ;; reset to default greyscale settings
+            ;; reset to default grayscale settings
             loadct, 0 & info.ctbl = 0 & info.disp_colors_id = 0
             info.disp_range_id = 0
             ;; reset the MSPA
             info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b
             info.do_mspa_stats_id = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+            info.is_orig = 0
             widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
          ENDIF
          tmp = 0
@@ -3993,10 +4082,11 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_xset':  BEGIN
+   'mspainp_xset':  BEGIN ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       ;; we need at least pixels values > 2 byte else there is no point doing this
@@ -4005,6 +4095,7 @@ CASE strlowCase(eventValue) OF
          mess = 'No pixel values larger than 2 byte (= FG) found.' + string(10b) + $
                 'Please proceed with the other Preprocessing options.' + string(10b) + 'Returning...'
          res = dialog_message(mess, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + mess + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4026,6 +4117,7 @@ CASE strlowCase(eventValue) OF
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.disp_range_id = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN  ;; cancel was selected
          ptr_free, cancel & cancel = 0b
@@ -4038,10 +4130,11 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_invert21':  BEGIN
+   'mspainp_invert21':  BEGIN ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4052,15 +4145,17 @@ CASE strlowCase(eventValue) OF
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
       info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
    
    ;;*****************************************************************************************************
 
-   'mspainp_invert20':  BEGIN
+   'mspainp_invert20':  BEGIN  ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4071,15 +4166,17 @@ CASE strlowCase(eventValue) OF
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
       info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
    
    ;;*****************************************************************************************************
 
-   'mspainp_invert10':  BEGIN
-      IF info.datatype NE 'byte' THEN BEGIN
+   'mspainp_invert10':  BEGIN ;; xxxx
+      IF info.datatype NE 'byte' THEN BEGIN 
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4090,15 +4187,17 @@ CASE strlowCase(eventValue) OF
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
       info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'mspainp_set20':  BEGIN
+   'mspainp_set20':  BEGIN  ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4109,10 +4208,12 @@ CASE strlowCase(eventValue) OF
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.disp_range_id = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          msg = "No pixels values with 2 byte found." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          tmp = 0b
          GOTO, fin
       ENDELSE
@@ -4120,10 +4221,11 @@ CASE strlowCase(eventValue) OF
    
    ;;*****************************************************************************************************
 
-   'mspainp_set21':  BEGIN
+   'mspainp_set21':  BEGIN ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4134,10 +4236,12 @@ CASE strlowCase(eventValue) OF
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.disp_range_id = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          msg = "No pixels values with 2 byte found." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          tmp = 0b
          GOTO, fin
       ENDELSE
@@ -4145,10 +4249,11 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_set10':  BEGIN
+   'mspainp_set10':  BEGIN  ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4159,10 +4264,12 @@ CASE strlowCase(eventValue) OF
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.disp_range_id = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          msg = "No pixels values with 1 byte found." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          tmp = 0b
          GOTO, fin
       ENDELSE
@@ -4170,10 +4277,11 @@ CASE strlowCase(eventValue) OF
    
    ;;*****************************************************************************************************
 
-   'mspainp_set12':  BEGIN
+   'mspainp_set12':  BEGIN  ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4184,10 +4292,12 @@ CASE strlowCase(eventValue) OF
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.disp_range_id = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          msg = "No pixels values with 1 byte found." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          tmp = 0b
          GOTO, fin
       ENDELSE
@@ -4195,10 +4305,11 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_set01':  BEGIN
+   'mspainp_set01':  BEGIN  ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4209,10 +4320,12 @@ CASE strlowCase(eventValue) OF
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.disp_range_id = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          msg = "No pixels values with 0 byte found." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          tmp = 0b
          GOTO, fin
       ENDELSE
@@ -4220,10 +4333,11 @@ CASE strlowCase(eventValue) OF
    
    ;;*****************************************************************************************************
 
-   'mspainp_set02':  BEGIN
+   'mspainp_set02':  BEGIN  ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       tmp = * info.fr_image
@@ -4234,10 +4348,12 @@ CASE strlowCase(eventValue) OF
          ;; reset the MSPA
          info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
          info.is_nw = 0 & info.is_cost = 0 & info.autostretch_id = 1 & info.disp_range_id = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+         info.is_orig = 0
          widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
       ENDIF ELSE BEGIN
          msg = "No pixels values with 0 byte found." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          tmp = 0b
          GOTO, fin
       ENDELSE
@@ -4245,10 +4361,11 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspainp_add1':  BEGIN
+   'mspainp_add1':  BEGIN  ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       * info.fr_image = temporary( * info.fr_image) + 1b
@@ -4256,15 +4373,17 @@ CASE strlowCase(eventValue) OF
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
       info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
    ;;*****************************************************************************************************
 
-   'mspainp_sub1':  BEGIN
+   'mspainp_sub1':  BEGIN ;; xxxx
       IF info.datatype NE 'byte' THEN BEGIN
          msg = "Please convert map datatype to 'byte'." + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       * info.fr_image = temporary( * info.fr_image) - 1b
@@ -4272,6 +4391,7 @@ CASE strlowCase(eventValue) OF
       ;; reset the MSPA
       info.is_mspa = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0
       info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.is_dist = 0 & info.is_influ = 0 & info.selsubregion_id = 0
+      info.is_orig = 0
       widget_control, info.w_selsubregion, set_value = 'Zoom Mode', / sensitive
    END
 
@@ -4280,7 +4400,7 @@ CASE strlowCase(eventValue) OF
    ;; gis software menu
    ;;============================================================
    ;; gdal terminal
-   'gdalterminal':  BEGIN
+   'gdalterminal':  BEGIN  ;; xxxx
       IF info.my_os EQ 'windows' THEN BEGIN
          pushd, info.dir_fwtools       
          ;;spawn, '%WINDIR%\system32\cmd.exe /K setfw.bat'
@@ -4340,7 +4460,7 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    ;; Openev
-   'openev':  BEGIN
+   'openev':  BEGIN  ;; xxxx
       pushd, info.dir_guidos
       spawn, 'startOpenEV.lnk'
       popd
@@ -4350,7 +4470,7 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    ;; QGIS
-   'qgis':  BEGIN
+   'qgis':  BEGIN  ;; xxxx
       IF info.my_os EQ 'windows' THEN BEGIN
         pushd, file_dirname(info.qgis_exe)
         spawn, 'qgis.bat'
@@ -4378,10 +4498,11 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    ;; original image
-   'original image':  BEGIN
+   'original image':  BEGIN  ;; xxxx
       set2original:
       ;; reset the image and the title
       * info.fr_image = * info.orig_image
+      info.is_orig = 1
       info.title = info.orig_image_title & info.add_title = ' '
       s = size(* info.orig_image)
       IF info.bigim THEN BEGIN
@@ -4576,7 +4697,7 @@ CASE strlowCase(eventValue) OF
 
     END
 
-    'switchcursor':  BEGIN
+    'switchcursor':  BEGIN  ;; xxxx
       ;; switch between cursor types Help and Crosshair
       IF info.cursor eq 'help' THEN BEGIN ;; set to CrossHair
         IF info.my_os NE 'windows' THEN DEVICE, CURSOR_STANDARD = 52 ELSE DEVICE, CURSOR_STANDARD = 32649
@@ -4591,11 +4712,12 @@ CASE strlowCase(eventValue) OF
 ;;-----------------------------------------------------------------------
 ;;-----------------------  Image Analysis -----------------------------
 ;;-----------------------------------------------------------------------
-   'frag_fad':  BEGIN
+   'frag_fad':  BEGIN  ;; xxxx
       ;; check for input compliance:
       ;; 1) if already a mspa image then quit
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
         res = dialog_message(info.wronginput, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wronginput' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -4616,12 +4738,16 @@ CASE strlowCase(eventValue) OF
       ;; 3) check input compliance
       fname = info.fname_input & image0 = * info.fr_image
       LM_Compliance, fname, image0, 'fad', info.immaxsizeg, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
       
       sz = size(image0,/dim) & xdim=sz[0] & ydim=sz[1] & imgminsize=(xdim<ydim)
       IF imgminsize LT 250 THEN BEGIN
         res = dialog_message('FAD requires a minimum map dimension of 250 pixels in x and y map dimension.' + $
           string(10b) + 'Returning...', / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR:  x/y not 250 pixels' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       
@@ -4639,6 +4765,7 @@ CASE strlowCase(eventValue) OF
         ptr_free, cancel & cancel = 0b
         ptr_free, conn & conn = 0b
         ptr_free, ftype & ftype = 0b
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       fadclass = * ftype
@@ -4938,7 +5065,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'batch_fadms':  BEGIN
+   'batch_fadms':  BEGIN ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -5465,11 +5592,12 @@ CASE strlowCase(eventValue) OF
    
    ;;*****************************************************************************************************
 
-   'frag_fos':  BEGIN
+   'frag_fos':  BEGIN  ;; xxxx
      ;; check for input compliance:
      ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR:  wronginput' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -5490,8 +5618,15 @@ CASE strlowCase(eventValue) OF
 
      ;; 3) check input compliance
      fname = info.fname_input & image0 = * info.fr_image
-     LM_Compliance, fname, image0, 'fad', info.immaxsizeg, 1, result
-     IF result EQ 0 THEN GOTO, fin  ;; invalid input
+     pseudo_bin = *info.DATA_MAX LE 4b ;; check if we have a pseudo binary - non grayscale input
+     
+     IF pseudo_bin THEN BEGIN
+       LM_Compliance, fname, image0, 'fad', info.immaxsizeg, 1, result
+       IF result EQ 0 THEN BEGIN
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+         GOTO, fin  ;; invalid input
+       ENDIF
+     ENDIF
 
      sz = size(image0,/dim) & xdim=sz[0] & ydim=sz[1] & imgminsize=(xdim<ydim)
 
@@ -5521,10 +5656,14 @@ CASE strlowCase(eventValue) OF
      pres = ptr_new(25) ;; pixel resolution
      wdim = ptr_new(5) ;; window edge length = kdim
      conn = ptr_new('8') ;; fg-conn
-     ftype = ptr_new('')
+     fmethod = ptr_new('') ;; frag analysis method
+     frep = ptr_new('') ;; frag analysis reporting style
+     inpgray = ptr_new(1b-pseudo_bin) ;; binary or grayscale 
+     graythresh = ptr_new('30')
+          
      ;; get the fos settings
-     get_fos, ftype = ftype, conn =conn, pres = pres, wdim = wdim, gdal = gdal, cancel = cancel, Group_Leader = event.top, $
-      title = 'Please set: PixelResolution [m] x square WindowSize = Observation Scale'
+     get_fos, inpgray = inpgray, graythresh = graythresh, fmethod = fmethod, frep = frep, conn = conn, pres = pres, wdim = wdim, gdal = gdal, cancel = cancel, $
+      Group_Leader = event.top, title = 'Please set: PixelResolution [m] x square WindowSize = Observation Scale'
 
      ;; check if cancel was selected then do nothing else apply the
      ;; default or new kernel
@@ -5533,31 +5672,42 @@ CASE strlowCase(eventValue) OF
        ptr_free, pres & pres = 0b
        ptr_free, wdim & wdim = 0b
        ptr_free, conn & conn = 0b
-       ptr_free, ftype & ftype = 0b
+       ptr_free, fmethod & fmethod = 0b
+       ptr_free, frep & frep = 0b
+       ptr_free, inpgray & inpgray = 0b
+       ptr_free, graythresh & graythresh = 0b
        GOTO, fin
      ENDIF
      pixres = float(* pres) & pixres_str = * pres
      kdim = fix(* wdim) & kdim_str = * wdim
      fgconn_str = * conn
-     fosclass = * ftype
-     
-     if fosclass eq 'FAD_5class' or fosclass eq 'FAC_5class' then fostype = 'FOS5'
-     if fosclass eq 'FAD_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
-     if fosclass eq 'FAD-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
-     if fosclass eq 'FAD-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
+     tt1 = * fmethod & tt2 = * frep
+     IF strmid(tt2,0,3) EQ 'APP' THEN fosclass = tt1 + '-' + tt2 ELSE fosclass = tt1 + '_' + tt2
+     TT = ['Binary', 'Grayscale'] & fosinp = TT[* inpgray]
+     grayt = byte(fix(*graythresh)) & grayt_str = *graythresh
+          
+     if fosclass eq 'FAD_5class' or fosclass eq 'FED_5class' or fosclass eq 'FAC_5class' then fostype = 'FOS5'
+     if fosclass eq 'FAD_6class' or fosclass eq 'FED_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
+     if fosclass eq 'FAD-APP_2class' or fosclass eq 'FED-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
+     if fosclass eq 'FAD-APP_5class' or fosclass eq 'FED-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
 
      ;; free and delete the temporary pointers
      ptr_free, cancel & cancel = 0b
      ptr_free, pres & pres = 0b
      ptr_free, wdim & wdim = 0b   
      ptr_free, conn & conn = 0b
-     ptr_free, ftype & ftype = 0b
+     ptr_free, fmethod & fmethod = 0b
+     ptr_free, frep & frep = 0b
+     ptr_free, inpgray & inpgray = 0b
+     ptr_free, graythresh & graythresh = 0b
      
+     ;; verify selected settings
      IF kdim ge imgminsize THEN BEGIN
        res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
          string(10b) + 'Returning...', / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: kernel > x/y' + info.bline & free_lun, unit
        GOTO, fin
-     ENDIF
+     ENDIF   
      
      ;; we are ready for FOS now
      widget_control, / hourglass
@@ -5572,42 +5722,153 @@ CASE strlowCase(eventValue) OF
 
      
      ;; image properties
-     qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
-     BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea) & fad_av = -1.0
-
-     ;; get average patch size and # of patches
-     ext1 = lonarr(sz[0] + 2, sz[1] + 2)
-     ext1[1:sz[0], 1:sz[1]] = long(image0 eq 2b)
-     IF info.mspa_param1_id EQ 1b THEN conn8 = 1 ELSE conn8 = 0
-     ;; label FG only
-     ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
-     obj_area = histogram(ext1, /l64) 
-     if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
-     obj_last=max(ext1) & ext1=0
-     aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
-     z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
-
-     ;; calculate FAD for the fixed observation scale
-     IF ct4b GT 0 THEN image0[q4b] = 0b ;; specialBG-Nf
+     IF pseudo_bin THEN BEGIN ;; binary input to run (a) spatcon, (c) GSC52, or (e) FAC 
+       qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
+       BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea)
+       ;; get average patch size and # of patches
+       ext1 = lonarr(sz[0] + 2, sz[1] + 2)
+       ext1[1:sz[0], 1:sz[1]] = long(image0 eq 2b)
+       IF info.mspa_param1_id EQ 1b THEN conn8 = 1 ELSE conn8 = 0
+       ;; label FG only
+       ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
+       obj_area = histogram(ext1, /l64)
+       if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
+       obj_last=max(ext1) & ext1=0
+       aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
+       z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
+       ;; calculate FAD/FAC for the fixed observation scale
+       IF ct4b GT 0 THEN image0[q4b] = 0b ;; specialBG - assign to missing
+     ENDIF ELSE BEGIN ;; grayscale input to run GSC1 for (b, FAD) and GSC52 for (c, FED), (d, FED)
+       qmiss = where(image0 eq 255b,ctmiss, /l64) & q3b = where(image0 eq 103b, ct3b, /l64) & q4b = where(image0 eq 104b, ct4b, /l64)
+       BGmask = where(image0 LT grayt, ctbg, /l64) 
+       IF ctbg EQ 0 THEN BEGIN
+         res = dialog_message('No background with selected grayscale threshold.' + $
+           string(10b) + 'Returning...', / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', invalid graythreshold' + info.bline & free_lun, unit
+         GOTO, fin
+       ENDIF
+       tt = image0 GE grayt AND image0 LT 101b & qFG = where(tt eq 1b, /l64, fgarea)
+       IF fgarea EQ 0 THEN BEGIN
+         res = dialog_message('No foreground with selected grayscale threshold.' + $
+           string(10b) + 'Returning...', / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', invalid graythreshold' + info.bline & free_lun, unit
+         GOTO, fin
+       ENDIF     
+       ;; the 'tt' is now the grayscale made binary, which we use to make the patch statistics with           
+       ;; get average patch size and # of patches; we do these statistics with the binary image
+       ext1 = lonarr(sz[0] + 2, sz[1] + 2)      
+       ext1[1:sz[0], 1:sz[1]] = long(temporary(tt))           
+       IF info.mspa_param1_id EQ 1b THEN conn8 = 1 ELSE conn8 = 0
+       ;; label FG only
+       ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
+       obj_area = histogram(ext1, /l64)
+       if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
+       obj_last=max(ext1) & ext1=0
+       aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
+       z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
+       ;; calculate FAD/FED/FAC for the fixed observation scale
+       IF ct3b GT 0 THEN image0[q3b] = 0b ;; set special BG to zero
+       IF ct4b GT 0 THEN image0[q4b] = 255b ;; non-fragmenting specialBG - assign to missing    
+     ENDELSE           
+     fad_av = -1.0    
+     proc_spatcon = strmid(fosclass,0,3) EQ 'FAC' OR (strmid(fosclass,0,3) EQ 'FAD' AND fosinp EQ 'Binary')
      
-     ;; run spatcon PF or FAC
-     IF strmid(fosclass,0,3) EQ 'FAC' then mtyp='fac' else mtyp='pf'
-     spatcon, image0, kdim, mtyp, info.dir_tmp, info.my_os, info.resfloat, im
-     ;; rescale to normalized byte range
-     if info.resfloat eq 0 then begin
-       ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
-       ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
-       ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-       q = where(im eq 255b, ct, /l64)
-       im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
-       im = byte(round(temporary(im) * 100.0))
-       if ct gt 0 then im[q] = 100b
-     endif else begin
-       im = byte(round(im*100.0))
-     endelse
+     IF proc_spatcon EQ 1 THEN BEGIN 
+       ;; ***************  run spatcon PF (a) or FAC (e)  ***********************
+       IF strmid(fosclass,0,3) EQ 'FAC' then mtyp='fac' else mtyp='pf'
+       spatcon, image0, kdim, mtyp, info.dir_tmp, info.my_os, info.resfloat, im
+       ;; rescale to normalized byte range
+       if info.resfloat eq 0 then begin
+         ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
+         ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
+         ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
+         q = where(im eq 255b, ct, /l64)
+         im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
+         im = byte(round(temporary(im) * 100.0))
+         if ct gt 0 then im[q] = 100b
+       endif else begin
+         im = byte(round(im*100.0))
+       endelse    
+     ENDIF ELSE BEGIN 
+       GSC1 = (strmid(fosclass,0,3) EQ 'FAD' AND fosinp EQ 'Grayscale')
+       ;; ***************  run GSC for (b), (c), or (d) ***********************
+       IF GSC1 EQ 1 THEN BEGIN ;; run GSC 1 for case (b)
+         pushd, info.dir_tmp
+         close, 1 & openw,1, 'gscpars.txt'
+         printf,1,'R ' + strtrim(sz[1],2)
+         printf,1,'C ' + strtrim(sz[0],2)
+         printf,1,'M 1'
+         printf,1,'P 0'
+         printf,1,'G 0'
+         printf,1,'W ' + kdim_str
+         printf,1,'F 1' 
+         printf,1,'B 6' 
+         printf,1,'A 1'
+         printf,1,'X 5'
+         printf,1,'Y 10'
+         printf,1,'K 5' 
+         close,1        
+       ENDIF ELSE BEGIN ;; run GSC 52 for (c) and (d)
+         pushd, info.dir_tmp
+         close, 1 & openw,1, 'gscpars.txt'
+         printf,1,'R ' + strtrim(sz[1],2)
+         printf,1,'C ' + strtrim(sz[0],2)
+         printf,1,'M 52'
+         printf,1,'P 0'
+         printf,1,'G 0'
+         printf,1,'W ' + kdim_str
+         printf,1,'F 1'
+         printf,1,'B 1'
+         printf,1,'A 1'
+         printf,1,'X 5'
+         printf,1,'Y 10'
+         printf,1,'K 5'
+         close,1         
+         ;; amend image setup for GSC processing
+         ;; 1) set all BG to zero
+         image0[BGmask] = 0b
+         IF fosinp EQ 'Binary' THEN BEGIN ;; case (c) 
+           image0[qFG] = 100b
+           image0[qmiss] = 255b
+           IF ct3b GT 0 THEN image0[q3b] = 0b ;; set special BG to zero
+           IF ct4b GT 0 THEN image0[q4b] = 255b ;; non-fragmenting specialBG - assign to missing
+         ENDIF                  
+       ENDELSE
+       
+       openw, 1, 'gscinput' & writeu,1, image0 & close,1 & image0 = 0
+       ;; setup GraySpatCon
+       IF info.my_os EQ 'windows' THEN BEGIN
+         spatcon='..\spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
+       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+         spatcon='../spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+       ENDIF ELSE BEGIN
+         spatcon='../spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
+       ENDELSE
+       ;; run grayspatcon in tmp
+       IF info.my_os EQ 'windows' THEN spawn, 'grayspatcon.exe', log, / hide ELSE spawn, './grayspatcon', log
+       ;; get result
+       ;; if we get a GraySpatCon error then the last entry will not be "Normal Finish"
+       res = log[n_elements(log)-1] & res = strpos(strlowcase(res), 'normal finish') gt 0
+       if res eq 0 then begin
+         file_delete, 'gscinput', 'gscoutput', 'gscoutput.txt', 'gscpars.txt', /allow_nonexistent,/quiet
+         fx = 'gsc_error.txt' & openw, 9, fx
+         for idd = 1, n_elements(log)-1 do printf, 9, log[idd]
+         printf, 9, '  ' & close, 9
+         xdisplayfile, fx, height=file_lines(fx)+1, title = 'GraySpatCon error output:'
+         popd
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', GSC error' + info.bline & free_lun, unit
+         goto, skip_gsc00
+       endif
+       ;; read the image output
+       im = bytarr(sz(0),sz(1))
+       openr, 1, 'gscoutput' & readu,1, im & close,1
+       file_delete, 'gscinput', 'gscoutput', 'gscoutput.txt', 'gscpars.txt', /allow_nonexistent,/quiet
+       popd
+     ENDELSE
+     
      ;; calculate pixel-based fad_av
      fad_av = mean(im(qFG)) & qFG = 0
-
+     
      ;; do we want APP?
      if strmid(fostype,0,7) eq 'FOS-APP' then begin
        extim = bytarr(sz[0] + 2, sz[1] + 2)
@@ -5631,7 +5892,7 @@ CASE strlowCase(eventValue) OF
      patchy = -1 & rare = -1 & separated = -1 & continuous = -1
      if strlen(fostype) eq 4 then begin
        ;; get the 6 fragmentation proportions 
-       if (fosclass eq 'FAD_6class') OR (fosclass eq 'FAC_6class') then begin
+       if (fosclass eq 'FAD_6class') OR (fosclass eq 'FED_6class') OR (fosclass eq 'FAC_6class') then begin
          zz = (im EQ 100b) & intact = total(zz)/fgarea*100.0
          zz = (im GE 90b) AND (im LT 100b) & interior = total(zz)/fgarea*100.0
        endif else begin
@@ -5663,12 +5924,14 @@ CASE strlowCase(eventValue) OF
    
      openw,12,fx
      printf, 12, 'Fragmentation analysis using Fixed Observation Scale (FOS)'
-     printf, 12, 'Method options: FAC - Foreground Area Clustering; FAD - Foreground Area Density'
+     printf, 12, 'Method options: FAD - FG Area Density; FED - FG Edge Density; FAC - FG Area Clustering; '
      printf, 12, 'Summary analysis for image: '     
      printf, 12, fname
      printf, 12, '================================================================================'
      printf, 12, 'FOS parameter settings:'
-     printf, 12, 'Foreground connectivity: ' + conn_str 
+     IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
+     printf, 12, tt
+     printf, 12, 'Foreground connectivity: ' + conn_str
      printf, 12, 'FOS-type selected: ' + fosclass  
      printf, 12, 'Method: ' + method 
      printf, 12, 'Reporting style: ' + repstyle
@@ -5681,11 +5944,12 @@ CASE strlowCase(eventValue) OF
      printf, 12, 'Foreground area [pixels]: ', z
      printf, 12, 'Number of foreground patches: ',  z80
      printf, 12, 'Average foreground patch size: ', z81     
-     IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels [4b] in input image'
+     IF fosinp EQ 'Binary' THEN tt = '[4b]' ELSE tt = '[104b]'
+     IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels ' + tt + ' in input image'
      printf, 12, '================================================================================'
      printf, 12, 'Proportion [%] of foreground area in foreground cover class:'
      if strlen(fostype) eq 4 then begin
-       printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare ;; bernd
+       printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare 
        printf, 12, format='(a55,f11.4)', 'Patchy (' + method + '-pixel value within: [10 - 39]): ', patchy
        printf, 12, format='(a55,f11.4)', 'Transitional (' + method + '-pixel value within: [40 - 59]): ', transitional
        printf, 12, format='(a55,f11.4)', 'Dominant (' + method + '-pixel value within: [60 - 89]): ', dominant
@@ -5708,15 +5972,16 @@ CASE strlowCase(eventValue) OF
        printf, 12, format='(a55,f11.4)', 'Continuous (' + method + '-pixel value within: [40 - 100]): ', continuous
      endelse
      printf, 12, '================================================================================'
-     printf, 12, format='(a67,f11.4)', 'Average pixel value across all foreground pixels using ' + method + '-method: ', strtrim(fad_av,2)   ;; bernd
-     printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground connectivity: ', strtrim(fad_av,2)   ;; bernd
-     printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground fragmentation: ', strtrim(100.0-fad_av,2)   ;; bernd
+     printf, 12, format='(a67,f11.4)', 'Average pixel value across all foreground pixels using ' + method + '-method: ', strtrim(fad_av,2) 
+     printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground connectivity: ', strtrim(fad_av,2)  
+     printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground fragmentation: ', strtrim(100.0-fad_av,2)   
      close, 12
      
      ;; d) write csv output
      fn_out = info.dir_tmp + 'fos.csv'
      openw,12,fn_out
-     printf,12, fosclass + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
+     IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
+     printf,12, tt + ' ' + fosclass + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
      q = ' (more details in the txt-file stored in the results directory)'
      if strlen(fostype) eq 4 then begin
        if fostype eq 'FOS6' then printf, 12, 'FOS_6class: ' + q else printf, 12, 'FOS_5class: ' + q
@@ -5744,7 +6009,7 @@ CASE strlowCase(eventValue) OF
      xdisplayfile, info.dir_tmp + 'fos.txt', title = 'FOS statistics'
 
      ;; save stats summary in idl format for potential change analysis at some later point
-     save, filename=info.dir_tmp + 'fos.sav', fostype, fosclass, $
+     save, filename=info.dir_tmp + 'fos.sav', grayt_str, fosinp, fostype, fosclass, $
        xdim, ydim, geotiff_log, rare, patchy, transitional, dominant, interior, intact, separated, continuous, fad_av, fgarea, obj_last, $
        conn_str, pixres_str, kdim_str, hec, acr
        
@@ -5752,6 +6017,7 @@ CASE strlowCase(eventValue) OF
      * info.process = temporary(im)
      * info.fr_image = * info.process
      
+     ;; get the appropriate colortable
      if fostype eq 'FOS6' or fostype eq 'FOS-APP5' then begin
        restore, info.dir_guidossub + 'fadcolors.sav' & info.disp_colors_id = 8 ;; FAD colors
      endif else if fostype eq 'FOS5' then begin
@@ -5762,7 +6028,8 @@ CASE strlowCase(eventValue) OF
      tvlct, r, g, b
      info.ctbl = - 1 & info.autostretch_id = 0 
      info.add_title = ' (FOS-' + fosclass + ': ' + kdim_str + 'x' + kdim_str + ': ' + hec + ' hectares/' + acr + ' acres)'
-
+     
+     skip_gsc00:
      ;; reset mspa and use info.is_fragm also for FAD
      info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 3 & info.is_contort = 0
      info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
@@ -5772,7 +6039,7 @@ CASE strlowCase(eventValue) OF
    
 ;;*****************************************************************************************************
 
-   'batch_fos':  BEGIN
+   'batch_fos':  BEGIN  ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -5796,6 +6063,12 @@ CASE strlowCase(eventValue) OF
      ENDIF
      popd
      
+     ;; let the usert decide if we do binary or a grayscale batch-processing
+     msg = 'Please select the input file TYPE'  +  string(10b) +  $
+      'for the Batch FOS processing:' +string(10b) + $
+       'Binary (Yes) or Grayscale (No)' + string(10b)
+     res = dialog_message(msg, / question)
+     IF res EQ 'Yes' THEN pseudo_bin = 1b ELSE pseudo_bin = 0b
 
      ;; do the loop processing now
      ;; files are now selected, reset the GUI
@@ -5813,12 +6086,15 @@ CASE strlowCase(eventValue) OF
      pres = ptr_new(25) ;; pixel resolution
      wdim = ptr_new(5) ;; window edge length = kdim
      conn = ptr_new('8') ;; fg-conn
-     ftype = ptr_new('')
+     fmethod = ptr_new('') ;; frag analysis method
+     frep = ptr_new('') ;; frag analysis reporting style
+     inpgray = ptr_new(1b-pseudo_bin) ;; binary or grayscale
+     graythresh = ptr_new('30')
 
      ;; get the fos settings
      gdal = 'gdalinfo: we assume all batch images have the same pixel resolution, correct?'
-     get_fos, ftype = ftype, conn = conn,pres = pres, wdim = wdim, gdal = gdal, cancel = cancel, Group_Leader = event.top, $
-       title = 'Please set: PixelResolution [m] x square WindowSize = Observation Scale'
+     get_fos, inpgray = inpgray, graythresh = graythresh, fmethod = fmethod, frep = frep, conn = conn,pres = pres, wdim = wdim, gdal = gdal, cancel = cancel, $
+       Group_Leader = event.top, title = 'Please set: PixelResolution [m] x square WindowSize = Observation Scale'
 
      ;; check if cancel was selected then do nothing else apply the
      ;; default or new kernel
@@ -5827,18 +6103,24 @@ CASE strlowCase(eventValue) OF
        ptr_free, pres & pres = 0b
        ptr_free, wdim & wdim = 0b
        ptr_free, conn & conn = 0b
-       ptr_free, ftype & ftype = 0b
+       ptr_free, fmethod & fmethod = 0b
+       ptr_free, frep & frep = 0b
+       ptr_free, inpgray & inpgray = 0b
+       ptr_free, graythresh & graythresh = 0b
        GOTO, fin
      ENDIF
      pixres = float(* pres) & pixres_str = * pres
      kdim = fix(* wdim) & kdim_str = * wdim
      fgconn_str = * conn
-     fosclass = * ftype
+     tt1 = * fmethod & tt2 = * frep
+     IF strmid(tt2,0,3) EQ 'APP' THEN fosclass = tt1 + '-' + tt2 ELSE fosclass = tt1 + '_' + tt2
+     TT = ['Binary', 'Grayscale'] & fosinp = TT[* inpgray]
+     grayt = byte(fix(*graythresh)) & grayt_str = *graythresh
 
-     if fosclass eq 'FAD_5class' or fosclass eq 'FAC_5class' then fostype = 'FOS5'
-     if fosclass eq 'FAD_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
-     if fosclass eq 'FAD-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
-     if fosclass eq 'FAD-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
+     if fosclass eq 'FAD_5class' or fosclass eq 'FED_5class' or fosclass eq 'FAC_5class' then fostype = 'FOS5'
+     if fosclass eq 'FAD_6class' or fosclass eq 'FED_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
+     if fosclass eq 'FAD-APP_2class' or fosclass eq 'FED-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
+     if fosclass eq 'FAD-APP_5class' or fosclass eq 'FED-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
 
 
      hec = ((pixres * kdim)^2) / 10000.0
@@ -5851,7 +6133,10 @@ CASE strlowCase(eventValue) OF
      ptr_free, pres & pres = 0b
      ptr_free, wdim & wdim = 0b
      ptr_free, conn & conn = 0b
-     ptr_free, ftype & ftype = 0b
+     ptr_free, fmethod & fmethod = 0b
+     ptr_free, frep & frep = 0b
+     ptr_free, inpgray & inpgray = 0b
+     ptr_free, graythresh & graythresh = 0b
      
      ;; test that we can write into the parent directory or if it exists already
      batch_type = 'batch_fos-' + strlowcase(fosclass)
@@ -5887,6 +6172,8 @@ CASE strlowCase(eventValue) OF
      IF info.mspa_param1_id EQ 1b THEN conn_str = '8-conn FG: ' ELSE conn_str = '4-conn FG: '
      openw, 9, fn_logfile
      printf, 9, fosclass + ' batch processing logfile: ', systime()
+     IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
+     printf, 9, tt
      printf, 9, strmid(conn_str,0,9) + ', Pixel resolution: ' + pixres_str + $
       '[m], Window size: ' + kdim_str 
      printf, 9, 'Observation scale: ' + hec + ' hectares/' + acr + ' acres'
@@ -5968,55 +6255,186 @@ CASE strlowCase(eventValue) OF
          close, 9
          GOTO, skip_batch_fos  ;; invalid input
        ENDIF
+       
+       IF pseudo_bin THEN BEGIN ;; test for LM-compliance if binary input only
+         LM_Compliance, input, image0, 'fad', info.immaxsizeg, 0, result
+         IF result EQ 0 THEN BEGIN
+           openw, 9, fn_logfile, /append
+           printf, 9, ' '
+           printf, 9, '==============   ' + counter + '   =============='
+           printf, 9, 'Skipping invalid FOS input file: invalid binary setup'
+           printf, 9, input
+           close, 9
+           GOTO, skip_batch_fos  ;; invalid input
+         ENDIF
+       ENDIF ELSE BEGIN ;; rough test for grayscale
+         IF max(image0) LT 5b THEN BEGIN
+           openw, 9, fn_logfile, /append
+           printf, 9, ' '
+           printf, 9, '==============   ' + counter + '   =============='
+           printf, 9, 'Skipping invalid FOS input file: invalid grayscale setup'
+           printf, 9, input
+           close, 9
+           GOTO, skip_batch_fos  ;; invalid input          
+         ENDIF         
+       ENDELSE
 
-       LM_Compliance, input, image0, 'fad', info.immaxsizeg, 0, result
-       IF result EQ 0 THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid FOS input file: '
-         printf, 9, input
-         close, 9
-         GOTO, skip_batch_fos  ;; invalid input
-       ENDIF
 
        ;; now all is ok for processing
        time0 = systime( / sec)
        widget_control, / hourglass
   
        ;; image properties
-       qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
-       BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea) & fad_av = -1.0
-
-       ;; get average patch size and # of patches
-       ext1 = lonarr(sz[0] + 2, sz[1] + 2)
-       ext1[1:sz[0], 1:sz[1]] = long(image0 eq 2b)
-       conn8 = fgconn_str eq '8'
-       ;; label FG only
-       ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
-       if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
-       obj_last=max(ext1) & ext1 = 0
-       aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
-       z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
-
-       ;; calculate FAD for the fixed observation scale
-       IF ct4b GT 0 THEN image0[q4b] = 0b
+       IF pseudo_bin THEN BEGIN ;; binary input to run (a) spatcon, (c) GSC52, or (e) FAC 
+         qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
+         BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea)
+         ;; get average patch size and # of patches
+         ext1 = lonarr(sz[0] + 2, sz[1] + 2)
+         ext1[1:sz[0], 1:sz[1]] = long(image0 eq 2b)
+         conn8 = fgconn_str eq '8'
+         ;; label FG only
+         ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
+         if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
+         obj_last=max(ext1) & ext1 = 0
+         aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
+         z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
+         ;; calculate FAD/FAC for the fixed observation scale
+         IF ct4b GT 0 THEN image0[q4b] = 0b ;; specialBG - assign to missing        
+       ENDIF ELSE BEGIN ;; grayscale input to run GSC1 for (b, FAD) and GSC52 for (c, FED), (d, FED)
+         qmiss = where(image0 eq 255b,ctmiss, /l64) & q3b = where(image0 eq 103b, ct3b, /l64) & q4b = where(image0 eq 104b, ct4b, /l64)
+         BGmask = where(image0 LT grayt, ctbg, /l64)
+         ;; exit if we have no BG or no FG
+         IF ctbg EQ 0 THEN BEGIN
+           openw, 9, fn_logfile, /append
+           printf, 9, ' '
+           printf, 9, '==============   ' + counter + '   =============='
+           printf, 9, 'Skipping invalid FOS input file: no background with selected grayscale threshold'
+           printf, 9, input
+           close, 9
+           GOTO, skip_batch_fos  ;; invalid input
+         ENDIF 
+         tt = image0 GE grayt AND image0 LT 101b & qFG = where(tt eq 1b, /l64, fgarea)
+         IF fgarea EQ 0 THEN BEGIN
+           openw, 9, fn_logfile, /append
+           printf, 9, ' '
+           printf, 9, '==============   ' + counter + '   =============='
+           printf, 9, 'Skipping invalid FOS input file: no foreground with selected grayscale threshold'
+           printf, 9, input
+           close, 9
+           GOTO, skip_batch_fos  ;; invalid input           
+         ENDIF
+         ;; the 'tt' is now the grayscale made binary, which we use to make the patch statistics with
+         ;; get average patch size and # of patches; we do these statistics with the binary image
+         ext1 = lonarr(sz[0] + 2, sz[1] + 2)
+         ext1[1:sz[0], 1:sz[1]] = long(temporary(tt))
+         IF info.mspa_param1_id EQ 1b THEN conn8 = 1 ELSE conn8 = 0
+         ;; label FG only
+         ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
+         obj_area = histogram(ext1, /l64)
+         if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
+         obj_last=max(ext1) & ext1=0
+         aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
+         z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
+         ;; calculate FAD/FED/FAC for the fixed observation scale
+         IF ct3b GT 0 THEN image0[q3b] = 0b ;; set special BG to zero
+         IF ct4b GT 0 THEN image0[q4b] = 255b ;; specialBG - assign to missing
+       ENDELSE 
+       fad_av = -1.0
+       proc_spatcon = strmid(fosclass,0,3) EQ 'FAC' OR (strmid(fosclass,0,3) EQ 'FAD' AND fosinp EQ 'Binary')
        
-       ;; run spatcon PF or FAC
-       IF strmid(fosclass,0,3) EQ 'FAC' then mtyp='fac' else mtyp='pf'
-       spatcon, image0, kdim, mtyp, info.dir_tmp, info.my_os, info.resfloat, im
-       ;; rescale to normalized byte range
-       if info.resfloat eq 0 then begin
-         ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
-         ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
-         ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
-         q = where(im eq 255b, ct, /l64)
-         im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
-         im = byte(round(temporary(im) * 100.0))
-         if ct gt 0 then im[q] = 100b
-       endif else begin
-         im = byte(round(im*100.0))
-       endelse
+       IF proc_spatcon EQ 1 THEN BEGIN
+         ;; ***************  run spatcon PF (a) or FAC (e)  ***********************
+         IF strmid(fosclass,0,3) EQ 'FAC' then mtyp='fac' else mtyp='pf'
+         spatcon, image0, kdim, mtyp, info.dir_tmp, info.my_os, info.resfloat, im
+         ;; rescale to normalized byte range
+         if info.resfloat eq 0 then begin
+           ;; normally the conversion to byte range would be: im=(im-1b)/254.0 > 0.0
+           ;; the potential max value from spatcon is 255b and *only* those pixels can have a remapped value of 100b
+           ; we must prevent that the value 254b will get rounded to 100b so mask the 255b pixels
+           q = where(im eq 255b, ct, /l64)
+           im = (temporary(im) - 1b)/254.0 & im = 0.994999 < temporary(im) > 0.0
+           im = byte(round(temporary(im) * 100.0))
+           if ct gt 0 then im[q] = 100b
+         endif else begin
+           im = byte(round(im*100.0))
+         endelse  
+       ENDIF ELSE BEGIN
+         GSC1 = (strmid(fosclass,0,3) EQ 'FAD' AND fosinp EQ 'Grayscale')
+         ;; ***************  run GSC for (b), (c), or (d) ***********************
+         IF GSC1 EQ 1 THEN BEGIN ;; run GSC 1 for case (b)
+           pushd, info.dir_tmp
+           close, 1 & openw,1, 'gscpars.txt'
+           printf,1,'R ' + strtrim(sz[1],2)
+           printf,1,'C ' + strtrim(sz[0],2)
+           printf,1,'M 1'
+           printf,1,'P 0'
+           printf,1,'G 0'
+           printf,1,'W ' + kdim_str
+           printf,1,'F 1'
+           printf,1,'B 6'
+           printf,1,'A 1'
+           printf,1,'X 5'
+           printf,1,'Y 10'
+           printf,1,'K 5'
+           close,1
+         ENDIF ELSE BEGIN ;; run GSC 52 for (c) and (d)
+           pushd, info.dir_tmp
+           close, 1 & openw,1, 'gscpars.txt'
+           printf,1,'R ' + strtrim(sz[1],2)
+           printf,1,'C ' + strtrim(sz[0],2)
+           printf,1,'M 52'
+           printf,1,'P 0'
+           printf,1,'G 0'
+           printf,1,'W ' + kdim_str
+           printf,1,'F 1'
+           printf,1,'B 1'
+           printf,1,'A 1'
+           printf,1,'X 5'
+           printf,1,'Y 10'
+           printf,1,'K 5'
+           close,1
+           ;; amend image setup for GSC processing
+           ;; 1) set all BG to zero
+           image0[BGmask] = 0b
+           IF fosinp EQ 'Binary' THEN BEGIN ;; case (c)
+             image0[qFG] = 100b
+             image0[qmiss] = 255b
+             IF ct3b GT 0 THEN image0[q3b] = 0b ;; set special BG to zero
+             IF ct4b GT 0 THEN image0[q4b] = 255b ;; non-fragmenting specialBG - assign to missing
+           ENDIF
+         ENDELSE
+         
+         openw, 1, 'gscinput' & writeu,1, image0 & close,1 & image0 = 0
+         ;; setup GraySpatCon
+         IF info.my_os EQ 'windows' THEN BEGIN
+           spatcon='..\spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
+         ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+           spatcon='../spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+         ENDIF ELSE BEGIN
+           spatcon='../spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
+         ENDELSE
+         ;; run grayspatcon in tmp
+         IF info.my_os EQ 'windows' THEN spawn, 'grayspatcon.exe', log, / hide ELSE spawn, './grayspatcon', log
+         ;; get result
+         ;; if we get a GraySpatCon error then the last entry will not be "Normal Finish"
+         res = log[n_elements(log)-1] & res = strpos(strlowcase(res), 'normal finish') gt 0
+         if res eq 0 then begin
+           file_delete, 'gscinput', 'gscoutput', 'gscoutput.txt', 'gscpars.txt', /allow_nonexistent,/quiet
+           fx = 'gsc_error.txt' & openw, 9, fx
+           for idd = 1, n_elements(log)-1 do printf, 9, log[idd]
+           printf, 9, '  ' & close, 9
+           xdisplayfile, fx, height=file_lines(fx)+1, title = 'GraySpatCon error output:'
+           popd
+           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', GSC error' + info.bline & free_lun, unit
+           goto, skip_gsc00
+         endif
+         ;; read the image output
+         im = bytarr(sz(0),sz(1))
+         openr, 1, 'gscoutput' & readu,1, im & close,1
+         file_delete, 'gscinput', 'gscoutput', 'gscoutput.txt', 'gscpars.txt', /allow_nonexistent,/quiet
+         popd
+       ENDELSE      
+
        ;; calculate pixel-based fad_av
        fad_av = mean(im(qFG)) & qFG = 0
        
@@ -6043,7 +6461,7 @@ CASE strlowCase(eventValue) OF
        patchy = -1 & rare = -1 & separated = -1 & continuous = -1
         if strlen(fostype) eq 4 then begin
        ;; get the 6 fragmentation proportions 
-       if (fosclass eq 'FAD_6class') OR (fosclass eq 'FAC_6class') then begin
+       if (fosclass eq 'FAD_6class') OR (fosclass eq 'FED_6class') OR (fosclass eq 'FAC_6class') then begin
          zz = (im EQ 100b) & intact = total(zz)/fgarea*100.0
          zz = (im GE 90b) AND (im LT 100b) & interior = total(zz)/fgarea*100.0
        endif else begin
@@ -6109,6 +6527,8 @@ CASE strlowCase(eventValue) OF
        printf, 12, input
        printf, 12, '================================================================================'
        printf, 12, 'FOS parameter settings:'
+       IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
+       printf, 12, tt       
        printf, 12, 'Foreground connectivity: ' + conn_str
        printf, 12, 'FOS-type selected: ' + fosclass
        printf, 12, 'Method: ' + method
@@ -6169,14 +6589,15 @@ CASE strlowCase(eventValue) OF
        endif       
        
        fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.sav'
-       save, filename = fn_out, fostype, fosclass, $
+       save, filename = fn_out, grayt_str, fosinp, fostype, fosclass, $
          xdim, ydim, geotiff_log, rare, patchy, transitional, dominant, interior, intact, separated, continuous, fad_av, fgarea, obj_last, $
          conn_str, pixres_str, kdim_str, hec, acr       
          
        ;; d) write csv output
        fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.csv'     ;; bernd
        openw,12,fn_out
-       printf,12, fosclass + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
+       IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
+       printf,12, tt + ' ' + fosclass + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
        q = ' (more details in the txt-file stored in the results directory)'
        if strlen(fostype) eq 4 then begin
          if fostype eq 'FOS6' then printf, 12, 'FOS_6class: ' + q else printf, 12, 'FOS_5class: ' + q
@@ -6237,7 +6658,7 @@ CASE strlowCase(eventValue) OF
      printf, 9, '==============================================='
      close, 9
 
-     msg = fosclass + ' Batch Processing finished.' + string(10b) + $
+     msg = fosinp + ' input image, ' + fosclass + ' Batch Processing finished.' + string(10b) + $
        'Total computation time: ' + proctstr + string(10b) + $
        'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
        'More information can be found in the logfile: ' + string(10b) + fn_logfile
@@ -6249,11 +6670,12 @@ CASE strlowCase(eventValue) OF
   
    ;;*****************************************************************************************************
 
-   'kernel_pf':  BEGIN
+   'kernel_pf':  BEGIN  ;; xxxx
       ;; check for input compliance:
       ;; 1) if already a mspa image then quit
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
          res = dialog_message(info.wronginput, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wronginput' + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -6277,8 +6699,10 @@ CASE strlowCase(eventValue) OF
       ;; assign the full resolution image
       image0 = * info.fr_image     
       MSPA_Compliance, fname, image0, info.immaxsizeg, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
-
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
 
       ;; define a pointer to the default kernel, 5 x 5
       kdim = 5 & def_kernel = replicate(1, kdim, kdim)
@@ -6293,6 +6717,7 @@ CASE strlowCase(eventValue) OF
       IF * cancel NE 0b THEN BEGIN
         ptr_free, cancel & cancel = 0b
         ptr_free, selected_kernel & selected_kernel = 0b
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ',  user cancelled' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       kdim = * selected_kernel & kdim = (size(kdim))[1]
@@ -6302,6 +6727,7 @@ CASE strlowCase(eventValue) OF
       IF kdim ge imgminsize THEN BEGIN
         res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
           string(10b) + 'Returning...', / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: kernel > x/y' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -6350,6 +6776,7 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 2 & info.is_contort = 0
       info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
       info.do_label_groups_id = 0
+      info.is_orig = 0
 
       ;Divide panel settings
       widget_control, info.w_labelstr, set_value = 'Density range: '
@@ -6362,7 +6789,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'batch_pf':  BEGIN
+   'batch_pf':  BEGIN  ;; xxxx
       tit = 'Select (Geo-)Tif-files'
       im_file = $
         dialog_pickfile(Title = tit, get_path = path2file, $
@@ -6617,11 +7044,12 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
    ;; moving window PFF
-   'kernel_pff':  BEGIN
+   'kernel_pff':  BEGIN ;; xxxx
       ;; check for input compliance:
       ;; 1) if already a mspa image then quit
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
          res = dialog_message(info.wronginput, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wronginput' + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -6641,9 +7069,11 @@ CASE strlowCase(eventValue) OF
       ENDIF
 
       ;; 3) check input compliance
-      MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, $
-                       1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
+      MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, 1, result
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
 
       ;; assign the full resolution image
       image0 = * info.fr_image
@@ -6661,6 +7091,7 @@ CASE strlowCase(eventValue) OF
       IF * cancel NE 0b THEN BEGIN
         ptr_free, cancel & cancel = 0b
         ptr_free, selected_kernel & selected_kernel = 0b
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ',  user cancelled' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       kdim = * selected_kernel & kdim = (size(kdim))[1]
@@ -6670,6 +7101,7 @@ CASE strlowCase(eventValue) OF
       IF kdim ge imgminsize THEN BEGIN
         res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
           string(10b) + 'Returning...', / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: kernel > x/y' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
  
@@ -6718,6 +7150,7 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 2 & info.is_contort = 0
       info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
       info.do_label_groups_id = 0
+      info.is_orig = 0
 
       ;Divide panel settings
       widget_control, info.w_labelstr, set_value = 'Contagion range: '
@@ -6731,7 +7164,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
    ;; moving window PFF
-   'batch_pff':  BEGIN
+   'batch_pff':  BEGIN ;; xxxx
       tit = 'Select (Geo-)Tif-files'
       im_file = $
         dialog_pickfile(Title = tit, get_path = path2file, $
@@ -6988,11 +7421,12 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'kernel_fac':  BEGIN
+   'kernel_fac':  BEGIN  ;; xxxx
      ;; check for input compliance:
      ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wronginput' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -7012,9 +7446,11 @@ CASE strlowCase(eventValue) OF
      ENDIF
 
      ;; 3) check input compliance
-     MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, $
-       1, result
-     IF result EQ 0 THEN GOTO, fin  ;; invalid input
+     MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, 1, result
+     IF result EQ 0 THEN BEGIN
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+       GOTO, fin  ;; invalid input
+     ENDIF
 
      ;; assign the full resolution image
      image0 = * info.fr_image
@@ -7032,6 +7468,7 @@ CASE strlowCase(eventValue) OF
      IF * cancel NE 0b THEN BEGIN
        ptr_free, cancel & cancel = 0b
        ptr_free, selected_kernel & selected_kernel = 0b
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ',  user cancelled' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      kdim = * selected_kernel & kdim = (size(kdim))[1]
@@ -7041,6 +7478,7 @@ CASE strlowCase(eventValue) OF
      IF kdim ge imgminsize THEN BEGIN
        res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
          string(10b) + 'Returning...', / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: kernel > x/y' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -7089,6 +7527,7 @@ CASE strlowCase(eventValue) OF
      info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 2 & info.is_contort = 0
      info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
      info.do_label_groups_id = 0
+     info.is_orig = 0
 
      ;Divide panel settings
      widget_control, info.w_labelstr, set_value = 'Clustering range: '
@@ -7102,7 +7541,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'batch_fac':  BEGIN
+   'batch_fac':  BEGIN ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -7357,10 +7796,17 @@ CASE strlowCase(eventValue) OF
      GOTO, fin
    END
    
-   
+   ;;==================================================================================================================================
    'grayspatcon': BEGIN
-     ; do we need other input checks here? Byet image?
-     ;
+     ; check for byte input 
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
+       msg = 'GSC-compliant map required: ' + string(10b) + $
+         'Please provide a 8bit/BYTE-formatted input map.' + string(10b) + 'Returning...'
+       res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wronginput' + info.bline & free_lun, unit
+       GOTO, fin
+     ENDIF
+     
      ;; 2) if in zoom mode, quit zoom mode
      IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
        info.selsubregion_id = 0
@@ -7405,6 +7851,7 @@ CASE strlowCase(eventValue) OF
        ptr_free, sc_y & sc_y = 0b
        ptr_free, sc_k & sc_k = 0b
        ptr_free, sc_n & sc_n = 0b
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      ;; all returned settinsg are strings, assign, frre and delete the temporary pointers
@@ -7424,6 +7871,7 @@ CASE strlowCase(eventValue) OF
      IF fix(sc_w) ge imgminsize THEN BEGIN
        res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
          string(10b) + 'Returning...', / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: kernel > x/y' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      ;; we are ready for GSC now
@@ -7469,6 +7917,7 @@ CASE strlowCase(eventValue) OF
        printf, 9, '  ' & close, 9
        xdisplayfile, fx, height=file_lines(fx)+1, title = 'GraySpatCon error output:'
        popd
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', GSC error' + info.bline & free_lun, unit
        goto, skip_gsc0
      endif
      IF gsc_g EQ '0' THEN BEGIN ;; we have an image output
@@ -7510,7 +7959,8 @@ CASE strlowCase(eventValue) OF
        info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.is_dist = 0 & info.is_cs22 = 0
        info.is_nw = 0 & info.is_nwconnect = 0 & info.is_cost = 0 & info.is_influ = 0 & *info.extra = 0
        info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 & info.disp_range_id = 0
-       
+       info.is_orig = 0
+
        ;; post-process gsc float output: assign NaN for missing data if the user opted for this: gsc_n = Yes
        IF gsc_f EQ '2' AND gsc_n EQ 'Yes' THEN BEGIN
          ;; test for NaN gsc output (we should never get this...
@@ -7518,6 +7968,7 @@ CASE strlowCase(eventValue) OF
          IF ct gt 0 THEN BEGIN
            msg = 'NaN in GSC output found. Please send a Help -> Bug Report' +string(10b) + 'Exiting'
            res = dialog_message(msg, / error)
+           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
            popd & goto, fin
          ENDIF
          ;; metric 44, 45, 50 may provide -9e6, set those to NaN
@@ -7550,10 +8001,9 @@ CASE strlowCase(eventValue) OF
           
    END
    
-   ;;*****************************************************************************************************
- 
+   ;;***************************************************************************************************** 
 
-   'batch_gsc':  BEGIN
+   'batch_gsc':  BEGIN  ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = dialog_pickfile(Title = tit, get_path = path2file, $
        path = info.dir_data, default_extension = 'tif', / fix_filter, $
@@ -7923,7 +8373,7 @@ CASE strlowCase(eventValue) OF
  
    ;;*****************************************************************************************************
 
-   'batch_recode':  BEGIN    
+   'batch_recode':  BEGIN ;; xxxx
      ;; in batch mode recode we must use an array with all possible byte values, (set in get_xrecode)
      ;; to ensure it will work on all possible values in the input images
      cancel = ptr_new(1b) & seltab = ptr_new(1b)    
@@ -8179,11 +8629,12 @@ CASE strlowCase(eventValue) OF
 
  ;;*****************************************************************************************************
 
-   'kernel_lm':  BEGIN
+   'kernel_lm':  BEGIN  ;; xxxx
       ;; check for input compliance:
       ;; 1) if already a mspa image then quit
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
         res = dialog_message(info.wronginput, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wronginput' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -8204,7 +8655,10 @@ CASE strlowCase(eventValue) OF
   
       ;; 3) check input compliance
       LM_Compliance, info.fname_input, * info.fr_image, 'lm', info.immaxsizeg, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
   
       ;; assign the full resolution image
       image0 = * info.fr_image
@@ -8222,6 +8676,7 @@ CASE strlowCase(eventValue) OF
       IF * cancel NE 0b THEN BEGIN
         ptr_free, cancel & cancel = 0b
         ptr_free, selected_kernel & selected_kernel = 0b
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ',  user cancelled' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       kdim = * selected_kernel & kdim = (size(kdim))[1] & kdim_str = strtrim(kdim, 2)
@@ -8232,6 +8687,7 @@ CASE strlowCase(eventValue) OF
       IF kdim ge imgminsize THEN BEGIN
         res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
           string(10b) + 'Returning...', / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: kernel > x/y' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -8251,6 +8707,7 @@ CASE strlowCase(eventValue) OF
 
       * info.fr_image = * info.process
       info.add_title = ' (LM, kdim=' + kdim_str + ')'
+      info.is_orig = 0
           
       ;; open heatmap image
       IF info.my_os EQ 'apple' THEN BEGIN
@@ -8273,7 +8730,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'batch_lm':  BEGIN
+   'batch_lm':  BEGIN  ;; xxxx
       tit = 'Select (Geo-)Tif-files'
       im_file = $
         dialog_pickfile(Title = tit, get_path = path2file, $
@@ -8536,11 +8993,12 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'lmms':  BEGIN
+   'lmms':  BEGIN  ;; xxxx
      ;; check for input compliance:
      ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wronginput' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -8567,10 +9025,14 @@ CASE strlowCase(eventValue) OF
      IF imgminsize LT 500 THEN BEGIN
        res = dialog_message('Dominance requires a minimum map dimension of 500 pixels in x and y map dimension.' + $
          string(10b) + 'Returning...', / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: not 500 in x/y' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      lm_Compliance, info.fname_input, image0, 'lm', info.immaxsizeg, 1, result
-     IF result EQ 0 THEN GOTO, fin  ;; invalid input
+     IF result EQ 0 THEN BEGIN
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+       GOTO, fin  ;; invalid input
+     ENDIF
 
      ;; loop over 5 observation scales
      kdim = [7, 13, 27, 81, 243] 
@@ -8642,7 +9104,8 @@ CASE strlowCase(eventValue) OF
      ;; free and delete the temporary pointers
      * info.fr_image = * info.process
      info.add_title = ' (Dominance: MultiScale summary)'
-     
+     info.is_orig = 0
+
      ;; open heatmap image
      IF info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open ' + info.dir_tmp + 'heatmap.png'
@@ -8659,16 +9122,12 @@ CASE strlowCase(eventValue) OF
          spawn, info.xdgop + ' "' + info.dir_tmp + 'heatmap.png' + '"'
        ENDELSE
      ENDELSE
-
-     
-     
      
    END
 
-
    ;;*****************************************************************************************************
 
-   'batch_lmms':  BEGIN
+   'batch_lmms':  BEGIN ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -8686,6 +9145,7 @@ CASE strlowCase(eventValue) OF
        msg = 'The directory of your Batch Dominance input files contains sub-directories.'  +  string(10b) +  string(10b) + $
          'Please set up a new directory having Batch Dominance input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', '+ msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      popd 
@@ -8699,6 +9159,7 @@ CASE strlowCase(eventValue) OF
        msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
          "Please rename the directory to any other name."
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', '+ msg + info.bline & free_lun, unit
        GOTO, fin
      endif
 
@@ -8979,11 +9440,12 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'spa':  BEGIN
+   'spa':  BEGIN  ;; xxxx
      ;; check for input compliance:
      ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -9004,7 +9466,10 @@ CASE strlowCase(eventValue) OF
 
      ;; 3) check input compliance
      MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, 1, result
-     IF result EQ 0 THEN GOTO, fin  ;; invalid input
+     IF result EQ 0 THEN BEGIN
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+       GOTO, fin  ;; invalid input
+     ENDIF
      
      ;; enforce FGconn to 8 and eew=1, just to avoid misunderstandings...
      info.mspa_param1_id = 1
@@ -9364,12 +9829,13 @@ CASE strlowCase(eventValue) OF
      info.ctbl = - 1 & info.disp_colors_id = 3
      info.add_title = ' (' + strupcase(eventValue2) + ')'
      info.is_mspa = 0
+     info.is_orig = 0
 
    END
 
    ;;*****************************************************************************************************
 
-   'batch_spa':  BEGIN
+   'batch_spa':  BEGIN ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -9868,11 +10334,12 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspa':  BEGIN
+   'mspa':  BEGIN  ;; xxxx
       ;; check for input compliance:
       ;; 1) if already a mspa image then quit
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 THEN BEGIN
+      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
          res = dialog_message(info.wronginput, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -9893,7 +10360,10 @@ CASE strlowCase(eventValue) OF
 
       ;; 3) check input compliance
       MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsize, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
 
       ;; we must process the full resolution image
       image0 = * info.fr_image
@@ -9905,6 +10375,7 @@ CASE strlowCase(eventValue) OF
       if long(c_size) gt 100 then begin
         res = dialog_message('MSPA parameter2 EdgeWidth must be in [1, 100].' + string(10b) + $
           'Please adjust accordingly and press Enter TWICE.' + string(10b) + 'Returning...', / error)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong EdgeWidth' + info.bline & free_lun, unit
         goto, fin     
       endif    
       c_trans = strtrim(info.mspa_param3_id - 0, 2)
@@ -9943,7 +10414,10 @@ CASE strlowCase(eventValue) OF
          popd
       ENDELSE
 
-      print, 'MSPA comp.time [sec]: ', systime( / sec) - time0
+      tttt = systime( / sec) - time0 & str_tttt = strtrim(tttt,2)
+      msg = 'MSPA comp.time [sec]: ' + str_tttt & print, msg
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
+
 
       ;;get the result, update the GTB info, clean dir_tmp
       pushd, info.dir_tmp
@@ -9981,6 +10455,8 @@ CASE strlowCase(eventValue) OF
       c_FG = ', FG_area: ' + strtrim(FGp,2) + ', iFG_area: ' + strtrim(iFG,2)
       info.add_title = ' (MSPA: ' + c_FGconn + '_' + c_size + '_' + c_trans + '_' + c_intext + c_FG + ')'
       info.is_mspa = 1
+      info.is_orig = 0
+
       skip_mspa:
 
    END
@@ -9989,7 +10465,7 @@ CASE strlowCase(eventValue) OF
    ;;                  C O N E F O R   I N P U T S     B A T C H
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   'batch_ci':  BEGIN
+   'batch_ci':  BEGIN ;; xxxx
       tit = 'Select raster image-file(s)'
       im_file = $
         dialog_pickfile(Title = tit, get_path = path2file, $
@@ -10372,7 +10848,7 @@ CASE strlowCase(eventValue) OF
    ;;        M S P A - based  B A T C H
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   'batch_mspanw':  BEGIN
+   'batch_mspanw':  BEGIN  ;; xxxx
      tit = 'Please select MSPA-geotiff raster image-file(s)'
      filters = [['*.tif;*.tiff', 'TIF', 'TIFF']]
      im_file = dialog_pickfile(Title = tit, get_path = path2file, $
@@ -11096,7 +11572,7 @@ CASE strlowCase(eventValue) OF
    ;;                              M S P A    B A T C H
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   'batch_mspa':  BEGIN
+   'batch_mspa':  BEGIN  ;; xxxx
       tit = 'Select (Geo-)Tif-files'
       im_file = dialog_pickfile(Title = tit, get_path = path2file, $
         path = info.dir_data, default_extension = 'tif', / fix_filter, $
@@ -11345,8 +11821,8 @@ CASE strlowCase(eventValue) OF
                            '_' + c_trans + '_' + c_intext + '.txt'            
             row_lab = $
               ['CORE(s) [green]', 'CORE(m) [green]', 'CORE(l) [green]', 'ISLET [brown]', 'PERFORATION [blue]', $
-              'EDGE [black]', 'LOOP [yellow]', 'BRIDGE [red]', 'BRANCH [orange]', 'Background [grey]', $
-              'Missing [white]', 'Opening [grey]', 'Core-Opening [darkgrey]', 'Border-Opening [grey]'] 
+              'EDGE [black]', 'LOOP [yellow]', 'BRIDGE [red]', 'BRANCH [orange]', 'Background [gray]', $
+              'Missing [white]', 'Opening [gray]', 'Core-Opening [darkgray]', 'Border-Opening [gray]'] 
             
             ;; calculate FG and iFG for output statistics
             ;; fg_area = image area - BG - missing 
@@ -11445,7 +11921,7 @@ CASE strlowCase(eventValue) OF
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
    ;;                      M S P A T I L E
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   'mspatile':  BEGIN ;; Purpose: automatic tiling for MSPA
+   'mspatile':  BEGIN ;; xxxx Purpose: automatic tiling for MSPA
       
       msg = 'MSPA Tiling is a less than ideal solution, it will:' + string(10b) + $
        '1) process the map with a fixed edge width = 1,' + string(10b) + $
@@ -11467,7 +11943,9 @@ CASE strlowCase(eventValue) OF
       IF qtres.type NE 'TIFF' THEN BEGIN
         msg = 'Input is not a TIFF image.' + string(10b) + $
             'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
-        res = dialog_message(msg, / information) & GOTO, fin
+        res = dialog_message(msg, / information) 
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: not a GeoTiff input' + info.bline & free_lun, unit
+        GOTO, fin
       ENDIF
 
       ;;========================================================================
@@ -11486,7 +11964,9 @@ CASE strlowCase(eventValue) OF
       IF qq.write NE 1b THEN BEGIN
          msg = 'No write access in the directory: ' + string(10b) + $
                dir_dat  + string(10b) + 'Returning...'
-         res = dialog_message(msg, / information) & GOTO, fin
+         res = dialog_message(msg, / information) 
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+         GOTO, fin
       ENDIF
 
       ;;====================================================================
@@ -11497,42 +11977,54 @@ CASE strlowCase(eventValue) OF
       IF res EQ 0 THEN BEGIN ;; or IDL/ENVI file
          msg = 'Input file could not be read.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
-         res = dialog_message(msg, / information) & GOTO, fin
+         res = dialog_message(msg, / information) 
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+         GOTO, fin
       ENDIF
       ;; check for single map in file
       ;;===========================
       IF inpinfo.num_images GT 1 THEN BEGIN
          msg = 'Input file has more than 1 image.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
-         res = dialog_message(msg, / information) & GOTO, fin
+         res = dialog_message(msg, / information) 
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+         GOTO, fin
       ENDIF
       ;; check for single channel image
       ;;===========================
       IF inpinfo.channels NE 1 THEN BEGIN
          msg = 'Input map has more than 1 layer.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
-         res = dialog_message(msg, / information) & GOTO, fin
+         res = dialog_message(msg, / information) 
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+         GOTO, fin
       ENDIF
       ;; check for byte array
       ;;===========================
       IF inpinfo.pixel_type NE 1 THEN BEGIN
          msg = 'Input map is not of type Byte.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
-         res = dialog_message(msg, / information) & GOTO, fin
+         res = dialog_message(msg, / information) 
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+         GOTO, fin
       ENDIF
       ;; check for type tiff
       ;;===========================
       IF inpinfo.type NE 'TIFF' THEN BEGIN
          msg = 'Input map is not of type TIFF.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
-         res = dialog_message(msg, / information) & GOTO, fin
+         res = dialog_message(msg, / information) 
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+         GOTO, fin
       ENDIF
       ;; check for type GeoTiff
       ;;===========================
       IF (size(geotiffx))[0] EQ 0 THEN BEGIN
          msg = 'Input map is not of type GeoTiff.' + string(10b) + $
                'Please load MSPA-compliant GeoTiff-image.' + string(10b) + 'Returning...'
-         res = dialog_message(msg, / information) & GOTO, fin
+         res = dialog_message(msg, / information) 
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+         GOTO, fin
       ENDIF
       ;; check for minimum map size: > info.immaxsize
       ;;===========================
@@ -11540,7 +12032,9 @@ CASE strlowCase(eventValue) OF
       IF imsize LE (info.immaxsize) THEN BEGIN
          msg = 'Input file can be processed via ' + string(10b) + $
                'File -> Read Image -> GeoTiff' + string(10b) + 'Returning...'
-         res = dialog_message(msg, / information) & GOTO, fin
+         res = dialog_message(msg, / information) 
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+         GOTO, fin
       ENDIF
       ;; check for GeoTiff and for minimum/maximum value
       ;;=================================
@@ -11566,6 +12060,7 @@ CASE strlowCase(eventValue) OF
          res = dialog_message(msg, / information)
          progressBar -> Destroy
          Obj_Destroy, progressBar
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -11580,12 +12075,14 @@ CASE strlowCase(eventValue) OF
          res = dialog_message(msg, / information)
          progressBar -> Destroy
          Obj_Destroy, progressBar
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF ELSE IF mxx LT 2b THEN BEGIN
          msg = 'Map has no foreground (2 BYTE).' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
          progressBar -> Destroy
          Obj_Destroy, progressBar
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       IF mii GT 1b THEN BEGIN
@@ -11593,6 +12090,7 @@ CASE strlowCase(eventValue) OF
          res = dialog_message(msg, / information)
          progressBar -> Destroy
          Obj_Destroy, progressBar
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       progressBar -> Destroy
@@ -11763,6 +12261,7 @@ CASE strlowCase(eventValue) OF
             progressBar -> Destroy
             Obj_Destroy, progressBar
             tvlct, rini, gini, bini
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', MSPA-Tiling cancelled by user' + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
 
@@ -12121,7 +12620,7 @@ CASE strlowCase(eventValue) OF
    ;;                              M S P A S T A T S
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   'do_mspa_stats':  BEGIN
+   'do_mspa_stats':  BEGIN  ;; xxxx
       ;; if the currently selected setting for do_mspa_stats is 0,
       ;; then reset everything
       widget_control, / hourglass
@@ -12188,7 +12687,7 @@ CASE strlowCase(eventValue) OF
      
    ;;*****************************************************************************************************
 
-   'do_label_groups':  BEGIN
+   'do_label_groups':  BEGIN  ;; xxxx
    ;; if the currently selected setting for do_mspa_stats is 0,
    ;; then reset everything
    info.do_label_groups_id = (event.select EQ 1)
@@ -12389,11 +12888,12 @@ CASE strlowCase(eventValue) OF
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
    ;;       N E T W O R K   A N A L Y S I S:  COMPONENTS
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   'nw_components':  BEGIN
+   'nw_components':  BEGIN  ;; xxxx
       ;; 1) check if mspa
       IF info.is_mspa NE 1b THEN BEGIN
          msg = 'Map has no MSPA classes.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -12498,13 +12998,14 @@ CASE strlowCase(eventValue) OF
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
    ;;       N E T W O R K   A N A L Y S I S:  IMPORTANCE
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   'nw_importance':  BEGIN
+   'nw_importance':  BEGIN  ;; xxxx
       ;; 1) nw must be active
 
       IF total(info.is_nw + info.is_nwconnect) LT 0.9 THEN BEGIN
          msg = 'Please first run: Image Analysis -> Connectivity -> Components.' + $
                string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -12530,6 +13031,7 @@ CASE strlowCase(eventValue) OF
          msg = 'Please first run: Image Analysis -> Connectivity -> Components.' + $
                string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       restore, fn    
@@ -12541,6 +13043,7 @@ CASE strlowCase(eventValue) OF
       IF nr_links EQ 0 THEN BEGIN
         msg = 'Network without links.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -12551,6 +13054,7 @@ CASE strlowCase(eventValue) OF
       IF nr_nodes EQ 0 THEN BEGIN
         msg = 'Network without nodes.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -12668,9 +13172,10 @@ CASE strlowCase(eventValue) OF
           subimportance * maskcomp
          skipit2:
       ENDFOR
-
-
-     print, 'Importance comp.time [sec]: ', systime( / sec) - time0
+      
+      tttt = systime( / sec) - time0 & str_tttt = strtrim(tttt,2)
+      msg = 'Importance comp.time [sec]: ' + str_tttt & print, msg
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
 
       ;; display the top 1,5, 10% relative importance for
       ;; bridge (red: 192, 194, 195 byte) and core (green: 208, 210, 211 byte)
@@ -12721,12 +13226,13 @@ CASE strlowCase(eventValue) OF
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
    ;;    N E T W O R K   A N A L Y S I S:   CS-INPUT
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   'nw_cs22':  BEGIN
+   'nw_cs22':  BEGIN  ;; xxxx
       ;; get the extended fullres image of cores and bridges
       fn = info.dir_tmp + 'nwtmp.sav' & res = file_info(fn)
       IF res.exists NE 1b THEN BEGIN
          msg = 'Please first run: Image Analysis -> Network -> NW Components.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
       restore, fn  ;; image, eew, sz
@@ -12737,12 +13243,14 @@ CASE strlowCase(eventValue) OF
       IF nr_bridge EQ 0 THEN BEGIN
         msg = 'Network without links.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
       IF nr_core EQ 0 THEN BEGIN
         msg = 'Network without nodes.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -12807,6 +13315,7 @@ CASE strlowCase(eventValue) OF
             ')' + string(10b) + 'have been saved in the directory: ' + string(10b) + $
             dir_input + string(10b) + 'Returning...'
       res = dialog_message(msg, / information)
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
 
       ;; reset mspa and cs22
       info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.is_dist = 0 & info.is_influ = 0
@@ -12817,7 +13326,7 @@ CASE strlowCase(eventValue) OF
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   'overview':  BEGIN
+   'overview':  BEGIN ;; xxxx
      doc = 'GTB_ov_' + strmid(eventValue2,9) + '.pdf'    
      IF info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open ' + info.dir_guidossub + doc
@@ -12840,11 +13349,13 @@ CASE strlowCase(eventValue) OF
    ;;             D I S T A N C E
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   'accounting':  BEGIN
+   'accounting':  BEGIN ;; xxxx
      
      LM_Compliance, info.fname_input, * info.fr_image, 'fad', info.immaxsizeg, 1, result
-     IF result EQ 0 THEN GOTO, fin  ;; invalid input
-
+     IF result EQ 0 THEN BEGIN
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
+       GOTO, fin  ;; invalid input
+     ENDIF
      msg = 'Calculating min/max object area, please wait...'
      progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title='Accounting')
      progressBar -> Start
@@ -12939,6 +13450,7 @@ CASE strlowCase(eventValue) OF
        ptr_free, o_cl3 & o_cl3 = 0b
        ptr_free, o_cl4 & o_cl4 = 0b
        ptr_free, o_cl5 & o_cl5 = 0b       
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': user cancelled' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      
@@ -13232,7 +13744,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'batch_accounting': BEGIN   
+   'batch_accounting': BEGIN ;; xxxx
      ;; select the images to be processed     
      tit = 'Select (Geo-)Tif-files'
      im_file = $
@@ -13774,14 +14286,15 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'distance_morph':  BEGIN
+   'distance_morph':  BEGIN  ;; xxxx
       ;; assign the full resolution image
       image0 = * info.fr_image
 
       ;; check for input compliance:
       ;; 1) input must not be larger than 2b
-      IF max(image0) NE 2b THEN BEGIN
+      IF max(image0) NE 2b OR (info.datatype NE 'byte') THEN BEGIN
          res = dialog_message(info.wronginput, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: wrong input' + info.bline & free_lun, unit
          GOTO, fin
       ENDIF
 
@@ -14173,7 +14686,7 @@ CASE strlowCase(eventValue) OF
    
    ;;*****************************************************************************************************
 
-   'batch_eucldist':  BEGIN
+   'batch_eucldist':  BEGIN  ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -14575,7 +15088,7 @@ CASE strlowCase(eventValue) OF
   
    ;;*****************************************************************************************************
 
-   'batch_hmc':  BEGIN
+   'batch_hmc':  BEGIN  ;; xxxx
       tit = 'Select (Geo-)Tif-files'
        im_file = $
          dialog_pickfile(Title = tit, get_path = path2file, $
@@ -14616,7 +15129,9 @@ CASE strlowCase(eventValue) OF
          'already exists. All previous content will be erased before we continue.'+ string(10b) + $
          "Please click 'Yes' to confirm or 'No' to exit"
          res = dialog_message(msg,/question)
-         If res eq 'No' then goto, fin
+         If res eq 'No' then BEGIN
+          goto, fin
+         Endif
          ;; empty it
          pushd, dir_batch
          list = file_search() & nl = n_elements(list)
@@ -14935,14 +15450,25 @@ CASE strlowCase(eventValue) OF
    END
    
    ;;===================================================================================================   
-   'distance_influence':  BEGIN ;; also for proximity and reconnect
-      ;; assign the full resolution image
+   'distance_influence':  BEGIN ;; xxxx also for proximity and reconnect
+     IF (info.is_orig EQ 0) THEN BEGIN
+       msg = 'Modified image detected.' + string(10b) + $
+        'The selected image analysis can only be applied to the unmodified original image.' + string(10b) + string(10b) + $
+        'To conduct the analysis, please save the current modified image and read it back in as a new original image via the' + string(10b) + $
+         'File -> Read Image menu.' + string(10b) + string(10b) + 'Returning...'
+       res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+       GOTO, fin
+     ENDIF
+      
+     ;; assign the full resolution image
      image0 = * info.fr_image & info.small_lt_old = -1
 
      ;; check for input compliance:
-     ;; 1) input must not be larger than 2b
-     IF max(image0) NE 2b THEN BEGIN
+     ;; 1) datatype must be float and input must not be larger than 2b
+     IF (info.datatype NE 'byte') OR (max(image0) NE 2b) THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      
@@ -14975,11 +15501,20 @@ CASE strlowCase(eventValue) OF
 
       ;; test if size was never changed then set to default of 500
        if info.small_lt_old eq -1 then begin
-         info.mspa_size_old = '5000' & info.mspa_size_current = '5000'
-         widget_control, info.w_mspa_param2, set_combobox_select = 0, sensitive = 1
-         widget_control, info.w_mspa_param2, set_value = ['5000','1','2','3','4','5','6','7','8','9','10']
-         influ_t_old = fix(info.mspa_size_current) & info.small_lt_old = influ_t_old
+         ;; check if we specified something here before
+         res = file_info(info.dir_guidossub + 'influ.sav')
+         IF res.exists EQ 0b THEN BEGIN ;; does not exist, start with default size of 5000
+           info.mspa_size_old = '5000' & info.mspa_size_current = '5000' 
+           widget_control, info.w_mspa_param2, set_combobox_select = 0, sensitive = 1
+           widget_control, info.w_mspa_param2, set_value = ['5000','1','2','3','4','5','6','7','8','9','10']
+           influ_t_old = fix(info.mspa_size_current) & info.small_lt_old = influ_t_old  
+         endif else begin ;; size was changed away from default, use the specified size
+           widget_control, info.w_mspa_param2, set_combobox_select = 0, sensitive = 1
+           widget_control, info.w_mspa_param2, set_value = [info.mspa_size_current,'1','2','3','4','5','6','7','8','9','10']
+           influ_t_old = fix(info.mspa_size_current) & info.small_lt_old = influ_t_old 
+         endelse                
          save, influ_t_old, filename=info.dir_guidossub + 'influ.sav'
+         
          info.do_label_groups_id = 1
          widget_control, info.w_do_label_groups, set_value = info.do_label_groups_id
          if do_influ eq 1 then begin
@@ -15025,8 +15560,7 @@ CASE strlowCase(eventValue) OF
       ;; below we do the actual calculation
       ;;=========================================
       ;; assign the full resolution image
-      im = * info.orig_image & sz=size(im,/dim) & targets='FG-obj.' 
-      
+      im = * info.orig_image & sz=size(im,/dim) & targets='FG-obj.'    
       ;; extend the image with background so label_region can do a flood-fill in the BG
       ;; find and fill holes in FG
       ;; holes are all labels gt 1, label 1 = real background, label 0 = foreground
@@ -15056,7 +15590,9 @@ CASE strlowCase(eventValue) OF
         msg = 'The current area threshold is too large. Please insert' + string(10b) + $
           'a smaller area threshold number in the Edge Width panel.' + string(10b) + 'Returning...'
         res = dialog_message(msg, /information)
-        lx=0 & ext=0 & goto, fin              
+        lx=0 & ext=0 
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+        goto, fin              
       endif
       
       ext=ext*0b ;; all background to start with
@@ -15201,6 +15737,7 @@ CASE strlowCase(eventValue) OF
             ;; set label_groups_id to 0 
             info.do_label_groups_id = 0b
             widget_control, info.w_do_label_groups, set_value = info.do_label_groups_id
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             goto,fin
           ENDIF
           proxws = ulonarr(5,ct)         
@@ -15347,11 +15884,12 @@ CASE strlowCase(eventValue) OF
    ;;===================================================================================================================
    
    ;;===================================================================================================
-   'cost_fixed':  BEGIN   ;;;; Restoration Setup: fixed BG-resistance   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   'cost_fixed':  BEGIN   ;;;; xxxx Restoration Setup: fixed BG-resistance   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================
      ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -15377,6 +15915,7 @@ CASE strlowCase(eventValue) OF
      IF histo[2] EQ 0 THEN BEGIN
        msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information, title = tit)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      qm = where(image0 eq 0b, ctqm, /l64) ;; missing pixels
@@ -15397,17 +15936,19 @@ CASE strlowCase(eventValue) OF
        image0 = (image0 NE 2b)*tt + (image0 EQ 2b)*2b
        IF ctqm GT 0 THEN image0[qm] = 0b
        * info.fr_image = image0
+       info.is_orig = 0
      ENDIF ELSE BEGIN  ;; cancel was selected
        ptr_free, cancel & cancel = 0b
        ptr_free, seltarg & seltarg = 0b
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
        GOTO, fin
      ENDELSE    
-     info.is_cost = 0 & info.add_title = ' (fixed BG-resistance)'        
+     info.is_cost = 0 & info.add_title = ' (fixed BG-resistance)'      
    END
 
 
    ;;===================================================================================================
-   'cost_recode':  BEGIN   ;;;;; Restoration Setup: resistance by landcover   ;;;;;;;;;;;;;;;;;;;;;;
+   'cost_recode':  BEGIN  ;; xxxx ;;;;; Restoration Setup: resistance by landcover   ;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================
      msg = "Please assign the following resistance values:" + string(10b) + $
       '0: Blocking, can not be traversed (optional)' + string(10b) + $
@@ -15421,12 +15962,13 @@ CASE strlowCase(eventValue) OF
 
 
    ;;===================================================================================================
-   'cost_disres':  BEGIN ;;; Restoration Setup: resistance by distance  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   'cost_disres':  BEGIN ;; xxxx   ;;; Restoration Setup: resistance by distance  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================
      ;; check for input compliance:
      ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -15461,6 +16003,7 @@ CASE strlowCase(eventValue) OF
        "Please use 'General Tools -> Preprocessing' to assign the value 2 to your FG-objects." 
        tit = 'Restoration Planner Setup: Distance to Resistance'
        res = dialog_message(msg, title = tit, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        goto, fin
      endif
 
@@ -15482,15 +16025,18 @@ CASE strlowCase(eventValue) OF
      restore, info.dir_guidossub + 'resistcolors.sav' & tvlct, r, g, b
      info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 11
      info.is_cost = 0 & info.add_title = ' (dist2resistance)'   
+     info.is_orig = 0
+
    END
 
 
    ;;===================================================================================================
-   'cost_pixel':  BEGIN   ;;;;; Restoration Setup: resistance by pixel   ;;;;;;;;;;;;;;;;;;;;;;
+   'cost_pixel':  BEGIN  ;; xxxx ;;;;; Restoration Setup: resistance by pixel   ;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================
      ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -15521,6 +16067,7 @@ CASE strlowCase(eventValue) OF
        ptr_free, selx & selx = 0b
        ptr_free, sely & sely = 0b
        ptr_free, selval & selval = 0b
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      x = *selx & y = *sely & val = *selval
@@ -15536,6 +16083,7 @@ CASE strlowCase(eventValue) OF
         'x-location;   y-location;   resistance value [0, 2, 3-100]' + $
         string(10b) + string(10b) + 'Returning...'
        res = dialog_message(msg, title = tit, / error)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin 
      ENDIF
      
@@ -15550,6 +16098,7 @@ CASE strlowCase(eventValue) OF
      
      * info.process = image0
      * info.fr_image = temporary(image0)
+     info.is_orig = 0
      
      ;; when big fullres image update accordingly
      IF info.bigim THEN BEGIN
@@ -15562,11 +16111,12 @@ CASE strlowCase(eventValue) OF
    
    
    ;;===================================================================================================
-   'cost_line':  BEGIN   ;;;;; Restoration Setup: resistance by line   ;;;;;;;;;;;;;;;;;;;;;;
+   'cost_line':  BEGIN  ;; xxxx ;;;;; Restoration Setup: resistance by line   ;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================
      ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      
@@ -15595,6 +16145,7 @@ CASE strlowCase(eventValue) OF
      IF sz[3] NE 1 THEN BEGIN ;; not byte
        msg = head + 'Resistance map must have data type byte.' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information, title = tit)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      ;; test for presence of FG-objects and correct resistance values
@@ -15602,6 +16153,7 @@ CASE strlowCase(eventValue) OF
      IF histo[2] EQ 0 THEN BEGIN
        msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information, title = tit)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      IF histo[1] GT 0 THEN BEGIN ;; resistance = 1, not allowed
@@ -15610,6 +16162,7 @@ CASE strlowCase(eventValue) OF
          'Image Analysis -> Restoration Planner -> Setup Tools' + string(10b) + string(10b) + $
          'Returning...'
        res = dialog_message(msg, / information, title = tit)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      ;; test for resistance > 100, not allowed
@@ -15619,6 +16172,7 @@ CASE strlowCase(eventValue) OF
          'Image Analysis -> Restoration Planner -> Setup Tools' + string(10b) + string(10b) + $
          'Returning...'
        res = dialog_message(msg, / information, title = tit)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF     
 
@@ -15629,7 +16183,7 @@ CASE strlowCase(eventValue) OF
 
 
    ;;===================================================================================================
-   'cost_roi':  BEGIN   ;;;;; Restoration Setup: resistance by ROI   ;;;;;;;;;;;;;;;;;;;;;;
+   'cost_roi':  BEGIN  ;; xxxx ;;;;; Restoration Setup: resistance by ROI   ;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================
      ;; check if we are in zoom mode
      if info.selsubregion_id eq 1 then begin ;; we are in zoom mode
@@ -15645,7 +16199,10 @@ CASE strlowCase(eventValue) OF
        tit = 'Define ROIs & quit window when done. NOTE: area/length measures are approximate.'
        mask = ROIMask(image0, title=tit, Indices=roiIndices)
        roi = where(mask eq 1b, ct_roi, /l64)
-       if ct_roi eq 0 then GOTO, fin ;; nothing defined
+       if ct_roi eq 0 then begin
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', no ROI defined by user' + info.bline & free_lun, unit
+        GOTO, fin ;; nothing defined
+       endif
        
        ;; let the user assign a resistance value for all those rois defined earlier
        image0 = imageSubset
@@ -15676,6 +16233,7 @@ CASE strlowCase(eventValue) OF
        ENDIF ELSE BEGIN  ;; cancel was selected
          ptr_free, cancel & cancel = 0b
          ptr_free, seltarg & seltarg = 0b
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
          GOTO, fin
        ENDELSE
        
@@ -15703,7 +16261,10 @@ CASE strlowCase(eventValue) OF
        tit = 'Define ROIs & quit window when done. NOTE: area/length measures are approximate.'
        mask = ROIMask(image0, title=tit, Indices=roiIndices)
        roi = where(mask eq 1b, ct_roi, /l64)
-       if ct_roi eq 0 then GOTO, fin ;; nothing defined
+       if ct_roi eq 0 then begin
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', no ROI defined by user' + info.bline & free_lun, unit
+         GOTO, fin ;; nothing defined
+       endif
 
        ;; let the user assign a resistance value for all those rois defined earlier
        image0 = * info.fr_image
@@ -15727,9 +16288,11 @@ CASE strlowCase(eventValue) OF
          tt = strsplit(selresist,' - ',/extract) & tt = byte(tt[0]+0)
          image0[roi] = tt
          * info.fr_image = image0
+         info.is_orig = 0
        ENDIF ELSE BEGIN  ;; cancel was selected
          ptr_free, cancel & cancel = 0b
          ptr_free, seltarg & seltarg = 0b
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
          GOTO, fin
        ENDELSE       
        ;; reset zoom
@@ -15751,12 +16314,13 @@ CASE strlowCase(eventValue) OF
    END   
    
    ;;===================================================================================================================
-   'cost_status': BEGIN   ;;;;;;;;;;;;;;  Restoration status summary  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   'cost_status': BEGIN  ;; xxxx ;;;;;;;;;;;;;;  Restoration status summary  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================================
      ;; 1) check for input compliance
      ;; check for input compliance:
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 THEN BEGIN
+     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
        res = dialog_message(info.wronginput, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
 
@@ -15782,6 +16346,7 @@ CASE strlowCase(eventValue) OF
          msg = "Please first setup your map via either:" + string(10b) + $
            "'Add Custom Path' or 'Find Optimum Path'"
          res = dialog_message(msg, / error)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          GOTO, fin
        ENDIF       
        restore, info.dir_tmp + 'customLCP.sav'
@@ -15798,6 +16363,7 @@ CASE strlowCase(eventValue) OF
      IF sz[3] NE 1 THEN BEGIN ;; not byte
        msg = 'Resistance map must have data type byte.' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information, title = tit)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      ;; test for presence of FG-objects and correct resistance values
@@ -15805,11 +16371,13 @@ CASE strlowCase(eventValue) OF
      IF histo[2] EQ 0 THEN BEGIN
        msg = 'Resistance map has no FG-objects (2b).' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information, title = tit)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
      IF total(histo[101:*]) GT 0.0 THEN BEGIN
        msg = 'Resistance map has invalid resistance > 100b.' + string(10b) + 'Returning...'
        res = dialog_message(msg, / information, title = tit)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin
      ENDIF 
 
@@ -15882,7 +16450,7 @@ CASE strlowCase(eventValue) OF
    END
 
    ;;===================================================================================================
-   'batch_rss':  BEGIN   ;;;; Restoration Status batch   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   'batch_rss':  BEGIN ;; xxxx  ;;;; Restoration Status batch   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
      ;;===================================================================================================
      ;; select the images to be processed
      tit = 'Select (Geo-)Tif-files'
@@ -16133,7 +16701,7 @@ CASE strlowCase(eventValue) OF
     END
     
     ;;===================================================================================================================
-    'cost_draw': BEGIN   ;;;;;;;;;;;;;;    Custom Draw Path     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    'cost_draw': BEGIN  ;; xxxx ;;;;;;;;;;;;;;    Custom Draw Path     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;;===================================================================================================================
       ;
       ; use/settings of info.is_cost switch:
@@ -16145,8 +16713,9 @@ CASE strlowCase(eventValue) OF
       ;
       ;; 1) check for input compliance
       ;; check for input compliance:
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 THEN BEGIN
+      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
         res = dialog_message(info.wronginput, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -16178,6 +16747,7 @@ CASE strlowCase(eventValue) OF
       IF sz[3] NE 1 THEN BEGIN ;; not byte
         msg = head + 'Resistance map must have data type byte.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; test for presence of FG-objects and correct resistance values
@@ -16185,6 +16755,7 @@ CASE strlowCase(eventValue) OF
       IF histo[2] EQ 0 THEN BEGIN
         msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       IF histo[1] GT 0 THEN BEGIN ;; resistance = 1, not allowed
@@ -16193,6 +16764,7 @@ CASE strlowCase(eventValue) OF
           'Image Analysis -> Restoration Planner -> Setup Tools' + string(10b) + string(10b) + $
           'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; test for resistance > 100, not allowed
@@ -16202,6 +16774,7 @@ CASE strlowCase(eventValue) OF
           'Image Analysis -> Restoration Planner -> Setup Tools' + string(10b) + string(10b) + $
           'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; we are ok now, check which resistance we have
@@ -16309,6 +16882,8 @@ CASE strlowCase(eventValue) OF
       ;; reset mspa
       info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b
       info.do_mspa_stats_id = 0 & info.is_cost = 3
+      info.is_orig = 0
+
       ;; ensure to set FGconn to on
       info.mspa_param1_id = 1
       widget_control, info.w_mspa_param1, set_value = info.mspa_param1_id
@@ -16318,12 +16893,13 @@ CASE strlowCase(eventValue) OF
     END
 
     ;;===================================================================================================================
-    'cost_reconnect': BEGIN ;;;;;;;;;;;;;;;;   Optimum LCP   ;;;;;;;;;;;;;;;;;;;;;;;;;;
+    'cost_reconnect': BEGIN ;; xxxx    ;;;;;;;;;;;;;;   Optimum LCP   ;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;;===================================================================================================================
       ;; 1) check for input compliance
       ;; check for input compliance:
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 THEN BEGIN
+      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
         res = dialog_message(info.wronginput, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -16355,6 +16931,7 @@ CASE strlowCase(eventValue) OF
         IF sz[3] NE 1 THEN BEGIN ;; not byte
           msg = head + 'Resistance map must have data type byte.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information, title = tit)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         ;; test for presence of FG-objects and correct resistance values
@@ -16362,6 +16939,7 @@ CASE strlowCase(eventValue) OF
         IF histo[2] EQ 0 THEN BEGIN
           msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information, title = tit)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         IF histo[1] GT 0 THEN BEGIN ;; resistance = 1, not allowed
@@ -16370,6 +16948,7 @@ CASE strlowCase(eventValue) OF
             'Image Analysis -> Restoration Planner -> Setup Tools' + string(10b) + string(10b) + $
             'Returning...'
           res = dialog_message(msg, / information, title = tit)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         ;; test for resistance > 100, not allowed
@@ -16379,6 +16958,7 @@ CASE strlowCase(eventValue) OF
             'Image Analysis -> Restoration Planner -> Setup Tools' + string(10b) + string(10b) + $
             'Returning...'
             res = dialog_message(msg, / information, title = tit)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
       ;; we are ok now, check which resistance we have
@@ -16466,6 +17046,8 @@ CASE strlowCase(eventValue) OF
       ;; reset mspa
       info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b
       info.do_mspa_stats_id = 0 & info.is_cost = 2
+      info.is_orig = 0
+
       ;; ensure to set FGconn to on
       info.mspa_param1_id = 1
       widget_control, info.w_mspa_param1, set_value = info.mspa_param1_id
@@ -16476,12 +17058,13 @@ CASE strlowCase(eventValue) OF
     END
 
     ;;===================================================================================================================
-    'cost_restoration': BEGIN ;;;;;;;     Optimum Big 5   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    'cost_restoration': BEGIN ;; xxxx  ;;;;;;;;;     Optimum Big 5   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;;===================================================================================================================
       ;; 1) check for input compliance
       ;; check for input compliance:
-      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 THEN BEGIN
+      IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_cs22 EQ 1 OR info.is_nw EQ 1 OR info.is_contort GT 0 OR info.is_influ gt 0 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
         res = dialog_message(info.wronginput, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wrong input' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -16510,6 +17093,7 @@ CASE strlowCase(eventValue) OF
       IF sz[3] NE 1 THEN BEGIN ;; not byte
         msg = head + 'Resistance map must have data type byte.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; test for presence of FG-objects and correct resistance values
@@ -16517,6 +17101,7 @@ CASE strlowCase(eventValue) OF
       IF histo[2] EQ 0 THEN BEGIN
         msg = head + 'Map has no FG-objects (2b).' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       IF histo[1] GT 0 THEN BEGIN ;; resistance = 1, not allowed
@@ -16525,6 +17110,7 @@ CASE strlowCase(eventValue) OF
           'Image Analysis -> Restoration Planner -> Setup Tools' + string(10b) + string(10b) + $
           'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; test for resistance > 100, not allowed
@@ -16534,6 +17120,7 @@ CASE strlowCase(eventValue) OF
           'Image Analysis -> Restoration Planner -> Setup Tools' + string(10b) + string(10b) + $
           'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; we are ok now, check which resistance we have
@@ -16590,6 +17177,7 @@ CASE strlowCase(eventValue) OF
       IF nr_comp LT 2 THEN BEGIN
         msg = 'At least 2 components are needed.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin        
       ENDIF
       max5 = nr_comp < max5
@@ -16680,6 +17268,7 @@ CASE strlowCase(eventValue) OF
         progressBar -> Destroy
         Obj_Destroy, progressBar
         close,1 & popd
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF    
       printf, 1, 'RESTORE, SIZE_A, SIZE_B, REST_PIX, AVDIST_RP,' + expense_t + $
@@ -16693,6 +17282,7 @@ CASE strlowCase(eventValue) OF
           progressBar -> Destroy
           Obj_Destroy, progressBar
           close,1 & popd
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
 
@@ -16755,7 +17345,9 @@ CASE strlowCase(eventValue) OF
         ;; test if image is too large for long 32 processing
         if maxcost lt 0 then begin
           msg = 'Map is too large for current implementation.' + string(10b) + 'Returning.'
-          res = dialog_message(msg, / information) & popd & GOTO, fin
+          res = dialog_message(msg, / information) & popd 
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+          GOTO, fin
         endif
 
         ;; get markers and least cost path
@@ -16891,7 +17483,10 @@ CASE strlowCase(eventValue) OF
 
       xdisplayfile, info.dir_tmp + statsfiletxt, title = tit, width = 250, /grow
 
-      print, 'Restoration comp.time [sec]: ', systime( / sec) - time0
+      tttt = systime( / sec) - time0 & str_tttt = strtrim(tttt,2)
+      msg = 'Restoration comp.time [sec]: ' + str_tttt & print, msg
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
+
 
       popd ;; return to working directory
 
@@ -16917,13 +17512,14 @@ CASE strlowCase(eventValue) OF
       ;; reset mspa
       info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.mspa_stats_show = 0b
       info.do_mspa_stats_id = 0 & info.is_cost = 2
+      info.is_orig = 0
 
     END
 
 
 
     ;;===================================================================================================
-    'cost_map':  BEGIN   ;;;;;;;;;;;;;;;;;;    cost map A/AB   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    'cost_map':  BEGIN  ;; xxxx  ;;;;;;;;;;;;;;;;;;    cost map A/AB   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       ;;===================================================================================================
       ;; we assume the current image is the resistance map
 
@@ -16952,6 +17548,7 @@ CASE strlowCase(eventValue) OF
       IF s_resist[3] NE 1 THEN BEGIN ;; not byte
         msg = head + 'Resistance map must have data type byte.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; test for resistance = 1, not allowed
@@ -16959,6 +17556,7 @@ CASE strlowCase(eventValue) OF
       if q gt 0.0 then begin
         msg = head + 'Resistance values of 1 are not allowed.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       endif
 
@@ -16966,6 +17564,7 @@ CASE strlowCase(eventValue) OF
       if max(resist) gt 100b then begin
         msg = head + 'Resistance values higher than 100 are not allowed.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information, title = tit)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       endif
 
@@ -16978,9 +17577,11 @@ CASE strlowCase(eventValue) OF
       
       s = size(marker)
       IF s[0] EQ 0 THEN BEGIN
-        res = dialog_message('Invalid image format or directory' + $
-          string(10b) + 'instead of file selected.' + $
-          string(10b) + 'Returning...', / information) & GOTO, fin
+        msg = 'Invalid image format or directory' + string(10b) + 'instead of file selected.' + $
+          string(10b) + 'Returning...'      
+        res = dialog_message(msg, / information) 
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+        GOTO, fin
       ENDIF
 
       ;; transfer image to 2-D if necessary
@@ -16993,6 +17594,7 @@ CASE strlowCase(eventValue) OF
         ENDIF ELSE BEGIN
           msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDELSE
       ENDIF ELSE IF s[0] EQ 2 THEN BEGIN
@@ -17000,6 +17602,7 @@ CASE strlowCase(eventValue) OF
       ENDIF ELSE BEGIN
         msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDELSE
 
@@ -17007,6 +17610,7 @@ CASE strlowCase(eventValue) OF
       IF s[3] NE 1 THEN BEGIN ;; not byte
         msg = 'Marker map must have data type byte.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -17014,7 +17618,9 @@ CASE strlowCase(eventValue) OF
       q = (s[1] eq s_resist[1]) + (s[2] eq s_resist[2])
       IF q NE 2 THEN BEGIN
         msg = 'Dimensions of Marker and Resistance map differ. ' + string(10b) + 'Returning.'
-        res = dialog_message(msg, / information) & GOTO, fin
+        res = dialog_message(msg, / information) 
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+        GOTO, fin
       ENDIF
 
       ;; test for minimum set of required values:
@@ -17027,7 +17633,9 @@ CASE strlowCase(eventValue) OF
             msg = 'Marker map must have at least the following values: ' + string(10b) + $
               '0b: background '  + string(10b) + $
               '1b: foreground point or object A'  + string(10b) + 'Returning...'
-            res = dialog_message(msg, / information) & GOTO, fin
+            res = dialog_message(msg, / information) 
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+            GOTO, fin
           endif
 
           condition = marker_vals[0] eq 0 and marker_vals[1] eq 1
@@ -17035,7 +17643,9 @@ CASE strlowCase(eventValue) OF
             msg = 'Marker map must have at least the following values: ' + string(10b) + $
               '0b: background '  + string(10b) + $
               '1b: foreground point or object A'  + string(10b) + 'Returning...'
-            res = dialog_message(msg, / information) & GOTO, fin
+            res = dialog_message(msg, / information) 
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+            GOTO, fin
           ENDIF
         end
 
@@ -17047,7 +17657,9 @@ CASE strlowCase(eventValue) OF
               '1b: foreground point or object A'  + string(10b) + $
               '2b: foreground point or object B'  + string(10b) + $
               'Returning.'
-            res = dialog_message(msg, / information) & GOTO, fin
+            res = dialog_message(msg, / information) 
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+            GOTO, fin
           endif
 
           condition = marker_vals[0] eq 0 AND marker_vals[1] eq 1 AND marker_vals[2] eq 2
@@ -17057,7 +17669,9 @@ CASE strlowCase(eventValue) OF
               '1b: foreground point or object A'  + string(10b) + $
               '2b: foreground point or object B'  + string(10b) + $
               'Returning.'
-            res = dialog_message(msg, / information) & GOTO, fin
+            res = dialog_message(msg, / information) 
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+            GOTO, fin
           ENDIF
 
           ;; test if the two objects are seperated
@@ -17067,7 +17681,9 @@ CASE strlowCase(eventValue) OF
           IF condition EQ 1 THEN BEGIN
             ;; A and B intersect
             msg = 'Marker object A and B should not intersect.' + string(10b) + 'Returning.'
-            res = dialog_message(msg, / information) & GOTO, fin
+            res = dialog_message(msg, / information) 
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+            GOTO, fin
           ENDIF
 
           IF n_marker_vals GE 4 THEN BEGIN
@@ -17085,7 +17701,9 @@ CASE strlowCase(eventValue) OF
               IF condition EQ 0b THEN BEGIN
                 ;; A and B are disjoint
                 msg = 'Marker object A and B can not be connected.' + string(10b) + 'Returning.'
-                res = dialog_message(msg, / information) & GOTO, fin
+                res = dialog_message(msg, / information) 
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+                GOTO, fin
               ENDIF
             ENDIF
           ENDIF
@@ -17100,7 +17718,9 @@ CASE strlowCase(eventValue) OF
         if max(label_region(marker2 eq q, /ALL_NEIGHBORS,/ulong)) ge 2 then begin
           msg = 'Marker map must have only one object with value: ' + strtrim(fix(q),2) + $
             ' byte' + string(10b) + 'Returning.'
-          res = dialog_message(msg, / information) & GOTO, fin
+          res = dialog_message(msg, / information) 
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+          GOTO, fin
         endif
         marker2=0
       endfor
@@ -17190,6 +17810,7 @@ CASE strlowCase(eventValue) OF
             res = dialog_message(msg, / information) & popd
             progressBar -> Destroy
             Obj_Destroy, progressBar
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           endif
 
@@ -17244,6 +17865,7 @@ CASE strlowCase(eventValue) OF
             res = dialog_message(msg, / information) & popd
             progressBar -> Destroy
             Obj_Destroy, progressBar
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           endif
           ;; convert ulong to long 32
@@ -17275,6 +17897,7 @@ CASE strlowCase(eventValue) OF
       * info.fr_image = * info.process
       restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
       info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 5 ;; entropy
+      info.is_orig = 0
 
       ;; cost range
       delta = 100.0
@@ -17301,11 +17924,14 @@ CASE strlowCase(eventValue) OF
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
    ;;        E N T R O P Y
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-   'frag_entropy':  BEGIN
+   'frag_entropy':  BEGIN  ;; xxxx
       widget_control, / hourglass
       ;; 1) check for input compliance:
       MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
 
       ;; 2) if in zoom mode, quit zoom mode
       IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
@@ -17353,7 +17979,9 @@ CASE strlowCase(eventValue) OF
       IF imgminsize lt 500 THEN BEGIN
         res = dialog_message('Entropy requires minimum map size ' + $
           string(10b) + 'of 500 x 500 pixels.' + string(10b) + 'Returning...', / information)
-        info.is_fragm = 0 & GOTO, fin
+        info.is_fragm = 0 
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: map less than 500x500' + info.bline & free_lun, unit
+        GOTO, fin
       ENDIF
       
       ;; moving window approach
@@ -17365,10 +17993,10 @@ CASE strlowCase(eventValue) OF
           string(10b) + 'Are you sure you want to do this?'
         res = dialog_message(msg, /question)
         if res eq 'No' then begin
-          info.is_fragm = 0 & goto,fin
-        endif
-          
-        
+          info.is_fragm = 0 
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
+          goto,fin
+        endif       
         time0 = systime( / sec)
 
         ;; precise way via moving window
@@ -17448,10 +18076,12 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 1 & info.is_contort = 0
       info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
       info.do_label_groups_id = 0
-
-
+      info.is_orig = 0
       
-      ;print, 'fragm proc.time: ', systime( / sec) - time0   
+      tttt = systime( / sec) - time0 & str_tttt = strtrim(tttt,2)
+      msg = 'Fragm comp.time [sec]: ' + str_tttt & print, msg
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
+
       qfg = where(image0 eq 2b, /l64) & z21=strtrim(mean(entro[qfg]),2)
       ;; convert to byte and apply mask
       entro = byte(round(entro)) * (image0 eq 2b)
@@ -17476,7 +18106,7 @@ CASE strlowCase(eventValue) OF
    
    ;;*****************************************************************************************************
 
-   'batch_ent':  BEGIN
+   'batch_ent':  BEGIN   ;; xxxx
       tit = 'Select (Geo-)Tif-files'
       im_file = $
          dialog_pickfile(Title = tit, get_path = path2file, $
@@ -17782,10 +18412,13 @@ CASE strlowCase(eventValue) OF
       
    ;;*****************************************************************************************************
    ;; legacy contagion PFF
-   'frag_contagion':  BEGIN
+   'frag_contagion':  BEGIN   ;;; xxxx
    ;; 1) check for input compliance:
    MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, 1, result
-   IF result EQ 0 THEN GOTO, fin  ;; invalid input
+   IF result EQ 0 THEN BEGIN
+     openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: not compliant' + info.bline & free_lun, unit
+     GOTO, fin  ;; invalid input
+   ENDIF
 
    ;; if in zoom mode, quit zoom mode
    IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
@@ -17820,7 +18453,9 @@ CASE strlowCase(eventValue) OF
    IF imgminsize lt 50 THEN BEGIN
      res = dialog_message('Contagion requires minimum map size ' + $
        string(10b) + 'of 50 x 50 pixels.' + string(10b) + 'Returning...', / information)
-     info.is_fragm = 0 & GOTO, fin
+     info.is_fragm = 0 
+     openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: map < 50x50' + msg + info.bline & free_lun, unit
+     GOTO, fin
    ENDIF
 
    ;; reset mspa
@@ -17873,6 +18508,8 @@ CASE strlowCase(eventValue) OF
    * info.fr_image = * info.process
    restore, info.dir_guidossub + 'entropycolors.sav' & tvlct, r, g, b
    info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 5 ;; entropy
+   info.is_orig = 0
+
    widget_control, info.w_labelstr, set_value = 'Fragmentation range: '
       widget_control, info.w_label_t1, set_value = ['X','10','30','50']    
       widget_control, info.w_label_t2, set_value = ['X','60','70','80']
@@ -17883,7 +18520,7 @@ CASE strlowCase(eventValue) OF
    
    ;;*****************************************************************************************************
    ;; legacy frag PFF contagion
-   'batch_cont':  BEGIN 
+   'batch_cont':  BEGIN ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -18147,11 +18784,14 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'frag_parcellation':  BEGIN
+   'frag_parcellation':  BEGIN  ;; xxxx
      redo_parc:
      ;; 1) check for input compliance:
      Labelall_Compliance, info.fname_input, * info.fr_image, info.immaxsizeg, 1, result
-     IF result EQ 0 THEN GOTO, fin  ;; invalid input
+     IF result EQ 0 THEN BEGIN
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: not compliant' + info.bline & free_lun, unit
+       GOTO, fin  ;; invalid input
+     ENDIF
 
      ;; if in zoom mode, quit zoom mode
      IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
@@ -18296,7 +18936,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'batch_parcellation':  BEGIN
+   'batch_parcellation':  BEGIN  ;; xxxx
      tit = 'Select (Geo-)Tif-files'
      im_file = $
        dialog_pickfile(Title = tit, get_path = path2file, $
@@ -18621,7 +19261,7 @@ CASE strlowCase(eventValue) OF
     
    ;;*****************************************************************************************************
 
-   'change':  BEGIN 
+   'change':  BEGIN ;; xxxx
       ;; build simple difference of two images A and B
       ;; current image is A, load image B to be compared to A
       ;;
@@ -18666,16 +19306,22 @@ CASE strlowCase(eventValue) OF
         dialog_read_image(file = im1_file, get_path = path2file1, $
         image = im1, path = info.dir_data, query=query1, $
         TITLE=tit1, FILTER=filt, /fix_filter)
-      IF res EQ 0 THEN GOTO, fin ;; 'cancel' was selected
+      IF res EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
+        GOTO, fin ;; 'cancel' was selected
+      ENDIF
+      
       IF (size(query1))[0] EQ 0 THEN BEGIN
         res = dialog_message('Please use the mouse pointer to select an' + $
           string(10b) + 'image file from the list of tif-files.' + string(10b) + 'Returning...', / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: did not use mouse pointer' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       s = size(im1)
       IF s[0] EQ 0 THEN BEGIN
         res = dialog_message('Invalid image format or directory' + $
           string(10b) + 'instead of file selected.' + string(10b) + 'Returning...', / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: directory or wrong image format selected' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; transfer image to 2-D if necessary
@@ -18688,6 +19334,7 @@ CASE strlowCase(eventValue) OF
         ENDIF ELSE BEGIN
           msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDELSE
       ENDIF ELSE IF s[0] EQ 2 THEN BEGIN
@@ -18695,6 +19342,7 @@ CASE strlowCase(eventValue) OF
       ENDIF ELSE BEGIN
         msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDELSE
       
@@ -18706,7 +19354,9 @@ CASE strlowCase(eventValue) OF
         qq = qq1a + qq2a
         
         IF qq ne 1 THEN BEGIN
-          res = dialog_message('Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...', / information)
+          msg = 'Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...'
+          res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         
@@ -18721,8 +19371,10 @@ CASE strlowCase(eventValue) OF
         
         qq=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & qq=qq[0]
         IF qq LE 0 THEN BEGIN
-          res = dialog_message('Input image A is not a geotiff or not a GTB-generated' + $
-            string(10b) + '*_fad*_mscale.tif image.' + string(10b) + 'Returning...', / information)
+          msg = 'Input image A is not a geotiff or not a GTB-generated' + $
+            string(10b) + '*_fad*_mscale.tif image.' + string(10b) + 'Returning...'
+          res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         
@@ -18733,6 +19385,7 @@ CASE strlowCase(eventValue) OF
           msg = 'FAD change analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
             'Please do not modify FAD-created directories.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         im1_sav = tt
@@ -18756,8 +19409,10 @@ CASE strlowCase(eventValue) OF
         
         qq=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FOS") & qq=qq[0]
         IF qq LE 0 THEN BEGIN
-          res = dialog_message('Input image A is not a geotiff or not a GTB-generated' + $
-            string(10b) + '*_fos.tif image.' + string(10b) + 'Returning...', / information)
+          msg = 'Input image A is not a geotiff or not a GTB-generated' + $
+            string(10b) + '*_fos.tif image.' + string(10b) + 'Returning...'        
+          res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         ;; check sav-file
@@ -18767,6 +19422,7 @@ CASE strlowCase(eventValue) OF
           msg = 'FOS change analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
             'Please do not modify FOS-created directories.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         im1_sav = tt
@@ -18787,14 +19443,15 @@ CASE strlowCase(eventValue) OF
       IF res EQ 0 THEN GOTO, fin ;; 'cancel' was selected
       IF (size(query2))[0] EQ 0 THEN BEGIN
         res = dialog_message('Please use the mouse pointer to select an' + $
-          string(10b) + 'image file from the list of tif-files.' + string(10b) + 'Returning...', $
-          / information)
+          string(10b) + 'image file from the list of tif-files.' + string(10b) + 'Returning...', / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: did not use mouse pointer' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       s = size(im2)
       IF s[0] EQ 0 THEN BEGIN
         res = dialog_message('Invalid image format or directory' + string(10b) + $
           'instead of file selected.' + string(10b) + 'Returning...', / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: directory or wrong image format selected' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       ;; transfer image to 2-D if necessary
@@ -18807,6 +19464,7 @@ CASE strlowCase(eventValue) OF
         ENDIF ELSE BEGIN
           msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDELSE
       ENDIF ELSE IF s[0] EQ 2 THEN BEGIN
@@ -18814,6 +19472,7 @@ CASE strlowCase(eventValue) OF
       ENDIF ELSE BEGIN
         msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDELSE
      
@@ -18823,13 +19482,17 @@ CASE strlowCase(eventValue) OF
         qq2b = strmid(im1_file,19,/reverse_offset) eq '_fad-app5_mscale.tif' or strmid(im1_file,19,/reverse_offset) eq '_fad-app2_mscale.tif'
         qq = qq1b + qq2b 
         IF qq ne 1 THEN BEGIN
-          res = dialog_message('Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...', / information)
+          msg = 'Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...'
+          res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
        ;; check that both images have the same FAD type
         res = (qq1a eq qq1b) + (qq2a eq qq2b)
         IF res ne 2 THEN BEGIN
-          res = dialog_message('We can not compare FAD with FAD-APP.' + string(10b) + 'Returning...', / information)
+          msg = 'We can not compare FAD with FAD-APP.' + string(10b) + 'Returning...'
+          res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF              
         IF info.my_os EQ 'windows' THEN BEGIN
@@ -18842,8 +19505,10 @@ CASE strlowCase(eventValue) OF
         IF info.my_os EQ 'windows' THEN spawn, cmd, log, / hide ELSE spawn, cmd, log & q = log[0]        
         qq=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & qq=qq[0]
         IF qq LE 0 THEN BEGIN
-          res = dialog_message('Input image B is not a geotiff or not a GTB-generated' + $
-            string(10b) + '*_fad*_mscale.tif image.' + string(10b) + 'Returning...', / information)
+          msg = 'Input image B is not a geotiff or not a GTB-generated' + $
+            string(10b) + '*_fad*_mscale.tif image.' + string(10b) + 'Returning...'
+          res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF  
         
@@ -18854,6 +19519,7 @@ CASE strlowCase(eventValue) OF
           msg = 'FAD change analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
             'Please do not modify FAD-created directories.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         im2_sav = tt
@@ -18875,8 +19541,10 @@ CASE strlowCase(eventValue) OF
         IF info.my_os EQ 'windows' THEN spawn, cmd, log, / hide ELSE spawn, cmd, log & q = log[0]
         qq=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FOS") & qq=qq[0]
         IF qq LE 0 THEN BEGIN
-          res = dialog_message('Input image B is not a geotiff or not a GTB-generated' + $
-            string(10b) + '*_fos*.tif image.' + string(10b) + 'Returning...', / information)
+          msg = 'Input image B is not a geotiff or not a GTB-generated' + $
+            string(10b) + '*_fos*.tif image.' + string(10b) + 'Returning...'
+          res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
         ;; check for presence of non-fragm. BG pixels
@@ -18885,6 +19553,7 @@ CASE strlowCase(eventValue) OF
       IF im1_file EQ im2_file THEN BEGIN
         msg = 'You have selected the same image for Images A and B.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF    
       IF im1_nfBG ne im2_nfBG THEN BEGIN
@@ -18892,6 +19561,7 @@ CASE strlowCase(eventValue) OF
           'A FOS/FAD change analysis is only meaningful if either both or none' + string(10b) + $
           'of the two input images have non-fragmenting background pixels.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF     
       
@@ -18905,20 +19575,42 @@ CASE strlowCase(eventValue) OF
         msg = 'FOS change analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
           'Please do not modify FOS-created directories.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
       im2_sav = tt  
       
-      ;; test for same fostype or same fadtype
+      ;; test for same graythreshold, input data type, and analysis scheme: fostype/fadtype
+      im1_grayt_str = '' & im1_fosinp = '' & im1_fostype = ''
       restore, filename=im1_sav & if (size(fadtype))[1] eq 7 then fostype = fadtype
       im1_fostype = fostype & s1len = strlen(im1_fostype)
+                 
+      im2_grayt_str = '' & im2_fosinp = '' & im2_fostype = ''      
       restore, filename=im2_sav & if (size(fadtype))[1] eq 7 then fostype = fadtype     
-      im2_fostype = fostype & s2len = strlen(im2_fostype)     
+      im2_fostype = fostype & s2len = strlen(im2_fostype)   
+      
+      IF im1_grayt_str NE im2_grayt_str THEN BEGIN
+        msg = 'FOS change analysis requires comparing maps with the same grayscale threshold, which is not the case for the selected files:' + string(10b) + $
+          'Image A: ' + im1_grayt_str + string(10b) + 'Image B: ' + im2_grayt_str + string(10b) + string(10b) + 'Returning...'
+        res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+        GOTO, fin
+      ENDIF
+      
+      IF im1_fosinp NE im2_fosinp THEN BEGIN
+        msg = 'FOS change analysis requires comparing maps with the same data type analysis threshold, which is not the case for the selected files:' + string(10b) + $
+          'Image A: ' + im1_fosinp + string(10b) + 'Image B: ' + im2_fosinp + string(10b) + string(10b) + 'Returning...'
+        res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
+        GOTO, fin
+      ENDIF
+        
       if (s1len eq 8) and (s2len eq 8) then goto, bothfosapp
       if im1_fostype ne im2_fostype then begin
-        msg = 'FOS/FAD change analysis requires comparing files with the same analysis type, which is not the case for the selected files:' + string(10b) + $
+        msg = 'FOS/FAD change analysis requires comparing maps with the same analysis type, which is not the case for the selected files:' + string(10b) + $
         'Image A: ' + im1_fostype + string(10b) + 'Image B: ' + im2_fostype + string(10b) + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin        
       endif
       bothfosapp:
@@ -18927,6 +19619,7 @@ CASE strlowCase(eventValue) OF
       IF ct eq 0 THEN BEGIN
         msg = 'Pixel values of Images A and B are identical.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
 
@@ -18969,6 +19662,7 @@ CASE strlowCase(eventValue) OF
         if (eventValue2 eq 'change_morph') then begin
           msg = 'Image A is not a geotiff. ' + string(10b) + 'Building simple-change instead.'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
           GOTO, diffsim_nogeo
         endif
         GOTO, diffsim_nogeo                 
@@ -19005,6 +19699,7 @@ CASE strlowCase(eventValue) OF
         if (eventValue2 eq 'change_morph') then begin
           msg = 'Image B is not a geotiff. ' + string(10b) + 'Building simple-change instead.'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
           GOTO, diffsim_nogeo
         endif
         GOTO, diffsim_nogeo
@@ -19019,10 +19714,12 @@ CASE strlowCase(eventValue) OF
         if (eventValue2 eq 'change_fad') OR (eventValue2 eq 'change_fos') OR (eventValue2 eq 'change_rss') then begin
           msg = msg + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         endif
         msg = msg + 'Building simple-change instead.'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
         goto, diffsim_nogeo
       endif
       
@@ -19037,10 +19734,12 @@ CASE strlowCase(eventValue) OF
         if (eventValue2 eq 'change_fad') OR (eventValue2 eq 'change_fos') OR (eventValue2 eq 'change_rss') then begin
           msg = msg + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         endif
         msg = msg + 'Building simple-change instead.'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
         goto, diffsim_nogeo
       endif
 
@@ -19053,10 +19752,12 @@ CASE strlowCase(eventValue) OF
         if (eventValue2 eq 'change_fad') OR (eventValue2 eq 'change_fos') OR (eventValue2 eq 'change_rss') then begin
           msg = msg + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         endif
         msg = msg + 'Building simple-change instead.'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
         goto, diffsim_nogeo
       endif
       
@@ -19080,6 +19781,7 @@ CASE strlowCase(eventValue) OF
             msg = 'The current and the original image do NOT have or share a common geoheader.' + $
               'Restoration Change analysis will be conducted but might not be meaningful.'
             res = dialog_message(msg, / information, title = tit)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
           ENDIF          
           goto, resetfront
           backto_change_rss:
@@ -19096,6 +19798,7 @@ CASE strlowCase(eventValue) OF
           IF q LT 0.1 THEN BEGIN ;; both images are identical
             msg = 'The current and the original network are identical, -> no change.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information, title = tit)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
           
@@ -19106,6 +19809,7 @@ CASE strlowCase(eventValue) OF
           IF histoorig[1] GT 0 THEN BEGIN
             msg = 'Original restoration map has invalid resistance of 1b.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information, title = tit)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
 ;          IF histo[1] GT 0 THEN BEGIN
@@ -19117,16 +19821,19 @@ CASE strlowCase(eventValue) OF
           IF histoorig[2] EQ 0 THEN BEGIN
             msg = 'Original restoration map has no FG-objects (2b).' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information, title = tit)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
           IF histo[2] EQ 0 THEN BEGIN
             msg = 'Current restoration map has no FG-objects (2b).' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information, title = tit)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
           IF total(histoorig[101:*]) GT 0.0 THEN BEGIN
             msg = 'Original restoration map has invalid resistance > 100b.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information, title = tit)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
           ;; check which resistance we have
@@ -19218,9 +19925,9 @@ CASE strlowCase(eventValue) OF
           ;; write out the differences as csv and xdisplayfile
           close, 1 & openw, 1, info.dir_data + 'rss_change.csv', error=error
           IF (error NE 0) then begin
-            msg = 'Please close your spreadsheet application, then try again.' + $
-              string(10b) + 'Returning...'
+            msg = 'Please close your spreadsheet application, then try again.' + string(10b) + 'Returning...'
             res = dialog_message(msg, /information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
             close,1
             goto,fin
           ENDIF
@@ -19260,6 +19967,7 @@ CASE strlowCase(eventValue) OF
           IF a_pref NE b_pref THEN BEGIN
             msg = 'FOS type or moving window dimensions of image A and B are different.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
                    
@@ -19270,6 +19978,7 @@ CASE strlowCase(eventValue) OF
             msg = 'FOS change analysis requires the file:' + string(10b) +  file_basename(tt) + string(10b)+ 'which was not found. ' + $
               'Please do not modify FOS-created directories.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
           a_sav = tt
@@ -19280,6 +19989,7 @@ CASE strlowCase(eventValue) OF
             msg = 'FOS change analysis requires the file:' + string(10b) +  file_basename(tt) + string(10b)+ 'which was not found. ' + $
               'Please do not modify FOS-created directories.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF          
           b_sav = tt
@@ -19311,6 +20021,7 @@ CASE strlowCase(eventValue) OF
               'Pixel Resolution, and Observation Scale.' + string(10b) + string(10b) + $
               'The selected images have different settings. ' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin           
           endif
                    
@@ -19396,6 +20107,7 @@ CASE strlowCase(eventValue) OF
               msg = 'Please close your spreadsheet application, then try again.' + $
                 string(10b) + 'Returning...'
               res = dialog_message(msg, /information)
+              openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
               goto, fin
             ENDIF
 
@@ -19552,6 +20264,7 @@ CASE strlowCase(eventValue) OF
             msg = 'Please close your spreadsheet application, then try again.' + $
               string(10b) + 'Returning...'
             res = dialog_message(msg, /information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             goto, fin
           ENDIF 
          
@@ -19612,10 +20325,11 @@ CASE strlowCase(eventValue) OF
           skip_otherfoschange:
           msg = 'FOS change analysis finished. ' + string(10b) + $
             'Change matrix tables (txt, csv) were saved to:' + string(10b) + outdir
-          res = dialog_message(msg, / information)         
+          res = dialog_message(msg, / information)   
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit      
           goto, contnormal ;;diffsim_finish
         endif        
-        ;;======================  end of F O S  stuff  ========================================
+        ;;======================  end of   F O S  stuff  ========================================
             
         ;; FAD: we asked for the _mscale file but need to verify 7 files: 5 scales, mscale and the sav file
         a_pref = strmid(im1_file,0, strlen(im1_file)-11)
@@ -19632,6 +20346,7 @@ CASE strlowCase(eventValue) OF
             msg = 'FAD change analysis requires the file:' + string(10b) +  file_basename(tt) + string(10b)+ 'which was not found. ' + $
               'Please do not modify FAD-created directories.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
           fn_a[isc] = tt
@@ -19641,6 +20356,7 @@ CASE strlowCase(eventValue) OF
             msg = 'FAD change analysis requires the file:' + string(10b) +  file_basename(tt) + string(10b)+ 'which was not found. ' + $
               'Please do not modify FAD-created directories.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
           fn_b[isc] = tt         
@@ -19665,6 +20381,7 @@ CASE strlowCase(eventValue) OF
             'X/Y-image dimension and FAD type. ' + string(10b) + $
             'The selected images have different settings. ' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
+          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         endif
        ;;========================================================================================
@@ -20043,6 +20760,7 @@ CASE strlowCase(eventValue) OF
         ;; no overlap
         msg = 'Image A and B do not overlap.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       endif
         
@@ -20079,6 +20797,7 @@ CASE strlowCase(eventValue) OF
         ;; no overlap in data area
         msg = 'Image A and B do not share a common data area' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       endif
 
@@ -20095,9 +20814,16 @@ CASE strlowCase(eventValue) OF
       ;;=========================================================
       ;; test if they are MSPA-compliant
       MSPA_Compliance, info.dir_tmp + 'im1com.tif', im1com, info.immaxsizeg, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: im1com not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
       MSPA_Compliance, info.dir_tmp + 'im2com.tif', im2com, info.immaxsizeg, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input   
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: im2com not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
+
 
       restore, info.dir_guidossub + 'mspacolorston.sav' & tvlct, r, g, b 
       info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 3 ;; classification
@@ -20236,7 +20962,9 @@ CASE strlowCase(eventValue) OF
       s1 = size(im1) & s2 = size(im2)
       xcom = s1[1] < s2[1] & ycom = s1[2] < s2[2] & datcom = s1[3] > s2[3]
       if datcom gt 1 then begin
-        res = dialog_message('Both images must be of type Byte' + string(10b) + 'Returning...', / information)
+        msg = 'Both images must be of type Byte' + string(10b) + 'Returning...'
+        res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       endif
       im1 = im1[0:xcom-1,0:ycom-1] & im2 = im2[0:xcom-1,0:ycom-1]
@@ -20325,7 +21053,8 @@ CASE strlowCase(eventValue) OF
       info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.is_dist = 0 & info.is_influ = 0
       info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
       info.add_title = ''  
-      
+      info.is_orig = 0
+
       if eventValue2 eq 'change_simple' or eventValue2 eq 'change_morph' then begin
         restore, info.dir_guidossub + 'mspacolorston.sav' & tvlct, r, g, b
         info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 3 ;; classification
@@ -20335,22 +21064,29 @@ CASE strlowCase(eventValue) OF
    
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   'delta_lm':  BEGIN
+   'delta_lm':  BEGIN  ;; xxxx
      ;; build simple difference of two heatmaps A and B
      ;;
      ;; read heatmap A and B
      ;;=========================================================================================
      fnsav_a = dialog_pickfile(Title = 'Change LM: heatmap A: ', get_path = path2file, path = info.dir_data, $
        default_extension = 'sav', / fix_filter, / must_exist, filter = ['*_heatmap.sav'])
-     IF strlen(fnsav_a) eq 0 THEN GOTO, fin ;; 'cancel' selected
+     IF strlen(fnsav_a) eq 0 THEN BEGIN
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: no heatmap A' + info.bline & free_lun, unit
+      GOTO, fin ;; 'cancel' selected
+     ENDIF
 
      fnsav_b = dialog_pickfile(Title = 'Change LM: heatmap B: ', get_path = path2file, path = info.dir_data, $
        default_extension = 'sav', / fix_filter, / must_exist, filter = ['*_heatmap.sav'])
-     IF strlen(fnsav_b) eq 0 THEN GOTO, fin ;; 'cancel' selected
+     IF strlen(fnsav_b) eq 0 THEN BEGIN
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: no heatmap B' + info.bline & free_lun, unit
+      GOTO, fin ;; 'cancel' selected
+     ENDIF
      
      if fnsav_a eq fnsav_b then begin
        msg = 'The heatmap files of A and B must be different.' + string(10b) + string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin      
      endif
      
@@ -20359,6 +21095,7 @@ CASE strlowCase(eventValue) OF
      if n_elements(hmap) eq 0 then begin
        msg = 'The heatmap file:' + string(10b) + fnsav_a + string(10b) + 'has no valid heatmap information.' + string(10b) + string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin     
      endif
      kdim_str_a = kdim_str & hn_a = hn & hmap_a = hmap
@@ -20367,6 +21104,7 @@ CASE strlowCase(eventValue) OF
      if n_elements(hmap) eq 0 then begin
        msg = 'The heatmap file:' + string(10b) + fnsav_b + string(10b) + 'has no valid heatmap information.' + string(10b) + string(10b) + 'Returning...'
        res = dialog_message(msg, / information)
+       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        GOTO, fin     
      endif
      kdim_str_b = kdim_str & hn_b = hn & hmap_b = hmap
@@ -20876,9 +21614,9 @@ CASE strlowCase(eventValue) OF
        popd
      ENDIF ELSE BEGIN ;; Linux
        IF strlen(info.xdgop) EQ 0 THEN BEGIN
-         st = "Please install xdg-open to automatically" + $
-           "display images within GuidosToolbox."
-         result = dialog_message(st, / information)
+         msg = "Please install xdg-open to automatically display images within GuidosToolbox."
+         result = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        ENDIF ELSE BEGIN
          spawn, info.xdgop + ' "' + info.dir_tmp + 'delta_heatmap.png' + '"'
        ENDELSE
@@ -20892,6 +21630,7 @@ CASE strlowCase(eventValue) OF
        info.dir_data + 'delta_heatmap.png' + string(10b) + info.dir_data + 'delta_heatmap.csv' + string(10b) + string(10b) + $
        'Please rename these files to avoid them being overwritten in a future LM-change analysis.' + string(10b) + 'Returning...'
      res = dialog_message(msg, / information)    
+     openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
 
    END
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -20902,7 +21641,7 @@ CASE strlowCase(eventValue) OF
    ;;  always done with 8-connectivity, else we have even more objects...
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   'contortion':  BEGIN
+   'contortion':  BEGIN  ;; xxxx
       ;; 1) if in zoom mode, quit zoom mode
       IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
         info.selsubregion_id = 0
@@ -20929,6 +21668,7 @@ CASE strlowCase(eventValue) OF
            'Recalculating contortion of original image' + string(10b) + $
            'using the new size limit.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
          * info.contort = 0 & contort1=0 
          do_contort = 1
          goto, set2original
@@ -20958,7 +21698,10 @@ CASE strlowCase(eventValue) OF
       contort_cont:
       ;; 2) check for input compliance:
       MSPA_Compliance, info.fname_input, * info.fr_image, info.immaxsize, 1, result
-      IF result EQ 0 THEN GOTO, fin  ;; invalid input
+      IF result EQ 0 THEN BEGIN
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: not compliant' + info.bline & free_lun, unit
+        GOTO, fin  ;; invalid input
+      ENDIF
 
       ;; constrain to maximum of 5000 x 5000
       ;;===============================     
@@ -20968,6 +21711,7 @@ CASE strlowCase(eventValue) OF
       IF fsz GT mxfsz THEN BEGIN
         msg = "Exceeded maximum map dimensions for contortion: 5000x5000" + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
  
@@ -21004,6 +21748,7 @@ CASE strlowCase(eventValue) OF
         msg = "Objects are too small for Contortion" + string(10b) + $
          'Try reducing the object size via the EdgeWidth parameter' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
         GOTO, fin       
       ENDIF
       obj_last=n_elements(core_ids)-1 ;; because first entry is background   
@@ -21081,8 +21826,12 @@ CASE strlowCase(eventValue) OF
       ENDFOR ; end loop over objects
  
       progressBar -> Destroy
-      Obj_Destroy, progressBar
-      print, 'Contortion comp.time [sec]: ', systime( / sec) - time0
+      Obj_Destroy, progressBar     
+ 
+      tttt = systime( / sec) - time0 & str_tttt = strtrim(tttt,2)
+      msg = 'Contortion comp.time [sec]: ' + str_tttt & print, msg
+      openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
+
 
       ;; go back to original size
       contort1 = temporary(ext1[1:sz(0), 1:sz(1)])
@@ -21108,6 +21857,7 @@ CASE strlowCase(eventValue) OF
       info.add_title = ' (Contortion, objects with core >= ' + info.mspa_size_current + $
         ' pixels: ' + objlstr + '/' + obj_laststr + ' objects)' 
       info.is_contort = 1
+      info.is_orig = 0
       
       ;; save the actual contortion data and assign to info structure to be read out
       save, contort1,small_lt_contort, objlstr, obj_laststr, filename = info.dir_guidossub + 'contorttmp.sav'
@@ -21134,7 +21884,7 @@ CASE strlowCase(eventValue) OF
 ;;-----------------------------------------------------------------------
 ;;---------------  help menu --------------------------------------------
 ;;-----------------------------------------------------------------------
-   'guidos_manual':  BEGIN
+   'guidos_manual':  BEGIN  ;; xxxx
       IF info.my_os EQ 'apple' THEN BEGIN
          spawn, 'open ' + info.dir_guidos + 'GuidosToolbox_Manual.pdf'
          GOTO, fin
@@ -21155,7 +21905,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'mspa_guide':  BEGIN
+   'mspa_guide':  BEGIN  ;; xxxx
       IF info.my_os EQ 'apple' THEN BEGIN
          spawn, 'open ' + info.dir_guidos + 'MSPAstandalone/MSPA_Guide.pdf'
          GOTO, fin
@@ -21176,7 +21926,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'gsc_guide':  BEGIN
+   'gsc_guide':  BEGIN  ;; xxxx
      IF info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open ' + info.dir_guidossub + 'spatcon/GRAYSPATCON_Guide.pdf'
        GOTO, fin
@@ -21198,7 +21948,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'news':  BEGIN    
+   'news':  BEGIN    ;; xxxx
      ;; the local resulting file
      version_file = info.dir_tmp + 'news'
      ;; delete the file if any was present
@@ -21238,7 +21988,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'productsheets':  BEGIN
+   'productsheets':  BEGIN  ;; xxxx
      webl = ' https://forest.jrc.ec.europa.eu/activities/lpa/gtb/#Productsheets'
      IF info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open' + webl
@@ -21261,7 +22011,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'homepage':  BEGIN     
+   'homepage':  BEGIN  ;; xxxx
       case eventvalue2 OF
         'homepage_gtb': webl = ' https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
         'homepage_gwb': webl = ' https://forest.jrc.ec.europa.eu/activities/lpa/gwb/'
@@ -21295,7 +22045,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'gt_changelog':  BEGIN
+   'gt_changelog':  BEGIN  ;; xxxx
       xdisplayfile, info.dir_guidos + 'changelog.txt', title = 'GuidosToolbox changelog: ', $
         done_button = 'Close', / block, / modal, group = event.top
       GOTO, fin
@@ -21303,7 +22053,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'gt_eula':  BEGIN
+   'gt_eula':  BEGIN  ;; xxxx
      IF info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open ' + info.dir_guidos + '../../../../../EULA_GTB.pdf'
        GOTO, fin
@@ -21325,7 +22075,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'check4updates':  BEGIN
+   'check4updates':  BEGIN  ;; xxxx
       ;; setup and delete the version file
       ;;compare the current version with the one available on the homepage
       v_curr = info.gtb_version & vbase_curr = strmid(strtrim(v_curr,2),0,3)
@@ -21382,16 +22132,19 @@ CASE strlowCase(eventValue) OF
               GWS_delta = abs(GWS_new - GWS_curr) gt 0.0001
               
               IF GWS_delta eq 0 THEN BEGIN ;; inform that GWS is uptodate
-                str = 'You have the latest GWS material'
-                res = dialog_message(title = 'GWS information', $
-                  / information, str)
+                msg = 'You have the latest GWS material'
+                res = dialog_message(title = 'GWS information', / information, msg)
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit
                 GOTO, fin
               ENDIF ELSE BEGIN   ;; incremental update available or not installed
                 
                 str = 'New GWS (GTB Workshop) material available' + string(10b) + $
                   'Do you want to download and install it?'
                 res = dialog_message(title = 'GWS information', / question, str)
-                IF res EQ 'No' THEN  GOTO, fin
+                IF res EQ 'No' THEN BEGIN
+                  openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', workshop material declined ' + info.bline & free_lun, unit
+                  GOTO, fin
+                ENDIF
                                 
                 pushd, info.dir_tmp
                 gws_file = info.dir_tmp + 'GWS' + strtrim(gws_new,2)+'.zip'
@@ -21446,9 +22199,10 @@ CASE strlowCase(eventValue) OF
                 ENDELSE                                        
 
                 ;; c) inform 
-                str = 'GWS is now installed and available' + string(10b) + $
+                msg = 'GWS is now installed and available' + string(10b) + $
                   'in the GuidosToolbox/data folder.'
-                res = dialog_message(title = 'GWS information', / information, str)
+                res = dialog_message(title = 'GWS information', / information, msg)
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
                 popd
                 popd
                 
@@ -21460,10 +22214,11 @@ CASE strlowCase(eventValue) OF
                   spawn, 'start' + webl,/hide
                 ENDIF ELSE BEGIN
                   IF strlen(info.html_exe) EQ 0 THEN BEGIN
-                    st = "No html-browser found. Please install one" + $
+                    msg = "No html-browser found. Please install one" + $
                       string(10b) + "to go to the workshop page:" + $
                       string(10b) + "https://forest.jrc.ec.europa.eu/activities/lpa/gtb-workshops/"
-                    result = dialog_message(st, / information)
+                    result = dialog_message(msg, / information)
+                    openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
                   ENDIF ELSE BEGIN
                     cmd = 'unset LD_LIBRARY_PATH; ' + info.html_exe + webl
                     spawn, cmd + ' &'
@@ -21485,13 +22240,15 @@ CASE strlowCase(eventValue) OF
                  IF info.my_os eq 'apple' THEN newGTB = newGTB + '_OSX.dmg' ELSE newGTB = newGTB + '_rpm/deb/run'
                ENDELSE
 
-               str = 'New release: GuidosToolbox ' + strtrim(newv_base,2) + ' available.' + string(10b) + $
+               msg = 'New release: GuidosToolbox ' + strtrim(newv_base,2) + ' available.' + string(10b) + $
                  'Do you want to download the new release?' + string(10b) + string(10b) + $
                  'Alternative manual installation: ' + string(10b) + $
                  'Download and run the installer: "' + newGTB +'"' 
-               res = dialog_message(title = 'GTB update information', / question, str)
-               IF res EQ 'No' THEN  GOTO, fin
-               
+               res = dialog_message(title = 'GTB update information', / question, msg)
+               IF res EQ 'No' THEN BEGIN
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', new release download declined ' + info.bline & free_lun, unit
+                GOTO, fin
+               ENDIF
                ;; a) download the file 
                ;;=============================
                IF info.my_os EQ 'windows' THEN downdir = GETENV('userprofile') + '\Downloads\' ELSE downdir = getenv('HOME')+'/Downloads/'
@@ -21545,11 +22302,12 @@ CASE strlowCase(eventValue) OF
 
                if info.my_os ne 'linux' then begin
                  ;; b) inform about the new release
-                 str = 'New release ' + newGTB  + string(10b) + $
+                 msg = 'New release ' + newGTB  + string(10b) + $
                    'has been downloaded into the directory: ' + string(10b) + downdir + string(10b) + string(10b) + $
                    'Please read the installation instructions ' + string(10b) + $
                    'before upgrading to the new version.'
-                 res = dialog_message(title = 'GTB update information', / information, str)
+                 res = dialog_message(title = 'GTB update information', / information, msg)
+                 openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
                endif 
                            
                ;; c) open the downdir
@@ -21579,16 +22337,19 @@ CASE strlowCase(eventValue) OF
              GOTO, fin
                            
             ENDIF ELSE IF delta eq 0 THEN BEGIN ;; inform that Guidos is uptodate
-               str = 'You have the latest program version and revision of GuidosToolbox ' + vbase_curr
-               res = dialog_message(title = 'GTB update information', $
-                             / information, str)
+               msg = 'You have the latest program version and revision of GuidosToolbox ' + vbase_curr
+               res = dialog_message(title = 'GTB update information', / information, msg)
+               openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
                GOTO, fin
             ENDIF ELSE BEGIN   ;; incremental version update available
                str = 'Revision release available for GuidosToolbox ' + vbase_curr + string(10b) + $
                   'Do you want to download and install the revision release?' + string(10b) + $
                   '(GuidosToolbox will have to be restarted)'
                res = dialog_message(title = 'GTB update information', / question, str)
-               IF res EQ 'No' THEN  GOTO, fin
+               IF res EQ 'No' THEN BEGIN
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': Revision release download declined' + info.bline & free_lun, unit
+                GOTO, fin
+               ENDIF
 
                ;; a) download the file                
                pushd, info.dir_tmp              
@@ -21638,10 +22399,11 @@ CASE strlowCase(eventValue) OF
                ENDELSE           
                
                ;; c) inform to restart
-               str = 'Revision release for GuidosToolbox ' + vbase_curr + ' is now installed.' + string(10b) + $
+               msg = 'Revision release for GuidosToolbox ' + vbase_curr + ' is now installed.' + string(10b) + $
                  'We will now exit from GuidosToolbox. Please ' + string(10b) + $
                  'restart GuidosToolbox to use the updated version.'
-                res = dialog_message(title = 'GTB update information', / information, str)
+                res = dialog_message(title = 'GTB update information', / information, msg)
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
                popd
                popd       
                
@@ -21660,16 +22422,18 @@ CASE strlowCase(eventValue) OF
             ENDELSE
 
          ENDIF ELSE BEGIN  ;; inform that file was not found
-            str = 'Version information could not be downloaded.' + string(10b) + $
+            msg = 'Version information could not be downloaded.' + string(10b) + $
                   'Please contact Peter.Vogt@ec.europa.eu'
-            res = dialog_message(title = 'GTB update information', / information, str)
+            res = dialog_message(title = 'GTB update information', / information, msg)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
          ENDELSE
          file_delete, version_file, / quiet  ;; delete the file
 
       ENDIF ELSE BEGIN  ;; inform that there was no internet
-         str = 'An internet connection is required to check' + $
+         msg = 'An internet connection is required to check' + $
                string(10b) + 'for GTB program or GWS updates.'
-         res = dialog_message(title = 'GTB update information', / information, str)
+         res = dialog_message(title = 'GTB update information', / information, msg)
+         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
       ENDELSE
 
       GOTO, fin
@@ -21678,7 +22442,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'about':  BEGIN
+   'about':  BEGIN  ;; xxxx
       v = strtrim(info.gtb_version, 2) & vbase = strmid(v, 0, 3)
       fv = fix(round(float(v)*1000)) & fvb = fix(round(float(vbase)*1000)) & strvrev = strtrim(fv - fvb,2)
       CASE info.my_os OF
@@ -21714,7 +22478,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, December 2023' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, April 2024' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -21756,10 +22520,13 @@ CASE strlowCase(eventValue) OF
         printf, 11, '==============================================================================='
         printf, 11, '                             GTB bug report: '
         printf, 11, '==============================================================================='
-        printf, 11, 'Please complete and send this bug report to: Peter.Vogt@ec.europa.eu' 
+        printf, 11, 'Please add your comments at the end of this file and send this bug report to:  '
+        printf, 11, '                       Peter.Vogt@ec.europa.eu                                 ' 
         printf, 11, '==============================================================================='
         printf, 11, 'Date: ' + systime()
         printf, 11, 'GTB-version: ' + vbase + aa
+        printf, 11, 'GTB directory: ' + info.dir_guidos
+        printf, 11, 'GTB data directory: ' + info.dir_data
         printf, 11, 'Title-bar: ' + info.title + ' ' + info.add_title 
         printf, 11, ''
         printf, 11, '==============================================================================='
@@ -21834,6 +22601,15 @@ CASE strlowCase(eventValue) OF
         printf, 11, 'Proxy test disabled: ' + strtrim(res,2)
         printf, 11, ''
         printf, 11, '==============================================================================='
+        printf, 11, '                             Event-log information: '
+        printf, 11, '==============================================================================='
+        ;; read events from log-file and copy them here
+        res = file_lines(info.log) & events = strarr(res) 
+        openr, unit, info.log, /Get_lun & readf, unit, events & free_lun, unit 
+        for idx = 0, res-1 do printf, 11, events[idx]
+        printf, 11, systime() + ': bug report created'
+        printf, 11, ''
+        printf, 11, '==============================================================================='
         printf, 11, '                             Bug report details:'
         printf, 11, '==============================================================================='
         printf, 11, 'Please provide detailed instructions on all steps needed'
@@ -21854,9 +22630,10 @@ CASE strlowCase(eventValue) OF
 
         buginfo = buginfo + 'A bug report template has been created at:' + string(10b) + $
           GTBreport + string(10b) + string(10b) + $
-          'Please complete and send this bug report to: ' + string(10b)+ $
+          'Please add any additional info at the end' + string(10b)+ 'of this file and send this bug report to: ' + string(10b)+ $
           '              Peter.Vogt@ec.europa.eu'                 
-        result = dialog_message (title = 'Bug report', buginfo)       
+        result = dialog_message (title = 'Bug report', buginfo)  
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': bug report created' + info.bline & free_lun, unit     
         
         ;; show the bug report file
         ;;================================
@@ -21938,7 +22715,7 @@ info.bigim = info.resfac GT 1
 * info.data_max = 2b
 info.datatype = ''
 info.ctbl = - 1
-info.disp_colors_id = 12
+info.disp_colors_id = 18
 info.disp_range_id = 0
 info.selsubregion_id = 0
 info.autostretch_id = 1b 
@@ -22440,23 +23217,31 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
   ENDIF ELSE IF info.is_fragm EQ 3 THEN BEGIN ;; fos or fad
     IF (strpos(info.add_title,'(FOS-FAD_6class: ') GT 0) THEN BEGIN
       is_fos=1 & fostypen = 'fos-fad_6class'
+    ENDIF ELSE IF(strpos(info.add_title,'(FOS-FED_6class: ') GT 0) THEN BEGIN
+      is_fos=1 & fostypen = 'fos-fed_6class'
     ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC_6class: ') GT 0) THEN BEGIN
       is_fos=1 & fostypen = 'fos-fac_6class'
     ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAD_5class: ') GT 0) THEN BEGIN
         is_fos=2 & fostypen = 'fos-fad_5class'      
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FED_5class: ') GT 0) THEN BEGIN
+        is_fos=2 & fostypen = 'fos-fed_5class'
     ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC_5class: ') GT 0) THEN BEGIN
         is_fos=2 & fostypen = 'fos-fac_5class'
     ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAD-APP_2class: ') GT 0) THEN BEGIN
       is_fos=4 & fostypen = 'fos-fad-app_2class'
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FED-APP_2class: ') GT 0) THEN BEGIN
+      is_fos=4 & fostypen = 'fos-fed-app_2class'
     ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC-APP_2class: ') GT 0) THEN BEGIN
       is_fos=4 & fostypen = 'fos-fac-app_2class'
     ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAD-APP_5class: ') GT 0) THEN BEGIN
       is_fos=5 & fostypen = 'fos-fad-app_5class'
+    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FED-APP_5class: ') GT 0) THEN BEGIN
+      is_fos=5 & fostypen = 'fos-fed-app_5class'
     ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC-APP_5class: ') GT 0) THEN BEGIN
       is_fos=5 & fostypen = 'fos-fac-app_5class'
     ENDIF
     IF is_fos GT 0 THEN BEGIN
-      restore,info.dir_tmp + 'fos.sav' ;; watch out there is a fostype variable in there with captal letters
+      restore,info.dir_tmp + 'fos.sav' ;; watch out there is a fostype variable in there with capital letters
       fdir = fname + '_' + fostypen + '_' + kdim_str
       fname = fname + '_' + fostypen + '_' + kdim_str
       desc = 'GTB_FOS, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/ '+ strmid(mspaext, 1)
@@ -22700,7 +23485,7 @@ CASE fileaction OF
             s = size(image0) & dim_pos = where(s EQ 3) & dim_pos = dim_pos(1)
             ;;remap true color images
             image0 = color_quan(image0, dim_pos, r, g, b, / map_all)
-            tvlct, r, g, b & info.disp_colors_id = 12 & info.ctbl = - 1
+            tvlct, r, g, b & info.disp_colors_id = 18 & info.ctbl = - 1
          ENDIF ELSE BEGIN
             msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
@@ -22843,6 +23628,7 @@ CASE fileaction OF
       image_title = strmid(im_file, strlen(path2file))
       image_title = strmid(image_title, 0, strpos(image_title, '.'))
       info.fname_input = im_file
+      info.is_orig = 1
       widget_control, info.w_iminfo, / sensitive
       widget_control, info.w_iminfo2, / sensitive
    END
@@ -22951,6 +23737,7 @@ CASE fileaction OF
      image_title = strmid(image_title, 0, strpos(image_title, '.'))
      info.is_geotiff = 0b & * info.geotiffinfo = 0b
      info.fname_input = im_file
+     info.is_orig = 1
      widget_control, info.w_iminfo, / sensitive
      widget_control, info.w_iminfo2, / sensitive
   END
@@ -23005,6 +23792,7 @@ CASE fileaction OF
                string(10b) + 'Then try again.'
          res = dialog_message(msg, / information) & GOTO, fin
       ENDELSE
+      info.is_orig = 1
       widget_control, info.w_iminfo, / sensitive
       widget_control, info.w_iminfo2, / sensitive
    END
@@ -23056,14 +23844,10 @@ CASE fileaction OF
       image_title = strmid(im_file, strlen(path2file))
       info.fname_input = envi_hdr_fil
       info.is_geotiff = 0b & * info.geotiffinfo = 0b
+      info.is_orig = 1
       widget_control, info.w_iminfo, / sensitive
       widget_control, info.w_iminfo2, / sensitive
    END
-
-
-
-
-
 
    ;;============================================================
    ;;============================================================
@@ -24228,7 +25012,8 @@ widget_control, info.w_recode, sensitive = info.datatype EQ 'byte'
 
 ;; center the tlb
 ;;centertlb, info.tlb
-
+openw, unit, info.log, /get_lun & printf, unit, systime() + ', reading: ' + info.fname_input + info.bline & free_lun, unit
+goto, finall2
 
 fin:
 ;; when saving check if addional output should be written out
@@ -24487,8 +25272,8 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
       IF n_elements(path2file) GT 0 THEN path = path2file
       row_lab = $
         ['CORE(s) [green]', 'CORE(m) [green]', 'CORE(l) [green]', 'ISLET [brown]', 'PERFORATION [blue]', $
-        'EDGE [black]', 'LOOP [yellow]', 'BRIDGE [red]', 'BRANCH [orange]', 'Background [grey]', $
-        'Missing [white]', 'Opening [grey]', 'Core-Opening [darkgrey]', 'Border-Opening [grey]']
+        'EDGE [black]', 'LOOP [yellow]', 'BRIDGE [red]', 'BRANCH [orange]', 'Background [gray]', $
+        'Missing [white]', 'Opening [gray]', 'Core-Opening [darkgray]', 'Border-Opening [gray]']
       openw, 1, fname
       printf, 1, 'MSPA results using: '
       printf, 1, info.title + info.add_title
@@ -24862,7 +25647,9 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
   
 ENDIF
 finall:
+openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', saving: ' + fnsaves + info.bline & free_lun, unit
 
+finall2:
 ;; backup current colors
 tvlct, r, g, b, /get & save, r,g,b, filename = info.dir_tmp2 + 'currcolors.sav'
 
@@ -24960,10 +25747,10 @@ widget_control, event.top, get_uvalue = info, / no_copy
 IF (strpos(info.add_title,'LM, kdim=') GT 0) OR (strpos(info.add_title,'Dominance') GT 0) THEN is_lm=1 else is_lm=0
 
 is_fos = 0
-IF (strpos(info.add_title,'(FOS-FAD_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC_5class: ') GT 0) THEN is_fos=2
-IF (strpos(info.add_title,'(FOS-FAD_6class: ') GT 0) OR  (strpos(info.add_title,'(FOS-FAC_6class: ') GT 0) THEN is_fos=1 
-IF (strpos(info.add_title,'(FOS-FAD-APP_2class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC-APP_2class: ') GT 0) THEN is_fos=4
-IF (strpos(info.add_title,'(FOS-FAD-APP_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC-APP_5class: ') GT 0) THEN is_fos=5 
+IF (strpos(info.add_title,'(FOS-FAD_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC_5class: ') GT 0) THEN is_fos=2
+IF (strpos(info.add_title,'(FOS-FAD_6class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED_6class: ') GT 0) OR  (strpos(info.add_title,'(FOS-FAC_6class: ') GT 0) THEN is_fos=1 
+IF (strpos(info.add_title,'(FOS-FAD-APP_2class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED-APP_2class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC-APP_2class: ') GT 0) THEN is_fos=4
+IF (strpos(info.add_title,'(FOS-FAD-APP_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED-APP_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC-APP_5class: ') GT 0) THEN is_fos=5 
 
 is_fad = 0
 IF strpos(info.add_title,'(FAD_6class: ') GT 0 THEN is_fad=1 
@@ -26956,7 +27743,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.300
+gtb_version = 3.301
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -27007,6 +27794,8 @@ IF keyword_set(maindir) THEN dir_guidos = maindir + OS_sep ELSE dir_guidos = dir
 dir_guidossub = dir_guidos + 'guidos_progs' + os_sep
 dir_tmp = dir_guidossub + 'mspatmp' + os_sep
 dir_tmp2 = dir_guidossub + 'tmp' + os_sep
+log = dir_guidossub + 'events.txt'
+openw, unit, log, /get_lun & printf, unit, systime() + ', GTB started' & free_lun, unit
 
 
 READ_JPEG, dir_guidossub + 'guidos.jpg', welcome
@@ -27449,7 +28238,6 @@ ENDIF
 if qgis_exe ne '' then button = Widget_Button(w_gissw, Value = 'QGIS', uvalue = 'qgis')
 
 ;; original and undo
-;button = Widget_Button(w_tools, Value = 'Original Image', uvalue = 'Original Image', / Separator)
 button = Widget_Button(w_tools, Value = 'Switch Cursor', uvalue = 'switchcursor')
 w_undo = Widget_Button(w_tools, Value = 'Undo', UValue = 'Redo', Event_Pro = 'guidos_Undo', Sensitive = 0)
 
@@ -27603,7 +28391,7 @@ w_lp1112 = widget_base(w_lp111, / column);, / frame)
 w_ctbl = widget_base(w_lp1112, / column, / frame)
 button = $
   widget_label(w_ctbl, value = 'Select Colortable', / align_center)
-tls = ['Greyscale', 'Rainbow', 'Temperature', 'Classification', $
+tls = ['grayscale', 'Rainbow', 'Temperature', 'Classification', $
   'Distance', 'Normalized', 'Contortion', 'LM', 'FOS_6', 'FOS_5', 'FOS-APP_2', 'Resistance', $
   'LM_AGR', 'LM_NAT', 'LM_DEV', 'LM_BGR', 'LM_DIV', 'LM_ANT', 'User-defined', 'Save/Restore']
 w_disp_colors  = Widget_Combobox(w_ctbl, Value = tls, UVALUE = 'disp_colors')
@@ -27985,7 +28773,7 @@ Guidos_Image, process, 1
 ;; default settings in left panel
 ;;=========================================================
 ;; exclusive button list:  set the first option (0)  on
-ctbl = - 1 & disp_colors_id = 5 
+ctbl = - 1 & disp_colors_id = 18
 widget_control, w_disp_colors, set_combobox_select = disp_colors_id
 prev_disp_colors_id = disp_colors_id
 widget_control, zoomfactor, set_combobox_select = 2
@@ -28096,8 +28884,8 @@ IF newGWS EQ 1b THEN BEGIN
 ENDIF
 
 wronginput = $
- 'Invalid input, returning. Please provide a (pseudo-)' + $
- string(10b) + 'BINARY input mask of the following type: ' + $
+ 'Invalid input, returning. Please provide a 8-bit' + $
+ string(10b) + 'BYTE-formatted input mask of the following type: ' + $
  string(10b) + '' + string(10b) + $
  '0b: missing data (optional, e.g., clouds)' + string(10b) + $
  '1b: background (e.g., non-forest' + string(10b) + $
@@ -28210,6 +28998,8 @@ info = { image0:Ptr_New(image0), $    ;; A pointer to the original image.
          datalayers:datalayers, $  ;; number of layers
          undo_datatype:'', $
          fname_input:'', $  ;; initial full path to input file
+         log:log, $   ;; event log-file
+         bline:string(10b) + '----------------------------------------------------------------------------------', $ ;; event log newline
          epsgname:'', $  ;; epsg projection name
          epsg:'', $  ;; epsg code number
          add_title:'', $     ;; add on title in main GUI
@@ -28259,6 +29049,7 @@ info = { image0:Ptr_New(image0), $    ;; A pointer to the original image.
          mspa_stats_show:0, $
          mspa_class_ext:mspa_class_ext, $  ;; class names for MSPA
          mspa_class_int:mspa_class_int, $
+         is_orig:0, $          ;; indicator if current image is the  same as the original
          is_mspa:0, $          ;; indicator if mspa is active or not
          is_fragm:0, $          ;; indicator if fragmentation is active or not
          is_contort:0, $          ;; indicator if contortion is active or not
@@ -28351,6 +29142,7 @@ info = { image0:Ptr_New(image0), $    ;; A pointer to the original image.
          prev_r:prev_r, $
          prev_g:prev_g, $
          prev_b:prev_b, $
+         prev_is_orig:0, $   
          prev_is_mspa:0, $
          prev_is_fragm:0, $
          prev_is_contort:0, $

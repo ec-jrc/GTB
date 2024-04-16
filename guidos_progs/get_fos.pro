@@ -23,11 +23,14 @@ Widget_Control, event.top, Get_UValue = info, / No_Copy
 ;; What kind of processing do you need?
 Widget_Control, event.id, Get_Uvalue = eventValue
 IF strlowCase(eventValue) EQ 'accept' THEN BEGIN
-  * info.ftype = info.ms20
+  * info.graythresh = info.ms19
+  * info.fmethod = info.ms20a
+  * info.frep = info.ms20
   * info.conn = info.ms21
   * info.pres = info.ms1
   * info.wdim = info.ms2
   * info.cancel = 0b   ;;set cancel to accept
+;  ptr_free, info.fos20arr
 ENDIF 
 
 ;; quit the application
@@ -51,7 +54,9 @@ Widget_Control, event.id, Get_Uvalue = eventValue
 CASE strlowCase(eventValue) OF
    'default': BEGIN
       ;; set initial defaults
-      widget_control, info.w_fos20, set_combobox_select = 0 & info.ms20 = info.fos20arr[0]
+      if info.gray eq 1b then widget_control, info.w_fos19, set_combobox_select = 3 & info.ms19 = info.fos19arr[3] ; 30%
+      widget_control, info.w_fos20a, set_combobox_select = 0 & info.ms20a = info.methodarr[0]
+      widget_control, info.w_fos20, set_combobox_select = 0 & info.ms20 = info.reportarr[0]
       widget_control, info.w_fos21, set_combobox_select = 0 & info.ms21 = info.fos21arr[0]
       widget_control, info.w_fos1, set_combobox_select = 4 & info.ms1 = info.fos1arr[4]
       widget_control, info.w_fos2, set_combobox_select = 3 & info.ms2 = info.fos2arr[3]
@@ -62,11 +67,29 @@ CASE strlowCase(eventValue) OF
       widget_control, info.w_fos4, set_value = strtrim(acr,2)
    END 
 
-   'fos20': BEGIN
-      widget_control, event.id, get_value = val
-      ftype = val(event.index)
-      info.ms20 = ftype
+   'fos19': BEGIN
+     if event.index le 0 then begin ;; user-specified value, correct for wrong input
+       x = uint(abs(event.str)) & if x eq 0 then x = 1 & x = x < 100
+       newsize = strtrim(x,2)
+       widget_control, info.w_fos19, set_value = [newsize,'10','20','30','40']
+     endif else begin ; user-selected value
+       widget_control, event.id, get_value = val
+       newsize = val(event.index)
+     endelse
+     info.ms19 = newsize       
    END 
+
+   'method': BEGIN
+     widget_control, event.id, get_value = val
+     ftype = val(event.index)
+     info.ms20a = ftype
+   END
+
+   'reporting': BEGIN
+     widget_control, event.id, get_value = val
+     ftype = val(event.index)
+     info.ms20 = ftype
+   END
 
    'fos21': BEGIN
      widget_control, event.id, get_value = val
@@ -74,13 +97,13 @@ CASE strlowCase(eventValue) OF
      info.ms21 = conn
    END
 
-   'fos1': BEGIN
+   'fos1': BEGIN ;; pixel resolution
      if event.index le 0 then begin ;; user-specified value, correct for wrong input
        x = abs(event.str) & x = 0.1 > x < 1000.0
        ;; round to 2 digits
        x = round(x*100)/100.0 & x = strmid(x, 0, strpos(x,'.')+3)
        pixres = strtrim(x,2)
-       widget_control, info.w_fos1, set_value = [pixres,'1', '5', '10', '25', '30', '100', '500', '1000'] ;; pixel resolution
+       widget_control, info.w_fos1, set_value = [pixres,'1', '5', '10', '25', '30', '100', '500', '1000'] 
      endif else begin ; user-selected value
        widget_control, event.id, get_value = val
        pixres = val(event.index)
@@ -96,7 +119,7 @@ CASE strlowCase(eventValue) OF
      widget_control, info.w_fos4, set_value = strtrim(acr,2)    
    END 
    
-   'fos2': BEGIN
+   'fos2': BEGIN ;; kernel size
      if event.index le 0 then begin ;; user-specified value, correct for wrong input
        x = uint(abs(event.str)) 
        ;; ensure decent range for new value of x
@@ -124,7 +147,8 @@ END
 
 
 ;;**************************************************************************
-PRO Get_fos, ftype = ftype, conn = conn, pres = pres, wdim = wdim, gdal = gdal, title = title, Cancel = cancel, Group_Leader = groupleader
+PRO Get_fos, inpgray = inpgray, graythresh = graythresh, fmethod = fmethod, frep = frep, conn = conn, $
+  pres = pres, wdim = wdim, gdal = gdal, title = title, Cancel = cancel, Group_Leader = groupleader
 
  ;; Return to caller if there is an error. Set the cancel
  ;; flag and destroy the group leader if it was created.
@@ -159,15 +183,33 @@ tlb = Widget_Base(Title = title, Column = 1,  / Base_Align_Center, / Modal, $
 ;; bottom part widgets
 lowerpart = widget_base(tlb, / row)
 llpart = widget_base(lowerpart, / column, / frame)
-dummy = $
- widget_label(llpart, value = 'Settings for Fixed Observation Scale (FOS):')
+gray = *inpgray EQ 1b
+IF gray eq 0b THEN tt = 'Input: BINARY' ELSE tt = 'Input: GRAYSCALE    '
+dummy = widget_label(llpart, value = tt +  '           Settings for Fixed Observation Scale (FOS):',/align_left)
 llparttop = widget_base(llpart, / row)
 ;; FOS params
-;; FOStype
+;; gray threshold
+fos19arr = ['X', '10', '20', '30', '40']
+w_fos19 = 0 & ms19 = 0
+IF gray THEN BEGIN
+  llparttop19 = widget_base(llparttop, / column, / frame)
+  button = widget_label(llparttop19, value = 'Gray Threshold', / sunken_frame, / align_center)
+  w_fos19 = Widget_combobox(llparttop19, Value = fos19arr, / editable, UValue = 'fos19', sensitive = gray)
+ENDIF
+
+;; FOS method
+llparttop20a = widget_base(llparttop, / column, / frame)
+button = widget_label(llparttop20a, value = 'Method', / sunken_frame, / align_center)
+methodarr_binary = ['FAD', 'FED', 'FAC']
+methodarr_gray = ['FAD', 'FED']
+IF gray EQ 0 THEN methodarr = methodarr_binary ELSE methodarr = methodarr_gray
+w_fos20a = Widget_combobox(llparttop20a, Value = methodarr, UValue = 'method')
+
+;; FOS reporting style
 llparttop20 = widget_base(llparttop, / column, / frame)
-button = widget_label(llparttop20, value = 'FOS Type', / sunken_frame, / align_center)
-fos20arr = ['FAD_5class', 'FAD_6class', 'FAD-APP_2class', 'FAD-APP_5class', 'FAC_5class', 'FAC_6class', 'FAC-APP_2class', 'FAC-APP_5class']
-w_fos20 = Widget_combobox(llparttop20, Value = fos20arr, UValue = 'fos20')
+button = widget_label(llparttop20, value = 'Reporting', / sunken_frame, / align_center)
+reportarr = ['5class', '6class', 'APP_2class', 'APP_5class']
+w_fos20 = Widget_combobox(llparttop20, Value = reportarr, UValue = 'reporting')
 
 ;; FG-conn
 llparttop21 = widget_base(llparttop, / column, / frame)
@@ -215,7 +257,11 @@ get_fos_CenterTLB, tlb
 Widget_Control, tlb, /Realize
 
 ;; set initial defaults
-widget_control, w_fos20, set_combobox_select = 0 & ms20 = fos20arr[0]
+IF gray THEN BEGIN
+  widget_control, w_fos19, set_combobox_select = 3 & ms19 = fos19arr[3]
+ENDIF
+widget_control, w_fos20a, set_combobox_select = 0 & ms20a = methodarr[0]
+widget_control, w_fos20, set_combobox_select = 0 & ms20 = reportarr[0]
 widget_control, w_fos21, set_combobox_select = 0 & ms21 = fos21arr[0]
 widget_control, w_fos1, set_combobox_select = 4 & ms1 = fos1arr[4]
 widget_control, w_fos2, set_combobox_select = 3 & ms2 = fos2arr[3]
@@ -230,18 +276,26 @@ get_fos_CenterTLB, tlb
 
 ;; Store the program information:
 info = {destroy_groupleader:destroy_groupleader, $
-        ftype:ftype, $
+        inpgray:inpgray, $
+        graythresh:graythresh, $
+        gray:gray, $
+        fmethod:fmethod, $
+        frep:frep, $
         conn:conn, $
         pres:pres, $
         wdim:wdim, $
         cancel:cancel, $
+        w_fos19:w_fos19, $
+        w_fos20a:w_fos20a, $
         w_fos20:w_fos20, $
         w_fos21:w_fos21, $
         w_fos1:w_fos1, $
         w_fos2:w_fos2, $
         w_fos3:w_fos3, $
         w_fos4:w_fos4, $
-        fos20arr:fos20arr, $
+        fos19arr:fos19arr, $
+        methodarr:methodarr, $
+        reportarr:reportarr, $
         fos21arr:fos21arr, $
         fos1arr:fos1arr, $
         fos2arr:fos2arr, $
@@ -249,6 +303,8 @@ info = {destroy_groupleader:destroy_groupleader, $
         fos4arr:fos4arr, $
         ms1:ms1, $
         ms2:ms2, $
+        ms19:ms19, $
+        ms20a:ms20a, $
         ms20:ms20, $
         ms21:ms21, $
         cancelID:cancelID, $
