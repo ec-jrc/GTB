@@ -1765,7 +1765,22 @@ CASE strlowCase(eventValue) OF
 
    ;; set current data directory
    'set_dd': BEGIN ;; xxxx
+     v = strtrim(info.gtb_version, 2) & vbase = strmid(v, 0, 3)
+     fv = fix(round(float(v)*1000)) & fvb = fix(round(float(vbase)*1000)) & strvrev = strtrim(fv - fvb,2)
+     aa = ', Revision '  + strvrev + ' (' + strtrim(!version.memory_bits,2) + ' bit)'
+     tt = 'GuidosToolbox ' + vbase + aa & ttl = strlen(tt)
+     ttt = strmid(info.title, 0, ttl)
      
+     ;; we are not fresh, already loaded/processed a file and hence should not change the data directory here
+     ;; because some parts readouyt the tile bar information and then would no longer work
+     IF tt NE ttt THEN BEGIN 
+       msg = 'The default GTB data directory can only be changed ' + string(10b) + $
+        'when GTB is launched. Please restart GTB to define ' + string(10b) + $
+        'a new default GTB data directory.'
+       res = dialog_message(msg, title = 'Set default data directory', / information)
+       goto, fin
+     ENDIF
+    
      msg = 'Please select:' + string(10b) + $
        'Yes: to define a new default data directory' + string(10b) + $
        'No: to restore the default GTB data directory' + string(10b) + string(10b)
@@ -1777,7 +1792,7 @@ CASE strlowCase(eventValue) OF
        ;; assign and store the new data dir path
        save, dir_data, filename = info.dir_guidossub + 'gtbdd.sav'
        info.dir_data = dir_data
-       info.add_title = ' - Default data directory: ' + dir_data  
+       ;info.add_title = ' - Default data directory: ' + dir_data  
        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', restore default data directory: ' + dir_data + info.bline & free_lun, unit   
      ENDIF ELSE BEGIN
        ;; define a new default data dir
@@ -1790,9 +1805,12 @@ CASE strlowCase(eventValue) OF
        ;; assign and store the new data dir path
        save, dir_data, filename = info.dir_guidossub + 'gtbdd.sav'
        info.dir_data = dir_data
-       info.add_title = ' - Default data directory: ' + dir_data
+       ;info.add_title = ' - Default data directory: ' + dir_data
        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', set new default data directory: ' + dir_data + info.bline & free_lun, unit      
-     ENDELSE
+     ENDELSE     
+     info.title = tt + ' - Default data directory: ' + info.dir_data
+     widget_control, info.tlb, tlb_set_title = info.title
+     goto, fin
      
    END
    ;;*****************************************************************************************************
@@ -2692,6 +2710,7 @@ CASE strlowCase(eventValue) OF
         if info.is_contort then x = x < 500
         if info.is_fragm or info.is_dist or info.is_influ then x = x < 99
         info.label_t1 = x & newval = strtrim(info.label_t1,2)
+        widget_control, info.w_label_t1, set_value = [newval,'10', '30','50']
         if info.is_mspa then widget_control, info.w_label_t1, set_value = [newval,'1000', '4500','10000']
         if info.is_cost eq 1 then begin
           t1 = info.costrange & t1=strtrim(t1[0:2],2)
@@ -2705,6 +2724,7 @@ CASE strlowCase(eventValue) OF
       endif else begin ; user-selected value
         widget_control, event.id, get_value = val
         info.label_t1 = val(event.index)
+        newval = strtrim(info.label_t1,2)
       endelse    
       if info.is_influ then begin
         ;; unset checkmark after a change and delete any potential marker.sav
@@ -2717,11 +2737,13 @@ CASE strlowCase(eventValue) OF
       ;; cross-check with t2, ensure t1 < t2
       if info.label_t1 gt info.label_t2 then begin
         info.label_t1 = info.label_t2 & newval = strtrim(info.label_t1,2)
+        widget_control, info.w_label_t1, set_value = [newval,'10', '30','50']
         if info.is_mspa then widget_control, info.w_label_t1, set_value = [newval,'1000', '4500','10000']
         if info.is_cost eq 1 then begin
           t1 = info.costrange & t1=strtrim(t1[0:2],2)
           widget_control, info.w_label_t1, set_value = [newval,t1]
         endif
+        widget_control, info.w_label_t1, set_value = [newval,'10', '30','50']
         if info.is_fragm then widget_control, info.w_label_t1, set_value = [newval,'10', '30','50']
         if info.is_contort eq 1 then widget_control, info.w_label_t1, set_value = [newval,'25', '50','100']
         if info.is_dist then widget_control, info.w_label_t1, set_value = [newval,'5', '10','15']
@@ -2754,6 +2776,7 @@ CASE strlowCase(eventValue) OF
      if info.is_influ eq 3 then x = x < 1000
      IF strpos(info.add_title,'(Reconnect: ') GT 0 THEN x = 1 > x < 100
      info.label_t2 = x & newval = strtrim(info.label_t2,2)
+     widget_control, info.w_label_t2, set_value = [newval,'60', '70','80']
      if info.is_mspa then widget_control, info.w_label_t2, set_value = [newval,'4600', '11000','25000']
      if info.is_fragm then widget_control, info.w_label_t2, set_value = [newval,'60', '70', '80']
      if info.is_cost eq 1 then begin
@@ -2769,6 +2792,7 @@ CASE strlowCase(eventValue) OF
    endif else begin
      widget_control, event.id, get_value = val
      info.label_t2 = val(event.index)
+     newval = strtrim(info.label_t2,2)
    endelse
    if info.is_influ then begin
      ;; unset checkmark after a change and delete any potential marker.sav file
@@ -2782,6 +2806,7 @@ CASE strlowCase(eventValue) OF
    ;; cross-check with t1, ensure t1 < t2
    if info.label_t2 lt info.label_t1 then begin
      info.label_t2 = info.label_t1 & newval = strtrim(info.label_t2,2)
+     widget_control, info.w_label_t2, set_value = [newval,'60', '70', '80']
      if info.is_mspa then widget_control, info.w_label_t2, set_value = [newval,'4600', '11000','25000']
      if info.is_fragm then widget_control, info.w_label_t2, set_value = [newval,'60', '70', '80']
      if info.is_cost eq 1 then begin
@@ -19566,8 +19591,8 @@ CASE strlowCase(eventValue) OF
       ENDIF     
       
       ;; skip the FOS/FAD sav-file test when doing simple or MCD change
-      if eventValue2 eq 'change_simple' or eventValue2 eq 'change_morph' then GOTO, bothfosapp
-      
+      if (eventValue2 eq 'change_simple') or (eventValue2 eq 'change_morph') OR (eventValue2 eq 'change_rss') then GOTO, bothfosapp
+       
       ;; check sav-file when doing FOS/FAD analysis
       tt = strmid(im2_file,0, strlen(im2_file)-4)+'.sav'
       res = file_info(tt)
@@ -22478,7 +22503,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, April 2024' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, June 2024' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -24627,7 +24652,7 @@ CASE fileaction OF
 
       newkmlname:
       dir_kml = $
-        dialog_pickfile(file = fname, get_path = path2file, / write, / directory, path = info.dir_data, $
+        dialog_pickfile(get_path = path2file, / write, / directory, path = info.dir_data, $
         title = 'Select kml output directory')
       IF (strlen(dir_kml) - strlen(path2file) EQ 4) OR $
         (dir_kml EQ '') THEN GOTO, finall  ;; no name or 'cancel' selected
@@ -27192,10 +27217,10 @@ IF NOT condi THEN BEGIN
     if info.is_cost ne 2 then begin
       fn_out = info.dir_data + info.title + '_marker.tif'
       IF info.is_geotiff EQ 1b THEN $
-        write_tiff, fn_out, rotate(marker,7), geotiff = * info.geotiffinfo , description = desc, compression = 1 ELSE $
-        write_tiff, fn_out, rotate(marker,7), description = desc, compression = 1
+        write_tiff, fn_out, rotate(marker,7), geotiff = * info.geotiffinfo , compression = 1 ELSE $
+        write_tiff, fn_out, rotate(marker,7), compression = 1
       marker = 0
-      gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
+      gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="marker image'
       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
       msg = 'The marker image was saved as: ' + string(10b) + fn_out + string(10b) + 'Returning...'
       res = dialog_message(msg, title='Setup Marker Image',/ information)
@@ -27743,7 +27768,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.301
+gtb_version = 3.302
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
