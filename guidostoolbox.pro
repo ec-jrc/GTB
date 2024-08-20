@@ -1590,7 +1590,7 @@ ENDELSE
 ;; What kind of processing do you need?
 Widget_Control, event.id, Get_UValue = eventValue
 mev = 1  ;; motion events active; will be set to passive when tiling
-eventValue2 = '' & ev = strlowCase(eventValue)
+eventValue2 = '' & ev = strlowCase(eventValue) & evNLCD = eventValue
 
 IF (ev eq 'batch_mspaci') OR (ev eq 'batch_nwcomp') OR (ev eq 'batch_nlimp') THEN BEGIN
   eventValue2 = ev & eventValue = 'batch_mspanw'
@@ -1655,7 +1655,7 @@ if strmid(ev,0,9) eq 'overview_' then begin
   eventValue2 = ev & eventValue = 'overview'
 endif
 
-if ev eq 'installgws' then begin
+if ev eq 'installgws' or strmid(ev,0,5) eq 'nlcd_' then begin
   eventValue2 = ev & eventValue = 'check4updates'
 endif
 
@@ -22252,6 +22252,138 @@ CASE strlowCase(eventValue) OF
                 GOTO, fin
               endelse  
             endif
+            
+            ;; NLCD training material
+            ;; ==============================================================================================
+            if strmid(ev,0,5) eq 'nlcd_' then begin
+              atype = strmid(evNLCD,5)
+              str = 'This option provides NLCD data training material' + string(10b) + $
+                'to illustarte the analysis type: ' + atype + string(10b) + $
+                'Do you want to download and install it?'
+              res = dialog_message(title = 'NLCD Training', / question, str)
+              IF res EQ 'No' THEN BEGIN
+                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', NLCD training material declined ' + info.bline & free_lun, unit
+                GOTO, fin
+              ENDIF
+              
+              nlcd_data = info.dir_data + 'NLCD.zip'
+              nlcd_pdf = info.dir_data + evnlcd + '.pdf'
+              nlcd_pdf_bn = evnlcd+'.pdf'
+              nlcd_md5 = info.dir_tmp + 'nlcd_md5.txt'
+              
+              ;; on server: md5ok
+              CATCH, errorStatus
+              IF (errorStatus NE 0) THEN BEGIN
+                CATCH, / CANCEL
+                goto, url_cont50
+              ENDIF
+              oUrl = OBJ_NEW('IDLnetUrl')
+              oUrl -> SetProperty, URL_SCHEME = 'https'
+              oUrl -> SetProperty, PROXY_HOSTNAME = info.proxhost
+              oUrl -> SetProperty, PROXY_PORT = info.proxport
+              oUrl -> SetProperty, URL_HOST = 'ies-ows.jrc.ec.europa.eu'
+              oUrl -> SetProperty, URL_PATH = 'gtb/NLCD/md5sums.txt'
+              fn = oUrl -> Get(FILENAME = nlcd_md5)
+              url_cont50:
+              OBJ_DESTROY, oUrl
+
+              ;; check what it contains
+              fl = file_lines(nlcd_md5) & newv = strarr(fl)
+              close, 1 & openr, 1, nlcd_md5 & readf, 1, newv & close, 1
+
+              ;; extract md5sum
+              q = STREGEX(newv, nlcd_pdf_bn, /FOLD_CASE) & q2 = where(q gt 0, ct)
+              if ct ne 1 then begin
+                ;; file could not be downloaded or other problem
+                msg = 'NLCD training material could not be accessed.' + string(10b) + $
+                  'Check your internet connection or try again later.'
+                res = dialog_message(title = 'NLCD Training', / information, msg)
+                goto, fin
+              endif
+              res = newv[q2[0]]
+              md5ok = (strsplit(res,' ',/extract))[0]
+
+              ;; update test: check if pdf is already there             
+              res = file_info(nlcd_pdf)
+              if res.exists eq 1 then begin
+                ;; caculate md5sum and compare to the one on the server  
+                ;; local: md5
+                IF info.my_os EQ 'apple' THEN BEGIN
+                  spawn, 'md5 ' + nlcd_pdf, res
+                  res = res[0] & md5 = (strsplit(res,'=',/extract))[1] & md5 = strtrim(md5,2)
+                ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
+                  pushd, info.dir_guidossub & spawn, 'md5.exe ' + nlcd_pdf, res, /hide & popd
+                  res = res[0] & md5 = (strsplit(res,' ',/extract))[0] & md5 = strlowcase(md5)
+                ENDIF ELSE BEGIN ;; Linux
+                  spawn,'md5sum ' + nlcd_pdf, res
+                  res = res[0] & md5 = (strsplit(res,' ',/extract))[0]
+                ENDELSE
+           
+                IF md5 eq md5ok then begin
+                   msg = 'NLCD training material for analysis type: ' + string(10b) + $
+                     atype + ' is uptodate.'
+                     res = dialog_message(title = 'NLCD Training', / information, msg)
+                     goto, fin
+                endif
+                 ;; if not the same then update/install 
+               endif          
+                        
+              ;; download NLCD pdf and data
+              ;;===========================================================
+              CATCH, errorStatus
+              IF (errorStatus NE 0) THEN BEGIN
+                CATCH, / CANCEL
+                goto, url_cont41
+              ENDIF       
+              oUrl = OBJ_NEW('IDLnetUrl')
+              oUrl -> SetProperty, URL_SCHEME = 'https'
+              oUrl -> SetProperty, PROXY_HOSTNAME = info.proxhost
+              oUrl -> SetProperty, PROXY_PORT = info.proxport
+              oUrl -> SetProperty, URL_HOST = 'ies-ows.jrc.ec.europa.eu'
+              oUrl -> SetProperty, URL_PATH = 'gtb/NLCD/'+nlcd_pdf_bn
+              fn = oUrl -> Get(FILENAME = nlcd_pdf)
+              url_cont41:
+              OBJ_DESTROY, oUrl         
+                     
+              CATCH, errorStatus
+              IF (errorStatus NE 0) THEN BEGIN
+                CATCH, / CANCEL
+                goto, url_cont42
+              ENDIF
+              oUrl = OBJ_NEW('IDLnetUrl')
+              oUrl -> SetProperty, URL_SCHEME = 'https'
+              oUrl -> SetProperty, PROXY_HOSTNAME = info.proxhost
+              oUrl -> SetProperty, PROXY_PORT = info.proxport
+              oUrl -> SetProperty, URL_HOST = 'ies-ows.jrc.ec.europa.eu'
+              oUrl -> SetProperty, URL_PATH = 'gtb/NLCD/NLCD.zip'
+              fn = oUrl -> Get(FILENAME = nlcd_data)
+              url_cont42:
+              OBJ_DESTROY, oUrl
+
+              ;; put training material into place
+              pushd, info.dir_data
+              file_unzip, 'NLCD.zip'
+              file_delete, 'NLCD.zip',/quiet
+              
+              ;; inform and show pdf
+              msg = evnlcd + ' training material is now available' + string(10b) + $
+                'in the GuidosToolbox/data folder.'
+              res = dialog_message(title = 'NLCD Training', / information, msg)
+              openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
+              
+              IF info.my_os EQ 'apple' THEN BEGIN
+                spawn, 'open ' + nlcd_pdf
+              ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
+                spawn, 'start '+ nlcd_pdf, / nowait, /hide
+              ENDIF ELSE BEGIN ;; Linux
+                cmd = info.pdf_exe + ' "' + nlcd_pdf + '"'
+                spawn, cmd + ' &'
+              ENDELSE
+              popd
+              GOTO, fin
+    
+            endif  ;; NLCD training material
+            
 
             ;; program version test
             ;;===========================
@@ -22503,7 +22635,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, June 2024' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, August 2024' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -27768,7 +27900,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.302
+gtb_version = 3.303
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -28366,8 +28498,14 @@ button = widget_button(w_help_online, value = 'GTB News', uvalue = 'news')
 button = widget_button(w_help_online, value = 'GTB Homepage', uvalue = 'homepage_gtb')
 button = widget_button(w_help_online, value = 'Check for Updates', uvalue = 'check4updates')
 button = widget_button(w_help_online, value = 'GTB Product Sheets', uvalue = 'productsheets')
-button = widget_button(w_help_online, value = 'GWS (GTB Workshop)', uvalue = 'installgws')
 button = widget_button(w_help_online, value = 'GWB (GTB Workbench)', uvalue = 'homepage_gwb')
+w_training = widget_button(w_help_online, value = 'GTB Training',/ menu)
+button = widget_button(w_training, value = 'NLCD_Accounting', uvalue = 'NLCD_Accounting')
+button = widget_button(w_training, value = 'NLCD_Pattern', uvalue = 'NLCD_Pattern')
+button = widget_button(w_training, value = 'NLCD_Fragmentation', uvalue = 'NLCD_Fragmentation')
+button = widget_button(w_training, value = 'NLCD_LandscapeMosaic', uvalue = 'NLCD_LandscapeMosaic')
+button = widget_button(w_training, value = 'GWS (GTB Workshop)', uvalue = 'installgws')
+
 
 w_help_online2 = widget_button(w_help, value = 'Related Resources', /menu)
 button = widget_button(w_help_online2, value = 'GIS Introduction', uvalue = 'homepage_gis')
