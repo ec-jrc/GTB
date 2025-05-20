@@ -36,7 +36,6 @@ compile_opt idl2
 @guidos_progs/find_boundary
 @guidos_progs/fmdistg
 @guidos_progs/get_CIparams
-@guidos_progs/get_fad
 @guidos_progs/get_fgobj
 @guidos_progs/get_fos
 @guidos_progs/get_gsc
@@ -863,7 +862,7 @@ endelse
 ;; the recode table
 file_copy, dir_guidossub + 'recodelm103.sav', 'recode.txt', /overwrite
 
-;; setup recode
+;; setup recode; we are in dir_tmp
 IF my_os EQ 'windows' THEN BEGIN
   recode='..\spatcon\recode64.exe' & file_copy, recode, 'recode.exe', /overwrite
 ENDIF ELSE IF my_os EQ 'apple' THEN BEGIN
@@ -1347,7 +1346,7 @@ close,1
 
 openw, 1, 'scinput' & writeu,1, scinput & close,1
 
-;; setup spatcon
+;; setup spatcon; note: we are in dir_tmp right now
 ;; if LMMS, we need to use the old spatcon (placed in the subdirectory 'orig'),
 ;; which outputs the three PF_x.bsq files that are needed by combinelpt
 if metric eq 'lmms' then extra = 'orig' + path_sep() else extra = ''
@@ -1962,8 +1961,13 @@ CASE strlowCase(eventValue) OF
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
+         18:BEGIN ;; FOSchange
+           restore, info.dir_guidossub + 'foschangecolors.sav'
+           tvlct, r, g, b
+           info.ctbl = - 1 & info.autostretch_id = 0
+         END
 
-         18:BEGIN ;; user-defined
+         19:BEGIN ;; user-defined
             ;; minimize Tlb and switch off interfering motion events
             widget_control, info.w_draw, Draw_Motion_Events = 0
             Widget_Control, Info.tlb, Iconify = 1
@@ -1988,7 +1992,7 @@ CASE strlowCase(eventValue) OF
             Widget_Control, Info.tlb, Iconify = 0
             widget_control, info.w_draw, Draw_Motion_Events = 1
          END
-         19:BEGIN ;; Save/Restore option
+         20:BEGIN ;; Save/Restore option
            msg = ['Please select:', '', 'Yes: save the current colortable (Note: the prefix ', $
             "       'GTBcolors_' will be added automatically)", '',$
             'No: load a GTB-generated colortable (GTBcolors_*.sav)','',$
@@ -2055,7 +2059,7 @@ CASE strlowCase(eventValue) OF
             ;; all ok, now load the custom colors
             tvlct, r_gtb, g_gtb, b_gtb           
             ;; set to be in custom colortable
-            info.disp_colors_id = 18
+            info.disp_colors_id = 19
             info.ctbl = - 1 & info.autostretch_id = 0
             widget_control, info.w_disp_colors, set_combobox_select = info.disp_colors_id
             ;; set notification switch
@@ -2286,7 +2290,7 @@ CASE strlowCase(eventValue) OF
               ;; overplot intermediate components, beige
               IF ct_qintcomp GT 0 THEN BEGIN
                 FOR i = 0, ct_qintcomp - 1 DO BEGIN
-                  q = where(lbl_comp EQ qintcomp(i), ct)
+                  q = where(lbl_comp EQ qintcomp(i), ct,/l64)
                   if ct gt 0 then image0[q] = 58b
                 ENDFOR
               ENDIF             
@@ -2617,7 +2621,7 @@ CASE strlowCase(eventValue) OF
               ;; maximum proximity range to show is either xmax or the selected max range (yellow) 
               if proxmax eq 0 then dmax = xmax*1.1 else dmax = proxmax+2 
               
-              a = barplot(duniq,yarr1,bottom_values=yarr0, fill_color='green', ytitle='CAG (min/max)', $
+              a = barplot(duniq,yarr1,bottom_values=yarr0, fill_color='green', ytitle='CAG (min/max)', /buffer, $
                 xtitle='connector length [pixels]',window_title='Proximity: CAG range/distance',$
                 yrange=[ymin,ymax*1.1], xrange=[0, dmax], title=tit,histogram=0,width=0.5)
                 
@@ -2631,12 +2635,39 @@ CASE strlowCase(eventValue) OF
 ;              a = text(xmax*0.7,ymax*0.9,'*: Median',/data,/current,color='gold')
               a = text(1,ymax*0.85,'*: Median',/data,/current,color='gold')
               a = text(1,ymax*0.95,maxstr,/data,/current,color='red')
-              
+              fx11 = info.dir_tmp2 + 'prox11h.png' & file_delete,fx11,/allow_nonexistent,/quiet
+              a.save, fx11, resolution=300
+              a.close
+                      
               ;; make a new plot showing how often each distance value exists
-              b = plot(duniq[1:*],yarr3[1:*],xrange=[0, dmax],ytitle='Frequency',$
+              b = plot(duniq[1:*],yarr3[1:*],xrange=[0, dmax],ytitle='Frequency', /buffer,$
                 xtitle='connector length [pixels]',window_title='Proximity: Frequency/distance',$
                 symbol='*',color='Blue',linestyle='none', $
-                title='Number of times a given connector length exists on the watershed')                                          
+                title='Number of times a given connector length exists on the watershed')     
+              fx12 = info.dir_tmp2 + 'prox12h.png' & file_delete,fx12,/allow_nonexistent,/quiet
+              b.save, fx12, resolution=300
+              b.close
+              
+              ;; show them
+              IF info.my_os EQ 'apple' THEN BEGIN
+                spawn, 'open ' + fx11
+                spawn, 'open ' + fx12
+              ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
+                pushd, info.dir_tmp2
+                spawn, 'start prox11h.png', / nowait
+                spawn, 'start prox12h.png', / nowait
+                popd
+              ENDIF ELSE BEGIN ;; Linux
+                IF strlen(info.xdgop) EQ 0 THEN BEGIN
+                  st = "Please install xdg-open to automatically" + $
+                    "display barplots within GuidosToolbox."
+                  result = dialog_message(st, / information)
+                ENDIF ELSE BEGIN
+                  spawn, info.xdgop + ' "' + info.dir_tmp2 + 'prox11h.png' + '"'
+                  spawn, info.xdgop + ' "' + info.dir_tmp2 + 'prox12h.png' + '"'
+                ENDELSE
+              ENDELSE         
+                                     
               ;; provide info on how to view the proximity table
               fx2 = info.dir_tmp2 + file_basename(fx)             
               IF (file_info(fx2)).exists EQ 1b THEN BEGIN
@@ -3567,7 +3598,7 @@ CASE strlowCase(eventValue) OF
       IF eventValue EQ 'cost_recode' THEN tit = 'Recode: Class -> resistance' else tit = "Recode class values"
       ;; get the selected mapping
       pushd,info.dir_data
-      get_xrecode, upv = upv, batch = 0, tit = tit, cancel = cancel, seltab=seltab, Group_Leader = event.top
+      get_xrecode, upv = upv, batch = 0, setxrec = 0, tit = tit, cancel = cancel, seltab=seltab, Group_Leader = event.top
       popd
       ;; check if cancel was selected then do nothing else apply the recoding table
       IF * cancel NE 0b THEN BEGIN
@@ -3618,7 +3649,7 @@ CASE strlowCase(eventValue) OF
       openw,1, 'recode.txt' & printf,1,psel & close,1
       openw, 1, 'recinput' & writeu,1, tmp & close,1
 
-      ;; setup recode
+      ;; setup recode; we are in dir_tmp
       IF info.my_os EQ 'windows' THEN BEGIN
         recode='..\spatcon\recode64.exe' & file_copy, recode, 'recode.exe', /overwrite
       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
@@ -3662,7 +3693,7 @@ CASE strlowCase(eventValue) OF
 
      ;; get the selected mapping
      pushd,info.dir_data
-     get_xrecode, upv = upv, batch = 1, tit = tit, cancel = cancel, seltab=seltab, Group_Leader = event.top
+     get_xrecode, upv = upv, batch = 1, setxrec = 1, tit = tit, cancel = cancel, seltab=seltab, Group_Leader = event.top
      popd
      ptr_free, cancel & cancel = 0b
      ptr_free, seltab & seltab = 0b
@@ -4525,6 +4556,11 @@ CASE strlowCase(eventValue) OF
    ;; original image
    'original image':  BEGIN  ;; xxxx
       set2original:
+      ;; when FOSchange reset to original startup
+      condition = (info.title EQ 'FOSchange') OR (info.title EQ 'Simple change (A->B)') OR $
+        (strmid(info.title,0,13) eq 'MCD (A->B) FG') OR (strmid(info.title,0,38) EQ info.start_title)
+      IF condition THEN goto, resetfront
+        
       ;; reset the image and the title
       * info.fr_image = * info.orig_image
       info.is_orig = 1
@@ -4737,7 +4773,7 @@ CASE strlowCase(eventValue) OF
 ;;-----------------------------------------------------------------------
 ;;-----------------------  Image Analysis -----------------------------
 ;;-----------------------------------------------------------------------
-   'frag_fad':  BEGIN  ;; xxxx
+   'frag_fad':  BEGIN  ;; xxxx :: FAD Multiscale
       ;; check for input compliance:
       ;; 1) if already a mspa image then quit
       IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
@@ -4775,52 +4811,28 @@ CASE strlowCase(eventValue) OF
           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR:  x/y not 250 pixels' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
-      
-      ;; define required pointers for FAD
-      cancel = ptr_new(1b)
-      IF info.mspa_param1_id EQ 1b THEN conn = ptr_new('8') ELSE conn = ptr_new('4')  ;; fg-conn      
-      ftype = ptr_new('')
-      ;; get the fad settings
-      get_fad, ftype = ftype, conn = conn, cancel = cancel, Group_Leader = event.top, $
-        title = 'Select: FAD or FAD-APP'
 
-      ;; check if cancel was selected then do nothing else apply the
-      ;; default or new kernel
-      IF * cancel NE 0b THEN BEGIN
-        ptr_free, cancel & cancel = 0b
-        ptr_free, conn & conn = 0b
-        ptr_free, ftype & ftype = 0b
-        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
-        GOTO, fin
-      ENDIF
-      fadclass = * ftype
-      fgconn_str = * conn
+      fgconn_str = '8' ;; enforce default 8-connectivity
       ;; show selected FG-conn in GUI
       info.mspa_param1_id = fgconn_str eq '8'
       widget_control, info.w_mspa_param1, set_value = info.mspa_param1_id
-     
-      if fadclass eq 'FAD_6class' then fadtype = 'FAD'
-      if fadclass eq 'FAD-APP_2class' then fadtype = 'FAD-APP2'
-      if fadclass eq 'FAD-APP_5class' then fadtype = 'FAD-APP5'
-      if fadtype eq 'FAD' then fadg = 'FAD' else fadg = 'FAD-APP'
-
-      ;; free and delete the temporary pointers
-      ptr_free, cancel & cancel = 0b
-      ptr_free, conn & conn = 0b
-      ptr_free, ftype & ftype = 0b
+      fadclass = 'FAD_6class'
+      fadtype = 'FAD' & fadg = 'FAD'
+      
       
       widget_control, / hourglass
       ;; image properties
-      qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64) 
+      qmiss = where(image0 eq 0b, ctmiss, /l64, complement=ruarea) & n_ruarea = n_elements(ruarea)
+      q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64) 
       BGmask = where(image0 EQ 1b, /l64) & FGmask = where(image0 eq 2b, /l64, fgarea)
       
       ;; get average patch size and # of patches
       ext1 = lonarr(sz[0] + 2, sz[1] + 2)
       ext1[1:sz[0], 1:sz[1]] = long(image0 eq 2b)
-      IF fgconn_str eq '8' THEN conn8 = 1 ELSE conn8 = 0
+      conn8 = 1
       ;; label FG only
       ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
-      if fadg eq 'FAD-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
+      obj_area = histogram(ext1, / l64)
       obj_last=max(ext1) & ext1=0
       aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
       z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81 
@@ -4830,7 +4842,7 @@ CASE strlowCase(eventValue) OF
       kdim_str = ['7', '13', '27', '81', '243']
       ;; define arrays for cummulative values in summary barplot in popup window
       intact = fltarr(6) & interior = intact & dominant = intact & transitional = intact
-      patchy = intact & rare = intact & separated = intact & continuous = intact & fad_av = intact
+      patchy = intact & rare = intact & fad_av = intact & fadru_av = intact 
       
       ;; calculate FAD for each of the 5 observation scales
       imdisp = image0 * 0 ;;; the sum of classes over observation scales image to be shown in the viewport     
@@ -4851,42 +4863,21 @@ CASE strlowCase(eventValue) OF
         endif else begin
           im = byte(round(im*100.0))
         endelse
-        fad_av(isc) = mean(im(FGmask))
-        
-        ;; do we want APP?
-        if fadg eq 'FAD-APP' then begin
-          extim = bytarr(sz[0] + 2, sz[1] + 2)
-          extim[1:sz[0], 1:sz[1]] = im
-          FOR i = 1l, obj_last DO BEGIN
-            av = byte(round(mean(extim[rev[rev[i]:rev[i + 1] - 1]])))
-            extim[rev[rev[i]:rev[i + 1] - 1]] = av
-          ENDFOR
-          im = extim[1:sz[0], 1:sz[1]] & extim=0
-        endif
+        fad_av[isc] = mean(im[FGmask])
+        fadru_av[isc] = fad_av[isc]*fgarea/n_ruarea       
       
         ;; add specialBG (105b), specialBG-Nf (106b), Missing (102b), background (101b)
         if ct3b gt 0 then im[q3b] = 105b
         if ct4b gt 0 then im[q4b] = 106b
         if ctmiss gt 0 then im[qmiss] = 102b 
-        im[BGmask] = 101b
-        
-        if fadg eq 'FAD' then begin
-          ;; get the 5 fragmentation proportions (the 6th, rare, is always 100.0%)
-          zz = (im EQ 100b) & intact(isc) = total(zz)/fgarea*100.0
-          zz = (im GE 90b) AND (im LT 100b) & interior(isc) = total(zz)/fgarea*100.0
-          zz = (im GE 60b) AND (im LT 90b) & dominant(isc) = total(zz)/fgarea*100.0
-          zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
-          zz = (im GE 10b) AND (im LT 40b) & patchy(isc) = total(zz)/fgarea*100.0
-          zz = (im LT 10b) & rare(isc) = total(zz)/fgarea*100.0 & zz = 0
-        endif else begin ;; output 5class as well as 2class
-          zz = (im GE 90b) AND (im LE 100b) & interior(isc) = total(zz)/fgarea*100.0
-          zz = (im GE 60b) AND (im LT 90b) & dominant(isc) = total(zz)/fgarea*100.0
-          zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
-          zz = (im GE 10b) AND (im LT 40b) & patchy(isc) = total(zz)/fgarea*100.0
-          zz = (im LT 10b) & rare(isc) = total(zz)/fgarea*100.0
-          zz = (im GE 40b) AND (im LE 100b) & continuous(isc) = total(zz)/fgarea*100.0
-          zz = (im LT 40b) & separated(isc) = total(zz)/fgarea*100.0 & zz = 0
-        endelse
+        im[BGmask] = 101b     
+        ;; get the 5 fragmentation proportions (the 6th, rare, is always 100.0%)
+        zz = (im EQ 100b) & intact(isc) = total(zz)/fgarea*100.0
+        zz = (im GE 90b) AND (im LT 100b) & interior(isc) = total(zz)/fgarea*100.0
+        zz = (im GE 60b) AND (im LT 90b) & dominant(isc) = total(zz)/fgarea*100.0
+        zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
+        zz = (im GE 10b) AND (im LT 40b) & patchy(isc) = total(zz)/fgarea*100.0
+        zz = (im LT 10b) & rare(isc) = total(zz)/fgarea*100.0 & zz = 0
 
         ;; add to data cube
         imdisp = imdisp + im
@@ -4900,24 +4891,14 @@ CASE strlowCase(eventValue) OF
       if ct4b gt 0 then im[q4b] = 106b
       if ctmiss gt 0 then im[qmiss] = 102b
       im[BGmask] = 101b & BGmask = 0 & qmiss = 0 & q3b = 0 & q4b = 0
-      fad_av(5) = mean(im(FGmask)) & FGmask = 0
-      
-      if fadg eq 'FAD' then begin
-        zz = (im EQ 100b) & intact(5) = total(zz)/fgarea*100.0
-        zz = (im GE 90b) AND (im LT 100b) & interior(5) = total(zz)/fgarea*100.0
-        zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
-        zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
-        zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
-        zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0 & zz = 0        
-      endif else begin ;; output 5class as well as 2class
-        zz = (im GE 90b) AND (im LE 100b) & interior(5) = total(zz)/fgarea*100.0
-        zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
-        zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
-        zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
-        zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0
-        zz = (im GE 40b) AND (im LE 100b) & continuous(5) = total(zz)/fgarea*100.0
-        zz = (im LT 40b) & separated(5) = total(zz)/fgarea*100.0 & zz = 0
-      endelse
+      fad_av[5] = mean(im[FGmask]) & FGmask = 0
+      fadru_av[5] = fad_av[5]*fgarea/n_ruarea      
+      zz = (im EQ 100b) & intact(5) = total(zz)/fgarea*100.0
+      zz = (im GE 90b) AND (im LT 100b) & interior(5) = total(zz)/fgarea*100.0
+      zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
+      zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
+      zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
+      zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0 & zz = 0        
       
       ;; the barplot popup window    
       scales = indgen(6)+1  
@@ -4926,19 +4907,12 @@ CASE strlowCase(eventValue) OF
       b1 = BARPLOT(scales, intact, Fill_Color=[0,120,0], yrange=[-4,104], xrange=[0.2, 9.5], /buffer, $
         ytitle='Foreground proportion [%]', xtitle='         Observation scale | MultiScale | Legend', $
         xticklen=0.02,yticklen=0.02,xminor=1, xtickv=[1,2,3,4,5]) 
-      if fadtype eq 'FAD-APP2' then begin
-        y2 = continuous & y1 = intact
-        b2 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[140,200,101],/overplot)
-        y1=y2 & y2 = separated+y2
-        b3 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[0,120,0],/overplot)
-      endif else begin
-        y2 = interior+intact & y1 = intact
-        b2 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[0,175,0],/overplot) & y1=y2 & y2 = dominant+y2
-        b3 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[140,200,100],/overplot) & y1=y2 & y2 = transitional+y2
-        b4 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[255,200,0],/overplot) & y1=y2 & y2 = patchy+y2
-        b5 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[250,140,90],/overplot) & y1=y2 & y2 = rare+y2
-        b6 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[215,50,40],/overplot)
-      endelse
+      y2 = interior+intact & y1 = intact
+      b2 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[0,175,0],/overplot) & y1=y2 & y2 = dominant+y2
+      b3 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[140,200,100],/overplot) & y1=y2 & y2 = transitional+y2
+      b4 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[255,200,0],/overplot) & y1=y2 & y2 = patchy+y2
+      b5 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[250,140,90],/overplot) & y1=y2 & y2 = rare+y2
+      b6 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[215,50,40],/overplot)
       
       ;; separator lines
       a = plot([5.5, 5.5],[-4, 104], /data, color='Black',/overplot, thick=3)
@@ -4947,24 +4921,19 @@ CASE strlowCase(eventValue) OF
       a = text(6.7,90,'Fragmentation class: ',/data,/current)
       
       ;; legend
-      if fadtype eq 'FAD-APP2' then begin
-        c = symbol(6.9,85,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Separated')
-        c = symbol(6.9,78,'square',/data, /sym_filled, sym_color=[140,200,101],sym_size=2,LABEL_STRING='Continuous')
-      endif else begin
-        c = symbol(6.9,85,'square',/data, /sym_filled, sym_color=[215,50,40],sym_size=2,LABEL_STRING='Rare')
-        c = symbol(6.9,78,'square',/data, /sym_filled, sym_color=[250,140,90],sym_size=2,LABEL_STRING='Patchy')
-        c = symbol(6.9,71,'square',/data, /sym_filled, sym_color=[255,200,0],sym_size=2,LABEL_STRING='Transitional')
-        c = symbol(6.9,64,'square',/data, /sym_filled, sym_color=[140,200,100],sym_size=2,LABEL_STRING='Dominant')
-        c = symbol(6.9,57,'square',/data, /sym_filled, sym_color=[0,175,0],sym_size=2,LABEL_STRING='Interior')
-        if fadg eq 'FAD' then c = symbol(6.9,50,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Intact')
-      endelse
+      c = symbol(6.9,85,'square',/data, /sym_filled, sym_color=[215,50,40],sym_size=2,LABEL_STRING='Rare')
+      c = symbol(6.9,78,'square',/data, /sym_filled, sym_color=[250,140,90],sym_size=2,LABEL_STRING='Patchy')
+      c = symbol(6.9,71,'square',/data, /sym_filled, sym_color=[255,200,0],sym_size=2,LABEL_STRING='Transitional')
+      c = symbol(6.9,64,'square',/data, /sym_filled, sym_color=[140,200,100],sym_size=2,LABEL_STRING='Dominant')
+      c = symbol(6.9,57,'square',/data, /sym_filled, sym_color=[0,175,0],sym_size=2,LABEL_STRING='Interior')
+      c = symbol(6.9,50,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Intact')
 
       ;; info on special pixels
       IF (ct4b GT 0) THEN BEGIN
         a = text(6.7,40, 'Non-fragmenting',/data,/current)
         a = text(6.7,35, 'BG pixels present',/data,/current)
       ENDIF     
-      IF fgconn_str eq '8' THEN str = '8-conn FG [pixels]:' ELSE str = '4-conn FG [pixels]:'     
+      str = '8-conn FG [pixels]:'
       a = text(6.7,20,str,/data,/current)
       z = strtrim(fgarea,2) & q = strmid(z,0,1,/reverse)
       ;; remove the dot at the end if it exists
@@ -4996,58 +4965,36 @@ CASE strlowCase(eventValue) OF
       printf, 12, fadg + ': Foreground Area Density summary analysis for image: '
       printf, 12, fname
       printf, 12, '================================================================================'
-      IF fgconn_str eq '8' THEN str = '8-conn FG: ' ELSE str = '4-conn FG: '
+      str = '8-conn FG: '
       printf, 12, str + 'area, # patches, aps [pixels]: ', z, ', ', z80,', ', z81
       IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels [4b] in input image'
       printf, 12, 'Fragmentation class: foreground proportion at observation scale/area: '
       printf, 12, 'Observation scale:    1         2          3          4          5        mscale'   
       printf, 12, 'Neighborhood area:   7x7      13x13      27x27      81x81     243x243'
       printf, 12, '================================================================================'
-      if fadg eq 'FAD' then begin
-        printf, 12, format='(a14,6(f11.4))', 'Rare: ', rare
-        printf, 12, format='(a14,6(f11.4))', 'Patchy: ', patchy
-        printf, 12, format='(a14,6(f11.4))', 'Transitional: ', transitional
-        printf, 12, format='(a14,6(f11.4))', 'Dominant: ', dominant
-        printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
-        printf, 12, format='(a14,6(f11.4))', 'Intact: ', intact       
-      endif else begin
-        printf, 12, 'FAD-APP_5class:'
-        printf, 12, format='(a14,6(f11.4))', 'Rare: ', rare
-        printf, 12, format='(a14,6(f11.4))', 'Patchy: ', patchy
-        printf, 12, format='(a14,6(f11.4))', 'Transitional: ', transitional
-        printf, 12, format='(a14,6(f11.4))', 'Dominant: ', dominant
-        printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
-        printf, 12, 'FAD-APP_2class:'
-        printf, 12, format='(a14,6(f11.4))', 'Separated: ', separated
-        printf, 12, format='(a14,6(f11.4))', 'Continuous: ', continuous
-      endelse
+      printf, 12, format='(a14,6(f11.4))', 'Rare: ', rare
+      printf, 12, format='(a14,6(f11.4))', 'Patchy: ', patchy
+      printf, 12, format='(a14,6(f11.4))', 'Transitional: ', transitional
+      printf, 12, format='(a14,6(f11.4))', 'Dominant: ', dominant
+      printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
+      printf, 12, format='(a14,6(f11.4))', 'Intact: ', intact       
       printf, 12, '================================================================================'
       printf, 12, format='(a14,6(f11.4))', 'FAD_av: ', fad_av
+      printf, 12, format='(a14,6(f11.4))', 'AVCON: ', fadru_av
       close, 12
       
       ;; write csv output
       fx = info.dir_tmp + 'fadtable.csv' & file_delete,fx,/allow_nonexistent,/quiet
       openw,12,fx 
       printf,12, fadg + ': FragmClass\ObsScale:, 1, 2, 3, 4, 5, Summary' & z = strtrim(rare,2)
-      if fadg eq 'FAD' then begin
-        printf,12, 'Rare:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(patchy,2)
-        printf,12, 'Patchy:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(transitional,2)
-        printf,12, 'Transitional:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(dominant,2)
-        printf,12, 'Dominant:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(interior,2)
-        printf,12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(intact,2)
-        printf,12, 'Intact:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]       
-      endif else begin
-        printf, 12, 'FAD-AP_5class:' & z = strtrim(rare,2)
-        printf, 12, 'Rare:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(patchy,2)
-        printf, 12, 'Patchy:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(transitional,2)
-        printf, 12, 'Transitional:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(dominant,2)
-        printf, 12, 'Dominant:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(interior,2)
-        printf, 12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
-        printf, 12, 'FAD-APP_2class:' & z = strtrim(separated,2)
-        printf, 12, 'Separated:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(continuous,2)
-        printf, 12, 'Continuous:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(fad_av,2)
-        printf, 12, 'FAD_av:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
-      endelse            
+      printf, 12, 'Rare:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(patchy,2)
+      printf, 12, 'Patchy:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(transitional,2)
+      printf, 12, 'Transitional:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(dominant,2)
+      printf, 12, 'Dominant:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(interior,2)
+      printf, 12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(intact,2)
+      printf, 12, 'Intact:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(fad_av,2)
+      printf, 12, 'FAD_av:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(fadru_av,2)
+      printf, 12, 'AVCON:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
       close,12 
       
       ;; save stats summary in idl format for potential change analysis at some later point
@@ -5065,17 +5012,13 @@ CASE strlowCase(eventValue) OF
         IF info.my_os EQ 'windows' THEN spawn, cmd, geotiff_log, / hide ELSE spawn, cmd, geotiff_log        
       endif      
       save, filename=info.dir_tmp + 'fad.sav', fadtype, xdim, ydim, geotiff_log, $
-         rare, patchy, transitional, dominant, interior, intact, separated, continuous, fgarea, kdim_str, fad_av, obj_last
+         rare, patchy, transitional, dominant, interior, intact, fgarea, n_ruarea, kdim_str, fad_av, fadru_av, obj_last
 
       ;; return stuff into info GTB infostructure      
       * info.mscale = temporary(mscale)
       * info.process = temporary(im)
       * info.fr_image = * info.process
-      if fadtype eq 'FAD-APP2' then begin
-        restore, info.dir_guidossub + 'fe47colors.sav' & info.disp_colors_id = 10 ;; FE47 colors
-      endif else begin
-        restore, info.dir_guidossub + 'fadcolors.sav' & info.disp_colors_id = 8 ;; FAD colors        
-      endelse
+      restore, info.dir_guidossub + 'fadcolors.sav' & info.disp_colors_id = 8 ;; FAD colors        
       tvlct, r, g, b
       info.ctbl = - 1 & info.autostretch_id = 0 
       info.add_title = ' (' + fadclass + ': MultiScale summary)'
@@ -5121,41 +5064,12 @@ CASE strlowCase(eventValue) OF
      ;;========================================================================
      title = 'FAD-MS Batch Processing'
      goto, resetfront
-
      backto_batch_fadms:
      
-     ;; define required pointers for FAD
-     cancel = ptr_new(1b)
-     IF info.mspa_param1_id EQ 1b THEN conn = ptr_new('8') ELSE conn = ptr_new('4')  ;; fg-conn
-     ftype = ptr_new('')
-     ;; get the fad settings
-     get_fad, ftype = ftype, conn = conn, cancel = cancel, Group_Leader = event.top, $
-       title = 'Select: FAD or FAD-APP'
-
-     ;; check if cancel was selected then do nothing else apply the
-     ;; default or new kernel
-     IF * cancel NE 0b THEN BEGIN
-       ptr_free, cancel & cancel = 0b
-       ptr_free, conn & conn = 0b
-       ptr_free, ftype & ftype = 0b
-       GOTO, fin
-     ENDIF
-     fadclass = * ftype
-     fgconn_str = * conn
+     fadclass = 'FAD_6class' & fgconn_str = '8' & fadtype = 'FAD' & fadg = 'FAD'
      ;; show selected FG-conn in GUI
      info.mspa_param1_id = fgconn_str eq '8'
      widget_control, info.w_mspa_param1, set_value = info.mspa_param1_id
-
-     if fadclass eq 'FAD_6class' then fadtype = 'FAD'
-     if fadclass eq 'FAD-APP_2class' then fadtype = 'FAD-APP2'
-     if fadclass eq 'FAD-APP_5class' then fadtype = 'FAD-APP5'
-     if fadtype eq 'FAD' then fadg = 'FAD' else fadg = 'FAD-APP'
-
-     ;; free and delete the temporary pointers
-     ptr_free, cancel & cancel = 0b
-     ptr_free, conn & conn = 0b
-     ptr_free, ftype & ftype = 0b
-     
      
      ;; test that we can write into the parent directory or if it exists already
      batch_type = 'batch_' + fadtype
@@ -5288,27 +5202,27 @@ CASE strlowCase(eventValue) OF
        ;;==================================
        ;; write the final result to the initial input dir
        fbn = file_basename(input, '.tif') & outdir = dir_batch + fbn + '_' + strlowcase(fadtype)
-       if fadtype eq 'FAD' or fadtype eq 'FAD-APP5' then $
-        restore, info.dir_guidossub + 'fadcolors.sav' else restore, info.dir_guidossub + 'fe47colors.sav'
+       restore, info.dir_guidossub + 'fadcolors.sav'
        tvlct, r, g, b
        ;; setup the output directory for the current image file
        file_mkdir, outdir
 
        ;; image properties
-       qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64) 
+       qmiss = where(image0 eq 0b, ctmiss, /l64, complement=ruarea) & n_ruarea = n_elements(ruarea)
+       q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64) 
        BGmask = where(image0 EQ 1b, /l64) & FGmask = where(image0 eq 2b, /l64, fgarea)
        
        ;; get average patch size and # of patches
        ext1 = lonarr(sz[0] + 2, sz[1] + 2)
        ext1[1:sz[0], 1:sz[1]] = long(image0 eq 2b)
-       
+
        ;; label FG only
        conn8 = fgconn_str eq '8'
        conn_str = fgconn_str + '-conn FG'
       
        ;; label FG only
        ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
-       if fadg eq 'FAD-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
+       obj_area = histogram(ext1, /l64)
        obj_last=max(ext1) & ext1=0
        aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
        z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81      
@@ -5320,7 +5234,7 @@ CASE strlowCase(eventValue) OF
        widget_control, / hourglass
        ;; define arrays for cummulative values in summary barplot in popup window
        intact = fltarr(6) & interior = intact & dominant = intact & transitional = intact
-       patchy = intact & rare = intact & separated = intact & continuous = intact & fad_av = intact
+       patchy = intact & rare = intact & fad_av = intact & fadru_av = intact 
 
        ;; calculate FAD for each of the 5 observation scales
        imdisp = image0 * 0 ;;; the sum of classes over observation scales image to be shown in the viewport
@@ -5345,17 +5259,7 @@ CASE strlowCase(eventValue) OF
            im = byte(round(im*100.0))
          endelse
          fad_av(isc) = mean(im(FGmask))
-         
-         ;; do we want APP?
-         if fadg eq 'FAD-APP' then begin
-           extim = bytarr(sz[0] + 2, sz[1] + 2)
-           extim[1:sz[0], 1:sz[1]] = im
-           FOR i = 1l, obj_last DO BEGIN
-             av = byte(round(mean(extim[rev[rev[i]:rev[i + 1] - 1]])))
-             extim[rev[rev[i]:rev[i + 1] - 1]] = av
-           ENDFOR
-           im = extim[1:sz[0], 1:sz[1]] & extim=0
-         endif
+         fadru_av[isc] = fad_av[isc]*fgarea/n_ruarea         
 
          ;; add specialBG (105b), specialBG-Nf (106b), Missing (102b), background (101b)
          if ct3b gt 0 then im[q3b] = 105b
@@ -5364,24 +5268,14 @@ CASE strlowCase(eventValue) OF
          im[BGmask] = 101b
 
          ;; the statistics
-         if fadg eq 'FAD' then begin
-           ;; get the 5 fragmentation proportions (the 6th, rare, is always 100.0%)
-           zz = (im EQ 100b) & intact(isc) = total(zz)/fgarea*100.0
-           zz = (im GE 90b) AND (im LT 100b) & interior(isc) = total(zz)/fgarea*100.0
-           zz = (im GE 60b) AND (im LT 90b) & dominant(isc) = total(zz)/fgarea*100.0
-           zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
-           zz = (im GE 10b) AND (im LT 40b) & patchy(isc) = total(zz)/fgarea*100.0
-           zz = (im LT 10b) & rare(isc) = total(zz)/fgarea*100.0 & zz = 0
-         endif else begin ;; output 5class as well as 2class
-           zz = (im GE 90b) AND (im LE 100b) & interior(isc) = total(zz)/fgarea*100.0
-           zz = (im GE 60b) AND (im LT 90b) & dominant(isc) = total(zz)/fgarea*100.0
-           zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
-           zz = (im GE 10b) AND (im LT 40b) & patchy(isc) = total(zz)/fgarea*100.0
-           zz = (im LT 10b) & rare(isc) = total(zz)/fgarea*100.0
-           zz = (im GE 40b) AND (im LE 100b) & continuous(isc) = total(zz)/fgarea*100.0
-           zz = (im LT 40b) & separated(isc) = total(zz)/fgarea*100.0 & zz = 0
-         endelse
-
+         ;; get the 5 fragmentation proportions (the 6th, rare, is always 100.0%)
+         zz = (im EQ 100b) & intact(isc) = total(zz)/fgarea*100.0
+         zz = (im GE 90b) AND (im LT 100b) & interior(isc) = total(zz)/fgarea*100.0
+         zz = (im GE 60b) AND (im LT 90b) & dominant(isc) = total(zz)/fgarea*100.0
+         zz = (im GE 40b) AND (im LT 60b) & transitional(isc) = total(zz)/fgarea*100.0
+         zz = (im GE 10b) AND (im LT 40b) & patchy(isc) = total(zz)/fgarea*100.0
+         zz = (im LT 10b) & rare(isc) = total(zz)/fgarea*100.0 & zz = 0
+ 
          ;; add to summary image
          imdisp = imdisp + im
 
@@ -5403,26 +5297,17 @@ CASE strlowCase(eventValue) OF
        if ct4b gt 0 then im[q4b] = 106b
        if ctmiss gt 0 then im[qmiss] = 102b
        im[BGmask] = 101b & BGmask = 0 & qmiss = 0 & q3b = 0 & q4b = 0
-       fad_av(5) = mean(im(FGmask)) & FGmask = 0
+       fad_av[5] = mean(im[FGmask]) & FGmask = 0
+       fadru_av[5] = fad_av[5]*fgarea/n_ruarea  
        
-       if fadg eq 'FAD' then begin
-         ;; stats for sum of classes over observation scale for display image: im
-         zz = (im EQ 100b) & intact(5) = total(zz)/fgarea*100.0
-         zz = (im GE 90b) AND (im LT 100b) & interior(5) = total(zz)/fgarea*100.0
-         zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
-         zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
-         zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
-         zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0 & zz = 0
-       endif else begin ;; output 5class as well as 2class
-         zz = (im GE 90b) AND (im LE 100b) & interior(5) = total(zz)/fgarea*100.0
-         zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
-         zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
-         zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
-         zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0
-         zz = (im GE 40b) AND (im LE 100b) & continuous(5) = total(zz)/fgarea*100.0
-         zz = (im LT 40b) & separated(5) = total(zz)/fgarea*100.0 & zz = 0
-       endelse
-
+       ;; stats for sum of classes over observation scale for display image: im
+       zz = (im EQ 100b) & intact(5) = total(zz)/fgarea*100.0
+       zz = (im GE 90b) AND (im LT 100b) & interior(5) = total(zz)/fgarea*100.0
+       zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
+       zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
+       zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
+       zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0 & zz = 0
+ 
        fn_out = outdir + '/' + fbn + '_' + strlowcase(fadtype) + '_mscale.tif'
        ;; add the geotiff info if available
        IF is_geotiff GT 0 THEN $
@@ -5441,20 +5326,13 @@ CASE strlowCase(eventValue) OF
        b1 = BARPLOT(scales, intact, Fill_Color=[0,120,0], yrange=[-4,104], xrange=[0.2, 9.5], /buffer, $
          ytitle='Foreground proportion [%]', xtitle='         Observation scale | MultiScale | Legend', $
          xticklen=0.02,yticklen=0.02,xminor=1, xtickv=[1,2,3,4,5])
-
-       if fadtype eq 'FAD-APP2' then begin
-         y2 = continuous & y1 = intact
-         b2 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[140,200,101],/overplot)
-         y1=y2 & y2 = separated+y2
-         b3 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[0,120,0],/overplot)
-       endif else begin
-         y2 = interior+intact & y1 = intact
-         b2 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[0,175,0],/overplot) & y1=y2 & y2 = dominant+y2
-         b3 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[140,200,100],/overplot) & y1=y2 & y2 = transitional+y2
-         b4 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[255,200,0],/overplot) & y1=y2 & y2 = patchy+y2
-         b5 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[250,140,90],/overplot) & y1=y2 & y2 = rare+y2
-         b6 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[215,50,40],/overplot)
-       endelse
+       y2 = interior+intact & y1 = intact
+       b2 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[0,175,0],/overplot) & y1=y2 & y2 = dominant+y2
+       b3 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[140,200,100],/overplot) & y1=y2 & y2 = transitional+y2
+       b4 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[255,200,0],/overplot) & y1=y2 & y2 = patchy+y2
+       b5 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[250,140,90],/overplot) & y1=y2 & y2 = rare+y2
+       b6 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[215,50,40],/overplot)
+       
 
        ;; separator lines
        a = plot([5.5, 5.5],[-4, 104], /data, color='Black',/overplot, thick=3)
@@ -5463,17 +5341,13 @@ CASE strlowCase(eventValue) OF
        a = text(6.7,90,'Fragmentation class: ',/data,/current)
 
        ;; legend
-       if fadtype eq 'FAD-APP2' then begin
-         c = symbol(6.9,85,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Separated')
-         c = symbol(6.9,78,'square',/data, /sym_filled, sym_color=[140,200,101],sym_size=2,LABEL_STRING='Continuous')
-       endif else begin
-         c = symbol(6.9,85,'square',/data, /sym_filled, sym_color=[215,50,40],sym_size=2,LABEL_STRING='Rare')
-         c = symbol(6.9,78,'square',/data, /sym_filled, sym_color=[250,140,90],sym_size=2,LABEL_STRING='Patchy')
-         c = symbol(6.9,71,'square',/data, /sym_filled, sym_color=[255,200,0],sym_size=2,LABEL_STRING='Transitional')
-         c = symbol(6.9,64,'square',/data, /sym_filled, sym_color=[140,200,100],sym_size=2,LABEL_STRING='Dominant')
-         c = symbol(6.9,57,'square',/data, /sym_filled, sym_color=[0,175,0],sym_size=2,LABEL_STRING='Interior')
-         if fadg eq 'FAD' then c = symbol(6.9,50,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Intact')
-       endelse
+       c = symbol(6.9,85,'square',/data, /sym_filled, sym_color=[215,50,40],sym_size=2,LABEL_STRING='Rare')
+       c = symbol(6.9,78,'square',/data, /sym_filled, sym_color=[250,140,90],sym_size=2,LABEL_STRING='Patchy')
+       c = symbol(6.9,71,'square',/data, /sym_filled, sym_color=[255,200,0],sym_size=2,LABEL_STRING='Transitional')
+       c = symbol(6.9,64,'square',/data, /sym_filled, sym_color=[140,200,100],sym_size=2,LABEL_STRING='Dominant')
+       c = symbol(6.9,57,'square',/data, /sym_filled, sym_color=[0,175,0],sym_size=2,LABEL_STRING='Interior')
+       c = symbol(6.9,50,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Intact')
+       
 
        ;; info on special pixels
        IF (ct4b GT 0) THEN BEGIN
@@ -5505,26 +5379,15 @@ CASE strlowCase(eventValue) OF
        printf, 12, 'Observation scale:    1         2          3          4          5        mscale'
        printf, 12, 'Neighborhood area:   7x7      13x13      27x27      81x81     243x243'
        printf, 12, '================================================================================'
-       if fadg eq 'FAD' then begin
-         printf, 12, format='(a14,6(f11.4))', 'Rare: ', rare
-         printf, 12, format='(a14,6(f11.4))', 'Patchy: ', patchy
-         printf, 12, format='(a14,6(f11.4))', 'Transitional: ', transitional
-         printf, 12, format='(a14,6(f11.4))', 'Dominant: ', dominant
-         printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
-         printf, 12, format='(a14,6(f11.4))', 'Intact: ', intact
-       endif else begin
-         printf, 12, 'FAD-APP_5class:'
-         printf, 12, format='(a14,6(f11.4))', 'Rare: ', rare
-         printf, 12, format='(a14,6(f11.4))', 'Patchy: ', patchy
-         printf, 12, format='(a14,6(f11.4))', 'Transitional: ', transitional
-         printf, 12, format='(a14,6(f11.4))', 'Dominant: ', dominant
-         printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
-         printf, 12, 'FAD-APP_2class:'
-         printf, 12, format='(a14,6(f11.4))', 'Separated: ', separated
-         printf, 12, format='(a14,6(f11.4))', 'Continuous: ', continuous
-       endelse
+       printf, 12, format='(a14,6(f11.4))', 'Rare: ', rare
+       printf, 12, format='(a14,6(f11.4))', 'Patchy: ', patchy
+       printf, 12, format='(a14,6(f11.4))', 'Transitional: ', transitional
+       printf, 12, format='(a14,6(f11.4))', 'Dominant: ', dominant
+       printf, 12, format='(a14,6(f11.4))', 'Interior: ', interior
+       printf, 12, format='(a14,6(f11.4))', 'Intact: ', intact
        printf, 12, '================================================================================'
        printf, 12, format='(a14,6(f11.4))', 'FAD_av: ', fad_av
+       printf, 12, format='(a14,6(f11.4))', 'AVCON: ', fadru_av
        close, 12
            
        ;; save stats summary in idl format for potential change analysis at some later point
@@ -5543,31 +5406,20 @@ CASE strlowCase(eventValue) OF
        endif
        fn_out = outdir + '/' + fbn + '_' + strlowcase(fadtype) + '_mscale.sav' 
        save, filename = fn_out, fadtype, xdim, ydim, geotiff_log, $
-         rare, patchy, transitional, dominant, interior, intact, separated, continuous, fgarea, kdim_str, fad_av, obj_last
+         rare, patchy, transitional, dominant, interior, intact, fgarea, n_ruarea, kdim_str, fad_av, fadru_av, obj_last
          
        ;; write csv output
        fn_out = outdir + '/' + fbn + '_' + strlowcase(fadtype) + '_mscale.csv'
        openw,12,fn_out
        printf,12, fadg + ': FragmClass\ObsScale:, 1, 2, 3, 4, 5, Summary' & z = strtrim(rare,2)
-       if fadg eq 'FAD' then begin
-         printf, 12, 'Rare:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(patchy,2)
-         printf, 12, 'Patchy:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(transitional,2)
-         printf, 12, 'Transitional:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(dominant,2)
-         printf, 12, 'Dominant:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(interior,2)
-         printf, 12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(intact,2)
-         printf, 12, 'Intact:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
-       endif else begin
-         printf, 12, 'FAD-APP_5class:' & z = strtrim(rare,2)
-         printf, 12, 'Rare:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(patchy,2)
-         printf, 12, 'Patchy:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(transitional,2)
-         printf, 12, 'Transitional:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(dominant,2)
-         printf, 12, 'Dominant:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(interior,2)
-         printf, 12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
-         printf, 12, 'FAD-APP_2class:' & z = strtrim(separated,2)
-         printf, 12, 'Separated:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(continuous,2)
-         printf, 12, 'Continuous:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(fad_av,2)
-         printf, 12, 'FAD_av:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
-       endelse
+       printf, 12, 'Rare:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(patchy,2)
+       printf, 12, 'Patchy:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(transitional,2)
+       printf, 12, 'Transitional:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(dominant,2)
+       printf, 12, 'Dominant:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(interior,2)
+       printf, 12, 'Interior:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]  & z = strtrim(intact,2)
+       printf, 12, 'Intact:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(fad_av,2)
+       printf, 12, 'FAD_av:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5] & z = strtrim(fadru_av,2)
+       printf, 12, 'AVCON:, ',z[0], ', ',z[1], ', ',z[2], ', ',z[3], ', ',z[4], ', ',z[5]
        close,12
        okfile = okfile + 1       
               
@@ -5611,6 +5463,12 @@ CASE strlowCase(eventValue) OF
      res = dialog_message(msg, / information)
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      GOTO, fin
    END
    
@@ -5748,24 +5606,30 @@ CASE strlowCase(eventValue) OF
      
      ;; image properties
      IF pseudo_bin THEN BEGIN ;; binary input to run (a) spatcon, (c) GSC52, or (e) FAC 
-       qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
-       BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea)
+       qmiss = where(image0 eq 0b,ctmiss, /l64, complement=ruarea) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
+       BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea) & n_ruarea = n_elements(ruarea)
        ;; get average patch size and # of patches
        ext1 = lonarr(sz[0] + 2, sz[1] + 2)
        ext1[1:sz[0], 1:sz[1]] = long(image0 eq 2b)
        IF info.mspa_param1_id EQ 1b THEN conn8 = 1 ELSE conn8 = 0
        ;; label FG only
-       ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
-       obj_area = histogram(ext1, /l64)
+       ext1 = label_region(temporary(ext1), all_neighbors=conn8, / ulong)
        if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
-       obj_last=max(ext1) & ext1=0
-       aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
+       obj_last=max(ext1) & z80 = strtrim(obj_last,2)
+       farea = total(obj_area[1:*]) & fareaperc=100.0/n_ruarea*farea
+       aps = farea / obj_last & z81 = strtrim(aps,2) & obj_area = 0
        z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
+       ;; get pixel indices by patch
+       ext1 = histogram(temporary(ext1), /l64)
+       ;; PCnum:= overall connectivity. Sum of [ (areas per component)^2 ]
+       pcnum = total(ext1(1: * )^2, / double) & ECA = sqrt(pcnum)
+       ECA_max = total(ext1(1: * ), / double) & COH = ECA/ECA_max*100.0
+       COH_ru = ECA/n_ruarea*100.0 & ext1=0        
        ;; calculate FAD/FAC for the fixed observation scale
        IF ct4b GT 0 THEN image0[q4b] = 0b ;; specialBG - assign to missing
      ENDIF ELSE BEGIN ;; grayscale input to run GSC1 for (b, FAD) and GSC52 for (c, FED), (d, FED)
-       qmiss = where(image0 eq 255b,ctmiss, /l64) & q3b = where(image0 eq 103b, ct3b, /l64) & q4b = where(image0 eq 104b, ct4b, /l64)
-       BGmask = where(image0 LT grayt, ctbg, /l64) 
+       qmiss = where(image0 eq 255b,ctmiss, /l64, complement=ruarea) & q3b = where(image0 eq 103b, ct3b, /l64) & q4b = where(image0 eq 104b, ct4b, /l64)
+       BGmask = where(image0 LT grayt, ctbg, /l64) & n_ruarea = n_elements(ruarea)
        IF ctbg EQ 0 THEN BEGIN
          res = dialog_message('No background with selected grayscale threshold.' + $
            string(10b) + 'Returning...', / information)
@@ -5785,17 +5649,24 @@ CASE strlowCase(eventValue) OF
        ext1[1:sz[0], 1:sz[1]] = long(temporary(tt))           
        IF info.mspa_param1_id EQ 1b THEN conn8 = 1 ELSE conn8 = 0
        ;; label FG only
-       ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
+       ext1 = label_region(temporary(ext1), all_neighbors=conn8, / ulong)
        obj_area = histogram(ext1, /l64)
        if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
-       obj_last=max(ext1) & ext1=0
-       aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
+       obj_last=max(ext1) 
+       farea = total(obj_area[1:*]) & fareaperc=100.0/n_ruarea*farea
+       aps = farea / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
        z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
+       ;; get pixel indices by patch
+       ext1 = histogram(temporary(ext1), /l64)
+       ;; PCnum:= overall connectivity. Sum of [ (areas per component)^2 ]
+       pcnum = total(ext1(1: * )^2, / double) & ECA = sqrt(pcnum)
+       ECA_max = total(ext1(1: * ), / double) & COH = ECA/ECA_max*100.0
+       COH_ru = ECA/n_ruarea*100.0 & ext1=0      
        ;; calculate FAD/FED/FAC for the fixed observation scale
        IF ct3b GT 0 THEN image0[q3b] = 0b ;; set special BG to zero
        IF ct4b GT 0 THEN image0[q4b] = 255b ;; non-fragmenting specialBG - assign to missing    
      ENDELSE           
-     fad_av = -1.0    
+     fad_av = -1.0 & fadru_av = -1.0 ;; inititalise fad_av measure for foreground and reporting unit
      proc_spatcon = strmid(fosclass,0,3) EQ 'FAC' OR (strmid(fosclass,0,3) EQ 'FAD' AND fosinp EQ 'Binary')
      
      IF proc_spatcon EQ 1 THEN BEGIN 
@@ -5863,11 +5734,11 @@ CASE strlowCase(eventValue) OF
        openw, 1, 'gscinput' & writeu,1, image0 & close,1 & image0 = 0
        ;; setup GraySpatCon
        IF info.my_os EQ 'windows' THEN BEGIN
-         spatcon='..\spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
+         spatcon=info.dir_guidossub +'spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
        ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
-         spatcon='../spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+         spatcon=info.dir_guidossub +'spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
        ENDIF ELSE BEGIN
-         spatcon='../spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
+         spatcon=info.dir_guidossub +'spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
        ENDELSE
        ;; run grayspatcon in tmp
        IF info.my_os EQ 'windows' THEN spawn, 'grayspatcon.exe', log, / hide ELSE spawn, './grayspatcon', log
@@ -5891,9 +5762,9 @@ CASE strlowCase(eventValue) OF
        popd
      ENDELSE
      
-     ;; calculate pixel-based fad_av
-     fad_av = mean(im(qFG)) & qFG = 0
-     
+     ;; calculate pixel-based fad_av BEFORE doing APP so they are consistent with non-APP
+     fad_av = mean(im[qFG]) & fadru_av = fad_av * fgarea / n_ruarea
+               
      ;; do we want APP?
      if strmid(fostype,0,7) eq 'FOS-APP' then begin
        extim = bytarr(sz[0] + 2, sz[1] + 2)
@@ -5904,17 +5775,57 @@ CASE strlowCase(eventValue) OF
        ENDFOR
        im = extim[1:sz[0], 1:sz[1]] & extim=0
      endif
-     
+         
      ;; add specialBG (105b), specialBG-Nf (106b), Missing (102b), background (101b)
      if ct3b gt 0 then im[q3b] = 105b & q3b = 0
      if ct4b gt 0 then im[q4b] = 106b & q4b = 0
      if ctmiss gt 0 then im[qmiss] = 102b
      qmiss = 0
-     im[BGmask] = 101b & BGmask = 0 
+     im[BGmask] = 101b & BGmask = 0
+     
+     ;; build histogram
+     hist = histogram(im[qFG],/l64) & hist = hist[0:100] 
+     ;; plot histogram wrt %FG (/qFG) and total FG pixel number
+     ;; add the histogram series to the output files below 
+     if strlen(fosclass) eq 10 then begin
+      method = strmid(fosclass,0,3) & hcolor = 'orange'
+     endif else begin
+      method = strmid(fosclass,0,7) & hcolor = 'yellow'
+     endelse
+     bins = findgen(101)-0.5 & xtit = method & tit = 'Foreground pixel histogram (WS: ' + kdim_str + ')' & amax = max(hist)
+     ;; plot as percentage by FG-area
+     hist2 = float(hist)/n_elements(qfg)*100.0 & bmax = max(hist2)       
+     bp = barplot(bins, hist2, fill_color=hcolor, xtitle=xtit, /buffer, $
+       ytitle = 'Occurrence frequency [%]', title = tit, xrange = [0,105], histogram=1)
+     ;bp = text(5,bmax*0.95,'Average value at',/data,/current)
+     ;bp = text(5,bmax*0.90,'Foreground level: ' + strtrim(fad_av,2) + '%',/data,/current)
+     ;bp = text(5,bmax*0.85,'Reporting unit level: ' + strtrim(fadru_av,2) + '%',/data,/current)
+     qFG = 0
+     fx = info.dir_tmp + 'fos.png' & file_delete,fx,/allow_nonexistent,/quiet
+     bp.save, fx, resolution=300 
+     bp.close
+     
+     ;; open barplot image
+     IF info.my_os EQ 'apple' THEN BEGIN
+       spawn, 'open ' + info.dir_tmp + 'fos.png'
+     ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
+       pushd, info.dir_tmp
+       spawn, 'start fos.png', / nowait
+       popd
+     ENDIF ELSE BEGIN ;; Linux
+       IF strlen(info.xdgop) EQ 0 THEN BEGIN
+         st = "Please install xdg-open to automatically" + $
+           "display barplots within GuidosToolbox."
+         result = dialog_message(st, / information)
+       ENDIF ELSE BEGIN
+         spawn, info.xdgop + ' "' + info.dir_tmp + 'fos.png' + '"'
+       ENDELSE
+     ENDELSE
 
+     
      ;; the statistics, first initialize
-     intact = -1 & interior = -1 & dominant = -1 & transitional = -1 
-     patchy = -1 & rare = -1 & separated = -1 & continuous = -1
+     intact = -1.0 & interior = -1.0 & dominant = -1.0 & transitional = -1.0 
+     patchy = -1.0 & rare = -1.0 & separated = -1.0 & continuous = -1.0
      if strlen(fostype) eq 4 then begin
        ;; get the 6 fragmentation proportions 
        if (fosclass eq 'FAD_6class') OR (fosclass eq 'FED_6class') OR (fosclass eq 'FAC_6class') then begin
@@ -5943,34 +5854,33 @@ CASE strlowCase(eventValue) OF
      fx = info.dir_tmp + 'fos.txt' & file_delete,fx,/allow_nonexistent,/quiet
      method = strmid(fosclass,0,3)   
      q = stregex(fosclass,'_') & q1 = strmid(fosclass, q+1,1) 
-     repstyle = method + ' at pixel level'
-     IF (strpos(fosclass,'APP') GT 0) then  repstyle = method + ' at patch level (APP: average per patch)'  
+     repstyle = method + ' at pixel level' & repstyle2 = method
+     IF (strpos(fosclass,'APP') GT 0) then begin
+       repstyle = method + ' at patch level (APP: average per patch)'  
+       repstyle2 = strmid(fosclass,0,7) 
+     ENDIF
      IF info.mspa_param1_id EQ 1b THEN conn_str = '8-connectivity' ELSE conn_str = '4-connectivity'
    
      openw,12,fx
      printf, 12, 'Fragmentation analysis using Fixed Observation Scale (FOS)'
+     printf, 12, '(Fragmentation is complementary to Connectivity: Fragmentation = 100% - Connectivity)'
      printf, 12, 'Method options: FAD - FG Area Density; FED - FG Edge Density; FAC - FG Area Clustering; '
      printf, 12, 'Summary analysis for image: '     
      printf, 12, fname
      printf, 12, '================================================================================'
+     IF fosinp EQ 'Binary' THEN tt = '[4b]' ELSE tt = '[104b]'
+     IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels ' + tt + ' in input image'
      printf, 12, 'FOS parameter settings:'
-     IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
+     IF fosinp EQ 'Grayscale' THEN tt = 'Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = fosinp
      printf, 12, tt
      printf, 12, 'Foreground connectivity: ' + conn_str
-     printf, 12, 'FOS-type selected: ' + fosclass  
+     printf, 12, 'FOS-type selected: ' + fosclass
      printf, 12, 'Method: ' + method 
      printf, 12, 'Reporting style: ' + repstyle
      printf, 12, 'Number of reporting classes: ' + q1
      printf, 12, 'Pixel resolution [m]: ' + pixres_str
      printf, 12, 'Window size [pixels]: ' + kdim_str 
      printf, 12, 'Observation scale [(window size * pixel resolution)^2]: ' + hec + ' hectares <-> ' + acr + ' acres'
-     printf, 12, '================================================================================'
-     printf, 12, 'Image foreground statistics:'      
-     printf, 12, 'Foreground area [pixels]: ', z
-     printf, 12, 'Number of foreground patches: ',  z80
-     printf, 12, 'Average foreground patch size: ', z81     
-     IF fosinp EQ 'Binary' THEN tt = '[4b]' ELSE tt = '[104b]'
-     IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels ' + tt + ' in input image'
      printf, 12, '================================================================================'
      printf, 12, 'Proportion [%] of foreground area in foreground cover class:'
      if strlen(fostype) eq 4 then begin
@@ -5997,19 +5907,47 @@ CASE strlowCase(eventValue) OF
        printf, 12, format='(a55,f11.4)', 'Continuous (' + method + '-pixel value within: [40 - 100]): ', continuous
      endelse
      printf, 12, '================================================================================'
-     printf, 12, format='(a67,f11.4)', 'Average pixel value across all foreground pixels using ' + method + '-method: ', strtrim(fad_av,2) 
-     printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground connectivity: ', strtrim(fad_av,2)  
-     printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground fragmentation: ', strtrim(100.0-fad_av,2)   
+     printf, 12, '================================================================================'
+     printf, 12, 'A) Image summary:'
+     printf, 12, '================================================================================'
+     printf, 12, 'Reporting unit area [pixels]: ', strtrim(n_ruarea,2)
+     printf, 12, 'Foreground area [pixels]: ', z
+     printf, 12, 'Foreground area [%]: ', strtrim(fareaperc,2)
+     printf, 12, 'Number of foreground patches: ',  z80
+     printf, 12, 'Average foreground patch size [pixels]: ', z81
+     printf, 12, '================================================================================'
+     printf, 12, 'B) Reporting levels'
+     printf, 12, '================================================================================'
+     printf, 12, 'Foreground (FG) connectivity is available at 4 reporting levels, B1 - B4:'
+     printf, 12, 'B1) Pixel-level: method FAD/FED/FAC: check the FG pixel value on the map, or aggregated at'
+     printf, 12, 'B2) Patch-level: method _APP (Average-Per-Patch): check the FG pixel value on the map'
+     printf, 12, 'B3) Foreground-level: reference area = all foreground pixels'
+     sss = strmid(method,0,3)
+     sstr = '- Average ' + sss + ' at WS'+ kdim_str + ' [%]: ' 
+     IF strmid(fosclass,4,3) EQ 'APP' THEN sstr = '- Average ' + sss + ' (before APP) at WS' + kdim_str + ' [%]: ' 
+     printf, 12, sstr + strtrim(fad_av,2)
+     printf, 12, '- ECA (Equivalent Connected Area) [pixels]: ', strtrim(ECA,2)  
+     printf, 12, '- COH (Coherence = ECA/ECA_max*100) [%]: ', strtrim(COH,2)
+     printf, 12, 'B4) Reporting unit-level: reference area = entire reporting unit'
+     printf, 12, '- AVCON (average connectivity) at WS'+ kdim_str + ' [%]: ', strtrim(fadru_av,2)
+     printf, 12, '- COH_ru (ECA/Reporting unit area*100) [%]: ', strtrim(COH_ru,2)
+     printf, 12, '================================================================================'
+     printf, 12, '================================================================================'
+     printf, 12, 'Histogram of FG-pixel values rounded to the nearest integer, FGcover[%] at window size:'
+     printf, 12, 'Value   WS' + kdim_str 
+     For id = 0, 100 do printf, 12, format='(a6, f10.4)', strtrim(id,2), hist2[id]
      close, 12
      
      ;; d) write csv output
      fn_out = info.dir_tmp + 'fos.csv'
      openw,12,fn_out
-     IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
-     printf,12, tt + ' ' + fosclass + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
-     q = ' (more details in the txt-file stored in the results directory)'
+     IF fosinp EQ 'Grayscale' THEN tt = 'Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = fosinp
+     printf,12, tt + ' ' + fosclass + ': FragmClass\ObsScale: '
+     printf, 12, 'Neighborhood area [pixels]:,'+ kdim_str + 'x' + kdim_str 
+     printf, 12, 'Neighborhood area [hectares]:,'  + hec
+     printf, 12, 'Neighborhood area [acres]:,' + acr
      if strlen(fostype) eq 4 then begin
-       if fostype eq 'FOS6' then printf, 12, 'FOS_6class: ' + q else printf, 12, 'FOS_5class: ' + q
+       if fostype eq 'FOS6' then printf, 12, 'FOS_6class: ' else printf, 12, 'FOS_5class: '
        printf,12, 'Rare:, ' + strtrim(rare,2)
        printf,12, 'Patchy:, ' + strtrim(patchy,2)
        printf,12, 'Transitional:, ' + strtrim(transitional,2)
@@ -6017,7 +5955,7 @@ CASE strlowCase(eventValue) OF
        printf,12, 'Interior:, ' + strtrim(interior,2)
        if fostype eq 'FOS6' then printf,12, 'Intact:, ' + strtrim(intact,2)
      endif else begin
-       printf,12, 'FOS-APP_5class: ' + q
+       printf,12, 'FOS-APP_5class: '
        printf,12, 'Rare:, ' + strtrim(rare,2)
        printf,12, 'Patchy:, ' + strtrim(patchy,2)
        printf,12, 'Transitional:, ' + strtrim(transitional,2)
@@ -6027,7 +5965,29 @@ CASE strlowCase(eventValue) OF
        printf,12, 'Separated:, ' + strtrim(separated,2)
        printf,12, 'Continuous:, ' + strtrim(continuous,2)
      endelse
-     printf, 12, method + '_av:, ', strtrim(fad_av,2)
+     printf, 12, ''
+     printf, 12, 'A) Image summary:'     
+     printf, 12, 'Reporting unit area [pixels]:, ' + strtrim(n_ruarea,2)
+     printf, 12, 'Foreground area [pixels]:, ' + z
+     printf, 12, 'Foreground area [%]:, ' + strtrim(fareaperc,2)
+     printf, 12, 'Number of foreground patches:, ' +  z80
+     printf, 12, 'Average foreground patch size [pixels]:, ' + z81
+     printf, 12, ' '
+     printf, 12, 'B) Reporting levels'
+     printf, 12, 'B3) Foreground-level:'  
+     sss = strmid(method,0,3)
+     sstr = '- Average ' + sss + ' at WS'+ kdim_str + ' [%]:, '
+     IF strmid(fosclass,4,3) EQ 'APP' THEN sstr = '- Average ' + sss + ' (before APP) at WS'+ kdim_str + ' [%]:, '
+     printf, 12, sstr + strtrim(fad_av,2)
+     printf, 12, '- ECA [pixels]: ,' + strtrim(ECA,2)
+     printf, 12, '- COH [%]:, ' + strtrim(COH,2)
+     printf, 12, 'B4) Reporting unit-level: '
+     printf, 12, '- AVCON (average connectivity) at WS'+ kdim_str + ' [%]:, ' + strtrim(fadru_av,2)
+     printf, 12, '- COH_ru [%]: ,' + strtrim(COH_ru,2)
+     printf, 12, ' '
+     printf, 12, 'Histogram at window size: '+ kdim_str
+     printf, 12, 'Pixel Value, FGcover[%]'
+     For id = 0, 100 do printf, 12, strtrim(id,2) + ', ' + strtrim(hist2[id],2)  
      close,12    
      
      ;; show the summary image statistics
@@ -6035,7 +5995,7 @@ CASE strlowCase(eventValue) OF
 
      ;; save stats summary in idl format for potential change analysis at some later point
      save, filename=info.dir_tmp + 'fos.sav', grayt_str, fosinp, fostype, fosclass, $
-       xdim, ydim, geotiff_log, rare, patchy, transitional, dominant, interior, intact, separated, continuous, fad_av, fgarea, obj_last, $
+       xdim, ydim, geotiff_log, rare, patchy, transitional, dominant, interior, intact, separated, continuous, fad_av, fadru_av, fgarea, obj_last, $
        conn_str, pixres_str, kdim_str, hec, acr
        
      ;; return stuff into info GTB infostructure
@@ -6052,13 +6012,14 @@ CASE strlowCase(eventValue) OF
      endif
      tvlct, r, g, b
      info.ctbl = - 1 & info.autostretch_id = 0 
-     info.add_title = ' (FOS-' + fosclass + ': ' + kdim_str + 'x' + kdim_str + ': ' + hec + ' hectares/' + acr + ' acres)'
+     info.add_title = ' (FOS-' + fosclass + ': ' + kdim_str + 'x' + kdim_str + ', AVCON: ' + strtrim(fadru_av,2) + '%)'
      
-     skip_gsc00:
      ;; reset mspa and use info.is_fragm also for FAD
      info.is_mspa = 0 & info.mspa_stats_show = 0b & info.is_fragm = 3 & info.is_contort = 0
      info.do_mspa_stats_id = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
      info.do_label_groups_id = 0
+     skip_gsc00:
+
 
    END
    
@@ -6088,7 +6049,7 @@ CASE strlowCase(eventValue) OF
      ENDIF
      popd
      
-     ;; let the usert decide if we do binary or a grayscale batch-processing
+     ;; let the user decide if we do binary or a grayscale batch-processing
      msg = 'Please select the input file TYPE'  +  string(10b) +  $
       'for the Batch FOS processing:' +string(10b) + $
        'Binary (Yes) or Grayscale (No)' + string(10b)
@@ -6146,8 +6107,6 @@ CASE strlowCase(eventValue) OF
      if fosclass eq 'FAD_6class' or fosclass eq 'FED_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
      if fosclass eq 'FAD-APP_2class' or fosclass eq 'FED-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
      if fosclass eq 'FAD-APP_5class' or fosclass eq 'FED-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
-
-
      hec = ((pixres * kdim)^2) / 10000.0
      acr = hec * 2.47105
      hec = strtrim(hec,2)
@@ -6197,7 +6156,7 @@ CASE strlowCase(eventValue) OF
      IF info.mspa_param1_id EQ 1b THEN conn_str = '8-conn FG: ' ELSE conn_str = '4-conn FG: '
      openw, 9, fn_logfile
      printf, 9, fosclass + ' batch processing logfile: ', systime()
-     IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
+     IF fosinp EQ 'Grayscale' THEN tt = 'Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = fosinp
      printf, 9, tt
      printf, 9, strmid(conn_str,0,9) + ', Pixel resolution: ' + pixres_str + $
       '[m], Window size: ' + kdim_str 
@@ -6311,23 +6270,31 @@ CASE strlowCase(eventValue) OF
   
        ;; image properties
        IF pseudo_bin THEN BEGIN ;; binary input to run (a) spatcon, (c) GSC52, or (e) FAC 
-         qmiss = where(image0 eq 0b,ctmiss, /l64) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
+         qmiss = where(image0 eq 0b,ctmiss, /l64, complement=ruarea) & q3b = where(image0 eq 3b, ct3b, /l64) & q4b = where(image0 eq 4b, ct4b, /l64)
          BGmask = where(image0 EQ 1b, /l64) & qFG = where(image0 eq 2b, /l64, fgarea)
+         n_ruarea = n_elements(ruarea)
          ;; get average patch size and # of patches
          ext1 = lonarr(sz[0] + 2, sz[1] + 2)
          ext1[1:sz[0], 1:sz[1]] = long(image0 eq 2b)
          conn8 = fgconn_str eq '8'
          ;; label FG only
-         ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
+         ext1 = label_region(temporary(ext1), all_neighbors=conn8, / ulong)
          if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
-         obj_last=max(ext1) & ext1 = 0
-         aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
+         obj_last=max(ext1) & z80 = strtrim(obj_last,2) 
+         farea = total(obj_area[1:*],/double) & fareaperc=100.0/n_ruarea*farea
+         aps = farea / obj_last & z81 = strtrim(aps,2) & obj_area = 0 
          z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
+         ;; get pixel indices by patch
+         ext1 = histogram(temporary(ext1), /l64)
+         ;; PCnum:= overall connectivity. Sum of [ (areas per component)^2 ]
+         pcnum = total(ext1(1: * )^2, / double) & ECA = sqrt(pcnum)
+         ECA_max = total(ext1(1: * ), / double) & COH = ECA/ECA_max*100.0
+         COH_ru = ECA/n_ruarea*100.0 & ext1=0       
          ;; calculate FAD/FAC for the fixed observation scale
          IF ct4b GT 0 THEN image0[q4b] = 0b ;; specialBG - assign to missing        
        ENDIF ELSE BEGIN ;; grayscale input to run GSC1 for (b, FAD) and GSC52 for (c, FED), (d, FED)
-         qmiss = where(image0 eq 255b,ctmiss, /l64) & q3b = where(image0 eq 103b, ct3b, /l64) & q4b = where(image0 eq 104b, ct4b, /l64)
-         BGmask = where(image0 LT grayt, ctbg, /l64)
+         qmiss = where(image0 eq 255b,ctmiss, /l64, complement=ruarea) & q3b = where(image0 eq 103b, ct3b, /l64) & q4b = where(image0 eq 104b, ct4b, /l64)
+         BGmask = where(image0 LT grayt, ctbg, /l64) & n_ruarea = n_elements(ruarea)
          ;; exit if we have no BG or no FG
          IF ctbg EQ 0 THEN BEGIN
            openw, 9, fn_logfile, /append
@@ -6357,14 +6324,21 @@ CASE strlowCase(eventValue) OF
          ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
          obj_area = histogram(ext1, /l64)
          if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
-         obj_last=max(ext1) & ext1=0
-         aps = total(obj_area[1:*]) / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
+         obj_last=max(ext1) 
+         farea = total(obj_area[1:*]) & fareaperc=100.0/n_ruarea*farea
+         aps = farea / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
          z20 = '# Patches: ' + z80 & z22 = 'APS: ' + z81
+         ;; get pixel indices by patch
+         ext1 = histogram(temporary(ext1), /l64)
+         ;; PCnum:= overall connectivity. Sum of [ (areas per component)^2 ]
+         pcnum = total(ext1(1: * )^2, / double) & ECA = sqrt(pcnum)
+         ECA_max = total(ext1(1: * ), / double) & COH = ECA/ECA_max*100.0
+         COH_ru = ECA/n_ruarea*100.0 & ext1=0         
          ;; calculate FAD/FED/FAC for the fixed observation scale
          IF ct3b GT 0 THEN image0[q3b] = 0b ;; set special BG to zero
          IF ct4b GT 0 THEN image0[q4b] = 255b ;; specialBG - assign to missing
        ENDELSE 
-       fad_av = -1.0
+       fad_av = -1.0 & fadru_av = -1.0 ;; inititalise fad_av measure for foreground and reporting unit
        proc_spatcon = strmid(fosclass,0,3) EQ 'FAC' OR (strmid(fosclass,0,3) EQ 'FAD' AND fosinp EQ 'Binary')
        
        IF proc_spatcon EQ 1 THEN BEGIN
@@ -6432,11 +6406,11 @@ CASE strlowCase(eventValue) OF
          openw, 1, 'gscinput' & writeu,1, image0 & close,1 & image0 = 0
          ;; setup GraySpatCon
          IF info.my_os EQ 'windows' THEN BEGIN
-           spatcon='..\spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
+           spatcon=info.dir_guidossub +'spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
          ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
-           spatcon='../spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+           spatcon=info.dir_guidossub +'spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
          ENDIF ELSE BEGIN
-           spatcon='../spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
+           spatcon=info.dir_guidossub +'spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
          ENDELSE
          ;; run grayspatcon in tmp
          IF info.my_os EQ 'windows' THEN spawn, 'grayspatcon.exe', log, / hide ELSE spawn, './grayspatcon', log
@@ -6445,23 +6419,21 @@ CASE strlowCase(eventValue) OF
          res = log[n_elements(log)-1] & res = strpos(strlowcase(res), 'normal finish') gt 0
          if res eq 0 then begin
            file_delete, 'gscinput', 'gscoutput', 'gscoutput.txt', 'gscpars.txt', /allow_nonexistent,/quiet
-           fx = 'gsc_error.txt' & openw, 9, fx
+           openw, 9, fn_logfile, /append
            for idd = 1, n_elements(log)-1 do printf, 9, log[idd]
            printf, 9, '  ' & close, 9
-           xdisplayfile, fx, height=file_lines(fx)+1, title = 'GraySpatCon error output:'
            popd
-           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', GSC error' + info.bline & free_lun, unit
-           goto, skip_gsc00
+           goto, skip_batch_fos
          endif
          ;; read the image output
          im = bytarr(sz(0),sz(1))
          openr, 1, 'gscoutput' & readu,1, im & close,1
          file_delete, 'gscinput', 'gscoutput', 'gscoutput.txt', 'gscpars.txt', /allow_nonexistent,/quiet
          popd
-       ENDELSE      
-
-       ;; calculate pixel-based fad_av
-       fad_av = mean(im(qFG)) & qFG = 0
+       ENDELSE  
+       
+       ;; calculate pixel-based fad_av BEFORE doing APP so they are consistent with non-APP
+       fad_av = mean(im[qFG]) & fadru_av = fad_av * fgarea / n_ruarea  
        
        ;; do we want APP?
        if strmid(fostype,0,7) eq 'FOS-APP' then begin
@@ -6473,13 +6445,33 @@ CASE strlowCase(eventValue) OF
          ENDFOR
          im = extim[1:sz[0], 1:sz[1]] & extim=0
        endif
-
+       
        ;; add specialBG (105b), specialBG-Nf (106b), Missing (102b), background (101b)
        if ct3b gt 0 then im[q3b] = 105b & q3b = 0
        if ct4b gt 0 then im[q4b] = 106b & q4b = 0
        if ctmiss gt 0 then im[qmiss] = 102b
        qmiss = 0
-       im[BGmask] = 101b & BGmask = 0 
+       im[BGmask] = 101b & BGmask = 0
+       
+       ;; build histogram
+       hist = histogram(im[qFG],/l64) & hist = hist[0:100]
+       if strlen(fosclass) eq 10 then begin
+         method = strmid(fosclass,0,3) & hcolor = 'orange'
+       endif else begin
+         method = strmid(fosclass,0,7) & hcolor = 'yellow'
+       endelse                    
+       bins = findgen(101)-0.5 & xtit = method & tit = 'Foreground pixel histogram (WS: ' + kdim_str + ')' & amax = max(hist)
+       ;; plot as percentage by FG-area
+       hist2 = float(hist)/n_elements(qfg)*100.0 & bmax = max(hist2)
+       bp = barplot(bins, hist2, fill_color=hcolor, xtitle=xtit, /buffer, $
+         ytitle = 'Occurrence frequency [%]', title = tit, xrange = [0,105], histogram=1)
+       ;bp = text(5,bmax*0.95,'Average value at',/data,/current)
+       ;bp = text(5,bmax*0.90,'Foreground level: ' + strtrim(fad_av,2) + '%',/data,/current)
+       ;bp = text(5,bmax*0.85,'Reporting unit level: ' + strtrim(fadru_av,2) + '%',/data,/current)
+       qFG = 0 
+       fx = info.dir_tmp + 'fos.png' & file_delete,fx,/allow_nonexistent,/quiet
+       bp.save, fx, resolution=300
+       bp.close          
        
        ;; the statistics, first initialize
        intact = -1 & interior = -1 & dominant = -1 & transitional = -1
@@ -6535,24 +6527,30 @@ CASE strlowCase(eventValue) OF
        im = 0
        gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
        IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
-
+       
        ;; b) the statistics       
        fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.txt'
        ;; write statistics out to disk in tmp to be copied later if files are saved
        z = strtrim(ulong64(fgarea),2)
        method = strmid(fosclass,0,3)   
        q = stregex(fosclass,'_') & q1 = strmid(fosclass, q+1,1)
-       repstyle = method + ' at pixel level'
-       IF (strpos(fosclass,'APP') GT 0) then  repstyle = method + ' at patch level (APP: average per patch)'
+       repstyle = method + ' at pixel level' & repstyle2 = method
+       IF (strpos(fosclass,'APP') GT 0) THEN BEGIN
+         repstyle = method + ' at patch level (APP: average per patch)'
+         repstyle2 = strmid(fosclass,0,7)
+       ENDIF
 
        openw,12,fn_out
        printf, 12, 'Fragmentation analysis using Fixed Observation Scale (FOS)'
-       printf, 12, 'Method options: FAC: Foreground Area Clustering; FAD: Foreground Area Density'
+       printf, 12, '(Fragmentation is complementary to Connectivity: Fragmentation = 100% - Connectivity)'
+       printf, 12, 'Method options: FAD - FG Area Density; FED - FG Edge Density; FAC - FG Area Clustering; '
        printf, 12, 'Summary analysis for image: '
        printf, 12, input
        printf, 12, '================================================================================'
+       IF fosinp EQ 'Binary' THEN tt = '[4b]' ELSE tt = '[104b]'
+       IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels ' + tt + ' in input image'
        printf, 12, 'FOS parameter settings:'
-       IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
+       IF fosinp EQ 'Grayscale' THEN tt = 'Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = fosinp
        printf, 12, tt       
        printf, 12, 'Foreground connectivity: ' + conn_str
        printf, 12, 'FOS-type selected: ' + fosclass
@@ -6563,15 +6561,9 @@ CASE strlowCase(eventValue) OF
        printf, 12, 'Window size [pixels]: ' + kdim_str
        printf, 12, 'Observation scale [(window size * pixel resolution)^2]: ' + hec + ' hectares <-> ' + acr + ' acres'
        printf, 12, '================================================================================'
-       printf, 12, 'Image foreground statistics:'
-       printf, 12, 'Foreground area [pixels]: ', z
-       printf, 12, 'Number of foreground patches: ',  z80
-       printf, 12, 'Average foreground patch size: ', z81
-       IF ct4b GT 0 THEN printf, 12, 'Non-fragmenting background pixels [4b] in input image'
-       printf, 12, '================================================================================'
        printf, 12, 'Proportion [%] of foreground area in foreground cover class:'
        if strlen(fostype) eq 4 then begin
-         printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare ;; bernd
+         printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare 
          printf, 12, format='(a55,f11.4)', 'Patchy (' + method + '-pixel value within: [10 - 39]): ', patchy
          printf, 12, format='(a55,f11.4)', 'Transitional (' + method + '-pixel value within: [40 - 59]): ', transitional
          printf, 12, format='(a55,f11.4)', 'Dominant (' + method + '-pixel value within: [60 - 89]): ', dominant
@@ -6594,9 +6586,34 @@ CASE strlowCase(eventValue) OF
          printf, 12, format='(a55,f11.4)', 'Continuous (' + method + '-pixel value within: [40 - 100]): ', continuous
        endelse
        printf, 12, '================================================================================'
-       printf, 12, format='(a67,f11.4)', 'Average pixel value across all foreground pixels using ' + method + '-method: ', strtrim(fad_av,2)   ;; bernd
-       printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground connectivity: ', strtrim(fad_av,2)   ;; bernd
-       printf, 12, format='(a67,f11.4)', 'Equivalent to average foreground fragmentation: ', strtrim(100.0-fad_av,2)   ;; bernd
+       printf, 12, '================================================================================'
+       printf, 12, 'A) Image summary:'
+       printf, 12, '================================================================================'
+       printf, 12, 'Reporting unit area [pixels]: ', strtrim(n_ruarea,2)
+       printf, 12, 'Foreground area [pixels]: ', z
+       printf, 12, 'Foreground area [%]: ', strtrim(fareaperc,2)
+       printf, 12, 'Number of foreground patches: ',  z80
+       printf, 12, 'Average foreground patch size [pixels]: ', z81
+       printf, 12, '================================================================================'
+       printf, 12, 'B) Reporting levels'
+       printf, 12, '================================================================================'
+       printf, 12, 'Foreground (FG) connectivity is available at 4 reporting levels, B1 - B4:'
+       printf, 12, 'B1) Pixel-level: method FAD/FED/FAC: check the FG pixel value on the map, or aggregated at'
+       printf, 12, 'B2) Patch-level: method _APP (Average-Per-Patch): check the FG pixel value on the map'
+       printf, 12, 'B3) Foreground-level: reference area = all foreground pixels'      
+       sss = strmid(method,0,3) & sstr = '- Average ' + sss + ' at WS'+ kdim_str + ' [%]: ' 
+       IF strmid(fosclass,4,3) EQ 'APP' THEN sstr = '- Average ' + sss + ' (before APP) at WS'+ kdim_str + ' [%]: '
+       printf, 12, sstr + strtrim(fad_av,2)
+       printf, 12, '- ECA (Equivalent Connected Area) [pixels]: ', strtrim(ECA,2)
+       printf, 12, '- COH (Coherence = ECA/ECA_max*100) [%]: ', strtrim(COH,2)
+       printf, 12, 'B4) Reporting unit-level: reference area = entire reporting unit'
+       printf, 12, '- AVCON (average connectivity) at WS'+ kdim_str + ' [%]: ', strtrim(fadru_av,2)
+       printf, 12, '- COH_ru (ECA/Reporting unit area*100) [%]: ', strtrim(COH_ru,2)
+       printf, 12, '================================================================================'      
+       printf, 12, '================================================================================'
+       printf, 12, 'Histogram of FG-pixel values rounded to the nearest integer, FGcover[%] at window size:'
+       printf, 12, 'Value   WS' + kdim_str
+       For id = 0, 100 do printf, 12, format='(a6, f10.4)', strtrim(id,2), hist2[id]
        close, 12
 
        ;; c) the sav-file
@@ -6611,21 +6628,22 @@ CASE strlowCase(eventValue) OF
              cmd = info.dir_fwtools + 'gdalinfo -noct "' + input + '"'
          ENDELSE
          IF info.my_os EQ 'windows' THEN spawn, cmd, geotiff_log, / hide ELSE spawn, cmd, geotiff_log
-       endif       
-       
+       endif            
        fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.sav'
        save, filename = fn_out, grayt_str, fosinp, fostype, fosclass, $
-         xdim, ydim, geotiff_log, rare, patchy, transitional, dominant, interior, intact, separated, continuous, fad_av, fgarea, obj_last, $
+         xdim, ydim, geotiff_log, rare, patchy, transitional, dominant, interior, intact, separated, continuous, fad_av, fadru_av, fgarea, obj_last, $
          conn_str, pixres_str, kdim_str, hec, acr       
          
        ;; d) write csv output
-       fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.csv'     ;; bernd
+       fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.csv' 
        openw,12,fn_out
-       IF fosinp EQ 'Grayscale' THEN tt = 'Input type: Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = 'Input type: ' + fosinp
-       printf,12, tt + ' ' + fosclass + ': FragmClass\ObsScale: ' + hec + ' hectares/' + acr + ' acres (Pixel resolution: ' + pixres_str + '[m] - Window size: ' + kdim_str + 'x' + kdim_str +')'
-       q = ' (more details in the txt-file stored in the results directory)'
+       IF fosinp EQ 'Grayscale' THEN tt = 'Grayscale (FG threshold: ' + grayt_str + ')' ELSE tt = fosinp
+       printf,12, tt + ' ' + fosclass + ': FragmClass\ObsScale: '
+       printf, 12, 'Neighborhood area [pixels]:,'+ kdim_str + 'x' + kdim_str
+       printf, 12, 'Neighborhood area [hectares]:,'  + hec
+       printf, 12, 'Neighborhood area [acres]:,' + acr       
        if strlen(fostype) eq 4 then begin
-         if fostype eq 'FOS6' then printf, 12, 'FOS_6class: ' + q else printf, 12, 'FOS_5class: ' + q
+         if fostype eq 'FOS6' then printf, 12, 'FOS_6class: ' else printf, 12, 'FOS_5class: '
          printf,12, 'Rare:, ' + strtrim(rare,2)
          printf,12, 'Patchy:, ' + strtrim(patchy,2)
          printf,12, 'Transitional:, ' + strtrim(transitional,2)
@@ -6633,7 +6651,7 @@ CASE strlowCase(eventValue) OF
          printf,12, 'Interior:, ' + strtrim(interior,2)
          if fostype eq 'FOS6' then printf,12, 'Intact:, ' + strtrim(intact,2)
        endif else begin
-         printf,12, 'FOS-APP_5class: ' + q
+         printf,12, 'FOS-APP_5class: '
          printf,12, 'Rare:, ' + strtrim(rare,2)
          printf,12, 'Patchy:, ' + strtrim(patchy,2)
          printf,12, 'Transitional:, ' + strtrim(transitional,2)
@@ -6643,8 +6661,33 @@ CASE strlowCase(eventValue) OF
          printf,12, 'Separated:, ' + strtrim(separated,2)
          printf,12, 'Continuous:, ' + strtrim(continuous,2)
        endelse
-       printf, 12, method + '_av:, ', strtrim(fad_av,2)
+       printf, 12, ''
+       printf, 12, 'A) Image summary:'
+       printf, 12, 'Reporting unit area [pixels]:, ' + strtrim(n_ruarea,2)
+       printf, 12, 'Foreground area [pixels]:, ' + z
+       printf, 12, 'Foreground area [%]:, ' + strtrim(fareaperc,2)
+       printf, 12, 'Number of foreground patches:, ' +  z80
+       printf, 12, 'Average foreground patch size [pixels]:, ' + z81
+       printf, 12, ' '
+       printf, 12, 'B) Reporting levels'
+       printf, 12, 'B3) Foreground-level:'
+       sss = strmid(method,0,3) & sstr = '- Average ' + sss + ' at WS'+ kdim_str + ' [%]:, '
+       IF strmid(fosclass,4,3) EQ 'APP' THEN sstr = '- Average ' + sss + ' (before APP) at WS'+ kdim_str + ' [%]:, '
+       printf, 12, sstr + strtrim(fad_av,2)
+       printf, 12, '- ECA [pixels]: ,' + strtrim(ECA,2)
+       printf, 12, '- COH [%]:, ' + strtrim(COH,2)
+       printf, 12, 'B4) Reporting unit-level: '
+       printf, 12, '- AVCON (average connectivity) at WS'+ kdim_str + ' [%]:, ' + strtrim(fadru_av,2)
+       printf, 12, '- COH_ru [%]: ,' + strtrim(COH_ru,2)
+       printf, 12, ' '
+       printf, 12, 'Histogram at window size: '+ kdim_str
+       printf, 12, 'Pixel Value, FGcover[%]'
+       For id = 0, 100 do printf, 12, strtrim(id,2) + ', ' + strtrim(hist2[id],2)
        close,12
+       
+       ;; e) write histogram output
+       fn_out = fbn + '_fos-' + strlowcase(fosclass) + '_' + kdim_str + '.png'
+       file_copy, fx, fn_out, /overwrite           
 
        okfile = okfile + 1
        ;; go back to the FOS image directory
@@ -6690,6 +6733,12 @@ CASE strlowCase(eventValue) OF
      res = dialog_message(msg, / information)
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+       
      GOTO, fin
    END
   
@@ -7059,6 +7108,12 @@ CASE strlowCase(eventValue) OF
       res = dialog_message(msg, / information)
       ;; reset the colortable to the settings before the batch processing
       tvlct, rini, gini, bini
+      ;; clean up tmp
+      pushd, info.dir_tmp
+      list = file_search() & nl = n_elements(list)
+      if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+      popd
+
 
       ;; free and delete the temporary pointers
       ptr_free, cancel & cancel = 0b
@@ -7437,6 +7492,11 @@ CASE strlowCase(eventValue) OF
       res = dialog_message(msg, / information)
       ;; reset the colortable to the settings before the batch processing
       tvlct, rini, gini, bini
+      ;; clean up tmp
+      pushd, info.dir_tmp
+      list = file_search() & nl = n_elements(list)
+      if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+      popd
 
       ;; free and delete the temporary pointers
       ptr_free, cancel & cancel = 0b
@@ -7814,6 +7874,11 @@ CASE strlowCase(eventValue) OF
      res = dialog_message(msg, / information)
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
 
      ;; free and delete the temporary pointers
      ptr_free, cancel & cancel = 0b
@@ -7923,11 +7988,11 @@ CASE strlowCase(eventValue) OF
 
      ;; run GraySpatCon
      IF info.my_os EQ 'windows' THEN BEGIN
-       spatcon='..\spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
+       spatcon=info.dir_guidossub +'spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
-       spatcon='../spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+       spatcon=info.dir_guidossub +'spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
      ENDIF ELSE BEGIN
-       spatcon='../spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
+       spatcon=info.dir_guidossub +'spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
      ENDELSE
      ;; run grayspatcon in tmp
      IF info.my_os EQ 'windows' THEN spawn, 'grayspatcon.exe', log, / hide ELSE spawn, './grayspatcon', log
@@ -7989,7 +8054,7 @@ CASE strlowCase(eventValue) OF
        ;; post-process gsc float output: assign NaN for missing data if the user opted for this: gsc_n = Yes
        IF gsc_f EQ '2' AND gsc_n EQ 'Yes' THEN BEGIN
          ;; test for NaN gsc output (we should never get this...
-         q = WHERE(~FINITE(im), ct)
+         q = WHERE(~FINITE(im), ct,/l64)
          IF ct gt 0 THEN BEGIN
            msg = 'NaN in GSC output found. Please send a Help -> Bug Report' +string(10b) + 'Exiting'
            res = dialog_message(msg, / error)
@@ -8251,11 +8316,11 @@ CASE strlowCase(eventValue) OF
        openw, 1, 'gscinput' & writeu,1, image0 & close,1 & image0 = 0
        ;; run GraySpatCon
        IF info.my_os EQ 'windows' THEN BEGIN
-         spatcon='..\spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
+         spatcon=info.dir_guidossub +'spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
        ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
-         spatcon='../spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+         spatcon=info.dir_guidossub +'spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
        ENDIF ELSE BEGIN
-         spatcon='../spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
+         spatcon=info.dir_guidossub +'spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
        ENDELSE
        ;; run grayspatcon
        IF info.my_os EQ 'windows' THEN spawn, 'grayspatcon.exe', log, / hide ELSE spawn, './grayspatcon', log
@@ -8412,7 +8477,7 @@ CASE strlowCase(eventValue) OF
 
      ;; get the selected mapping
      pushd,info.dir_data
-     get_xrecode, upv = upv, batch = 1, tit = tit, cancel = cancel, seltab=seltab, Group_Leader = event.top
+     get_xrecode, upv = upv, batch = 1, setxrec = 0, tit = tit, cancel = cancel, seltab=seltab, Group_Leader = event.top
      popd
      ;; check if cancel was selected then do nothing else apply the recoding table
      IF * cancel NE 0b THEN BEGIN
@@ -8574,15 +8639,15 @@ CASE strlowCase(eventValue) OF
        openw,1, 'recode.txt' & printf,1,pseln & close,1
        openw, 1, 'recinput' & writeu,1, tmp & close,1
 
-       ;; setup recode
+       ;; setup recode; we are in dir_tmp
        IF info.my_os EQ 'windows' THEN BEGIN
-         IF (!version.memory_bits EQ 64) THEN recode='..\spatcon\recode64.exe' ELSE $
-           recode='..\spatcon\recode32.exe'
+         IF (!version.memory_bits EQ 64) THEN recode=info.dir_guidossub +'spatcon\recode64.exe' ELSE $
+           recode=info.dir_guidossub +'spatcon\recode32.exe'
          file_copy, recode, 'recode.exe', /overwrite
        ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
-         recode='../spatcon/recode_mac' & file_copy, recode, 'recode', /overwrite
+         recode=info.dir_guidossub +'spatcon/recode_mac' & file_copy, recode, 'recode', /overwrite
        ENDIF ELSE BEGIN
-         recode='../spatcon/recode_lin64' & file_copy, recode, 'recode', /overwrite
+         recode=info.dir_guidossub +'spatcon/recode_lin64' & file_copy, recode, 'recode', /overwrite
        ENDELSE
 
        ;; run recode in tmp
@@ -8649,6 +8714,12 @@ CASE strlowCase(eventValue) OF
      res = dialog_message(msg, / information)
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      GOTO, fin
    END
 
@@ -9008,6 +9079,11 @@ CASE strlowCase(eventValue) OF
       res = dialog_message(msg, / information)
       ;; reset the colortable to the settings before the batch processing
       tvlct, rini, gini, bini
+      ;; clean up tmp
+      pushd, info.dir_tmp
+      list = file_search() & nl = n_elements(list)
+      if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+      popd
 
       ;; free and delete the temporary pointers
       ptr_free, cancel & cancel = 0b
@@ -9460,6 +9536,12 @@ CASE strlowCase(eventValue) OF
      res = dialog_message(msg, / information)
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      GOTO, fin
    END
 
@@ -10354,6 +10436,12 @@ CASE strlowCase(eventValue) OF
 
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      goto,fin
    END
 
@@ -10842,6 +10930,11 @@ CASE strlowCase(eventValue) OF
         'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
         'More information can be found in the logfile: ' + string(10b) + fn_logfile
       res = dialog_message(msg, / information)
+      ;; clean up tmp
+      pushd, info.dir_tmp
+      list = file_search() & nl = n_elements(list)
+      if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+      popd
      
       ;; Show the dendrogram if these conditions are met
       ;DENDRO_PLOT, clusters, link_dist, $
@@ -11588,6 +11681,11 @@ CASE strlowCase(eventValue) OF
        'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
        'More information can be found in the logfile: ' + string(10b) + fn_logfile
      res = dialog_message(msg, / information)
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
      
    GOTO, fin
  END
@@ -11940,6 +12038,12 @@ CASE strlowCase(eventValue) OF
 
       ;; reset the colortable to the settings before the batch processing
       tvlct, rini, gini, bini
+      ;; clean up tmp
+      pushd, info.dir_tmp
+      list = file_search() & nl = n_elements(list)
+      if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+      popd
+
       GOTO, fin
    END
 
@@ -14306,6 +14410,12 @@ CASE strlowCase(eventValue) OF
 
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      goto,fin
    END
 
@@ -14527,6 +14637,7 @@ CASE strlowCase(eventValue) OF
         a = text(-x1*0.9,0.3,'bg_area = ' + strtrim(pbg*100, 2)+'%',/data,/current,color='blue')
         a = text(-x1*0.9,0.2,'bg_Arep = ' + strtrim(bg_arep, 2),/data,/current,color='red')
         a.save,info.dir_tmp + 'barplot_hmc.png', resolution=300   
+        a.close
         
         ;; print out HMC stats to a txt-file
         fn_out = info.dir_tmp + 'dist_hmc.txt'
@@ -15107,6 +15218,12 @@ CASE strlowCase(eventValue) OF
 
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      goto,fin
    END
    
@@ -15471,6 +15588,12 @@ CASE strlowCase(eventValue) OF
 
          ;; reset the colortable to the settings before the batch processing
          tvlct, rini, gini, bini
+         ;; clean up tmp
+         pushd, info.dir_tmp
+         list = file_search() & nl = n_elements(list)
+         if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+         popd
+
          goto,fin       
    END
    
@@ -15684,7 +15807,7 @@ CASE strlowCase(eventValue) OF
           c = ext gt 4b
           c = morph_distance(c, /background, neighbor_sampling=3, /no_copy)
           a1=info.label_t2-0.5 & a2=info.label_t2+0.5
-          buff = where(c ge a1 and c lt a2, ct_buff)
+          buff = where(c ge a1 and c lt a2, ct_buff, /l64)
           ;; show BG-buffer zone with color 160
           buff2 = where(c lt a1 and c gt 0.0, ct_buff2, /l64)
           if ct_buff2 gt 0 then begin
@@ -16721,6 +16844,12 @@ CASE strlowCase(eventValue) OF
      res = dialog_message(msg, / information)
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      info.is_cost = 0
      GOTO, fin
     END
@@ -18432,6 +18561,12 @@ CASE strlowCase(eventValue) OF
        
        ;; reset the colortable to the settings before the batch processing
        tvlct, rini, gini, bini
+       ;; clean up tmp
+       pushd, info.dir_tmp
+       list = file_search() & nl = n_elements(list)
+       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+       popd
+
        goto,fin
    END
       
@@ -18804,6 +18939,12 @@ CASE strlowCase(eventValue) OF
 
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      goto,fin
    END
 
@@ -19281,6 +19422,12 @@ CASE strlowCase(eventValue) OF
 
      ;; reset the colortable to the settings before the batch processing
      tvlct, rini, gini, bini
+     ;; clean up tmp
+     pushd, info.dir_tmp
+     list = file_search() & nl = n_elements(list)
+     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
+     popd
+
      goto,fin
    END   
     
@@ -19444,7 +19591,7 @@ CASE strlowCase(eventValue) OF
         tt = strmid(im1_file,0, strlen(im1_file)-4)+'.sav'
         res = file_info(tt)
         IF res.exists NE 1b THEN BEGIN
-          msg = 'FOS change analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
+          msg = 'FOSchange analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
             'Please do not modify FOS-created directories.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
@@ -19597,7 +19744,7 @@ CASE strlowCase(eventValue) OF
       tt = strmid(im2_file,0, strlen(im2_file)-4)+'.sav'
       res = file_info(tt)
       IF res.exists NE 1b THEN BEGIN
-        msg = 'FOS change analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
+        msg = 'FOSchange analysis requires the file:' + string(10b) + file_basename(tt) + string(10b)+ 'which was not found. ' + $
           'Please do not modify FOS-created directories.' + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
@@ -19607,15 +19754,25 @@ CASE strlowCase(eventValue) OF
       
       ;; test for same graythreshold, input data type, and analysis scheme: fostype/fadtype
       im1_grayt_str = '' & im1_fosinp = '' & im1_fostype = ''
-      restore, filename=im1_sav & if (size(fadtype))[1] eq 7 then fostype = fadtype
+      restore, filename=im1_sav 
+      if (size(fragtype))[1] eq 7 then begin ;; fragtype is used by GWB
+        if strlen(fragtype) eq 9 then fostype = 'FOS'+strmid(fragtype,8)
+        if strlen(fragtype) eq 5 then fostype = 'FOS'+strmid(fragtype,4)
+      endif
+      if (size(fadtype))[1] eq 7 then fostype = fadtype ;; fadtype used by FAD_MS 
       im1_fostype = fostype & s1len = strlen(im1_fostype)
                  
       im2_grayt_str = '' & im2_fosinp = '' & im2_fostype = ''      
-      restore, filename=im2_sav & if (size(fadtype))[1] eq 7 then fostype = fadtype     
+      restore, filename=im2_sav 
+      if (size(fragtype))[1] eq 7 then begin ;; fragtype is used by GWB
+        if strlen(fragtype) eq 9 then fostype = 'FOS'+strmid(fragtype,8)
+        if strlen(fragtype) eq 5 then fostype = 'FOS'+strmid(fragtype,4)
+      endif 
+      if (size(fadtype))[1] eq 7 then fostype = fadtype ;; fadtype used by FAD_MS          
       im2_fostype = fostype & s2len = strlen(im2_fostype)   
       
       IF im1_grayt_str NE im2_grayt_str THEN BEGIN
-        msg = 'FOS change analysis requires comparing maps with the same grayscale threshold, which is not the case for the selected files:' + string(10b) + $
+        msg = 'FOSchange analysis requires comparing maps with the same grayscale threshold, which is not the case for the selected files:' + string(10b) + $
           'Image A: ' + im1_grayt_str + string(10b) + 'Image B: ' + im2_grayt_str + string(10b) + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
@@ -19623,7 +19780,7 @@ CASE strlowCase(eventValue) OF
       ENDIF
       
       IF im1_fosinp NE im2_fosinp THEN BEGIN
-        msg = 'FOS change analysis requires comparing maps with the same data type analysis threshold, which is not the case for the selected files:' + string(10b) + $
+        msg = 'FOSchange analysis requires comparing maps with the same data type analysis threshold, which is not the case for the selected files:' + string(10b) + $
           'Image A: ' + im1_fosinp + string(10b) + 'Image B: ' + im2_fosinp + string(10b) + string(10b) + 'Returning...'
         res = dialog_message(msg, / information)
         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
@@ -20000,7 +20157,7 @@ CASE strlowCase(eventValue) OF
           tt = strmid(im1_file,0, strlen(im1_file)-4) + '.sav'
           res = file_info(tt)
           IF res.exists NE 1b THEN BEGIN
-            msg = 'FOS change analysis requires the file:' + string(10b) +  file_basename(tt) + string(10b)+ 'which was not found. ' + $
+            msg = 'FOSchange analysis requires the file:' + string(10b) +  file_basename(tt) + string(10b)+ 'which was not found. ' + $
               'Please do not modify FOS-created directories.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
             openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
@@ -20011,37 +20168,71 @@ CASE strlowCase(eventValue) OF
           tt = strmid(im2_file,0, strlen(im2_file)-4) + '.sav'
           res = file_info(tt)
           IF res.exists NE 1b THEN BEGIN
-            msg = 'FOS change analysis requires the file:' + string(10b) +  file_basename(tt) + string(10b)+ 'which was not found. ' + $
+            msg = 'FOSchange analysis requires the file:' + string(10b) +  file_basename(tt) + string(10b)+ 'which was not found. ' + $
               'Please do not modify FOS-created directories.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
             openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF          
           b_sav = tt
+          ;; check for same coverage in geotiff
+          q = where(log1[2:*] NE log2[2:*],ct)
+          IF ct EQ 0 THEN BEGIN ;; we have equal coverage geotiff
+            info.is_geotiff = 1b
+            * info.geotiffinfo = geotiffinfo1 
+            info.fname_input = fn_a
+          ENDIF
+          
+          
           
           restore, a_sav
+          ;; should contain the following variables:
+          ;; GRAYT_STR, FOSINP, FOSTYPE, FOSCLASS, XDIM, YDIM, GEOTIFF_LOG, RARE, PATCHY, TRANSITIONAL, DOMINANT, INTERIOR, INTACT
+          ;; SEPARATED, CONTINUOUS, FAD_AV, FADRU_AV, FGAREA, OBJ_LAST, CONN_STR, PIXRES_STR, KDIM_STR, HEC, ACR.
+          if (size(fragtype))[1] eq 7 then begin ;; fragtype is used by GWB
+            ;; non-APP
+            fostype = 'FOS'+strmid(fragtype,4)
+            fosclass = fragtype + 'class'
+            ;; overwrite if APP
+            if strlen(fragtype) eq 9 then begin
+              fostype = 'FOS-APP'+strmid(fragtype,8)
+              fosclass = fragtype + 'class'
+            endif           
+          endif                          
           a_xdim=xdim & a_ydim=ydim & a_fostype = fostype & a_fosclass = fosclass
-          ;;& a_geotiff_log=geotiff_log & a_rare=rare & a_patchy=patchy & a_transitional=transitional
-          ;;a_dominant=dominant & a_interior=interior & a_intact=intact & a_fgarea=fgarea & a_hec = hec & a_acr = acr
           a_conn = conn_str & a_pres = pixres_str & a_kdim = kdim_str
           ;; check if fad_av was saved, if so then use it
           a_tt = (size(fad_av))[1]
           if a_tt eq 4 then a_fad_av = fad_av
+          a2_tt = (size(fadru_av))[1]
+          if a2_tt eq 4 then a_fadru_av = fadru_av
           
           restore, b_sav
+          if (size(fragtype))[1] eq 7 then begin ;; fragtype is used by GWB
+            ;; non-APP
+            fostype = 'FOS'+strmid(fragtype,4)
+            fosclass = fragtype + 'class'
+            ;; overwrite if APP
+            if strlen(fragtype) eq 9 then begin
+              fostype = 'FOS-APP'+strmid(fragtype,8)
+              fosclass = fragtype + 'class'
+            endif
+          endif
           b_xdim=xdim & b_ydim=ydim & b_fostype = fostype & b_fosclass = fosclass
-          ;;& b_geotiff_log=geotiff_log & b_rare=rare & b_patchy=patchy & b_transitional=transitional
-          ;;b_dominant=dominant & b_interior=interior & b_intact=intact & b_fgarea=fgarea & b_hec = hec & b_acr = acr
           b_conn = conn_str & b_pres = pixres_str & b_kdim = kdim_str  
           ;; check if fad_av was saved, if so then use it
           b_tt = (size(fad_av))[1]
           if b_tt eq 4 then b_fad_av = fad_av
+          b2_tt = (size(fadru_av))[1]
+          if b2_tt eq 4 then b_fadru_av = fadru_av
           fad_avok = a_tt + b_tt
+          fadru_avok = a2_tt + b2_tt
      
-          res = (a_xdim eq b_xdim) + (a_ydim eq b_ydim) + (a_conn eq b_conn) + (a_pres eq b_pres) + (a_kdim eq b_kdim) + (a_fostype eq b_fostype) + (a_fosclass eq b_fosclass)
+          res = (a_xdim eq b_xdim) + (a_ydim eq b_ydim) + (a_conn eq b_conn) + (a_pres eq b_pres) + (a_kdim eq b_kdim) + (a_fostype eq b_fostype) + $
+            (a_fosclass eq b_fosclass)
           
           if res ne 7b then begin
-            msg = 'FOS change analysis requires identical values for' + string(10b) + $
+            msg = 'FOSchange analysis requires identical values for' + string(10b) + $
               'X/Y-image dimension, FOS type, FG-connectivity,' + string(10b) + $
               'Pixel Resolution, and Observation Scale.' + string(10b) + string(10b) + $
               'The selected images have different settings. ' + string(10b) + 'Returning...'
@@ -20050,114 +20241,215 @@ CASE strlowCase(eventValue) OF
             GOTO, fin           
           endif
                    
-          title = 'Change in FOS Processing'
+          title = 'FOSchange'
+          info.title = title
           goto, resetfront
           backto_change_fos:
           
-          ;; 2) the change matrix for the FOS
+          ;; 2) the change matrix for FOS
           ;;===============================================================================================
           ;;========================================================================================
           ;; FOS image details for A, B
-          ;;==============================================================                                        
-          im1 = read_tiff(fn_a) & im2 = read_tiff(fn_b)
+          ;;==============================================================  
+          ;; FOSchange map is only useful when NOT doing APP!
           ;; get topdir of im1_file which will be used to save the results
-          outdir = file_dirname(file_dirname(im1_file)) + info.os_sep  
+          im1 = read_tiff(fn_a) & im2 = read_tiff(fn_b)
+          ;; the frag datasets have values for forest [0, 100], BG [101], 
+          ;; missing [102], special BG water [105], non-fragmenting BG [106]
+          farea_a = total(im1 LT 101b,/double) & farea_b = total(im2 LT 101b,/double) & nc = farea_b - farea_a
           
-          ;; make a simplified output for FE4.7_2class analysis
-          if fostype eq 'FOS-APP2' then begin
-            change = dblarr(3,3) & change0 = change
-            ;; exclude missing data from both maps, temporarily set them to 150b
-            q = where(im1 eq 102b or im2 eq 102b, ctmiss, /l64)
-            if ctmiss gt 0 then begin
-              im1[q]=150b & im2[q]=150b
-            endif
-            ;; collapse all background types in im1 and im2
-            q = where(im2 gt 100b and im2 lt 150b, ct, /l64) & if ct gt 0 then im2[q]=110b
-            q = where(im1 gt 100b and im1 lt 150b, ct, /l64) & if ct gt 0 then im1[q]=110b
-            ch = change0 ; reset change vector
+          ;; color assignment idea: 3 categories of increase/decrease for year_a - year_b
+          ;; note FAD ~ connectivity, which is contrary direction to fragmentation
+          ;; example: FAD in year_a 20% and year_b 15%. year_a - year_b = +5 %, meaning fragmentation has increased by 5%
+          ;; to keep all as a byte array, to keep the file size small and permits using a pseudo colortable, we use an offset of 100b, which is indicative for no change
+          ;; then:
+          ;; [99, 101]: +/- 1% no/insignificant change {240,240,200}
+          ;; [90, 98], [102, 110]: LE 10% little change: {130,210,170} and {255,215,100}
+          ;; [80, 89], [111, 120]: GT 10% medium change: {90,170,130} and {255,150,40}
+          ;; [LT 80], [GT 120]: GT 20% strong change: {60,130,90} and {205,75,0}
+          ;; 250b: forest gain: (BG) 101 -> [0, 100] {0,255,0} bright green
+          ;; 251b: forest loss: [0, 100] -> 101 (BG) {0,0,0} black
+          ;; 252b: BG stable: 101 AND 101 {225,225,225} grey
+          ;; 253b: water: 105 OR 105, overplot {0,99,254} blue
+          ;; 254b: missing: 102 OR 102, overplot {255,255,255} white
+          ;; 255b: outside: 255 OR 255, overplot {255,255,255} white
+
+
+          IF (fostype EQ 'FOS5') OR (fostype EQ 'FOS6') THEN BEGIN          
+            ;; a) the FOSchange (delta FOS) difference map
+            im = (im1 + 100b) - im2
+            ;; now overplot all other types of forest-nonforest interactions
+            ;; 250: gain - from nonforest to forest
+            x = (im1 EQ 101b) * (im2 LE 100b) & im = (x EQ 1b)*250b + (x EQ 0b)*temporary(im) 
+            ;; 251:loss - from forest to nonforest
+            x = (im1 LE 100b) * (im2 EQ 101b) & im = (x EQ 1b)*251b + (x EQ 0b)*temporary(im)
+            ;; 252: background at both times
+            x = (im1 EQ 101b) * (im2 EQ 101b) & im = (x EQ 1b)*252b + (x EQ 0b)*temporary(im)
+            ;; 253: special BG / water at either time
+            x = (im1 EQ 105b) OR (im2 EQ 105b) & im = (x EQ 1b)*253b + (x EQ 0b)*temporary(im)
+            ;; 254: Missing at either time
+            x = (im1 EQ 102b) OR (im2 EQ 102b) & im = (x EQ 1b)*254b + (x EQ 0b)*temporary(im)
+ 
+            restore, info.dir_guidossub + 'foschangecolors.sav' & tvlct, r, g, b
+            info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 18 ;; foschangecolors
+            diffsim = temporary(im) & mev = 1 ;; enable motion events for foschange
+            outdir = info.dir_tmp ;; write here to later save map and stats  
+            title = 'FOSchange'
+            info.title = title    
             
-            ;; get pixels of each class type in im1 and look what they changed to in im2
-            if ct gt 0 then begin ;; im1 has BG-pixels
-              h=histogram(im2[q]) & ch = [h[110],total(h[0:39]),total(h[40:100])]
-              change[*,0] = ch
-            endif
-            ch = ch*0 & q = where(im1 lt 40b, ct, /l64)
-            if ct gt 0 then begin ;; im1 has separated pixels
-              h=histogram(im2[q]) & ch = [h[110],total(h[0:39]),total(h[40:100])]
-              change[*,1] = ch
-            endif
-            ch = ch*0 & q = where(im1 ge 40b and im1 le 100b, ct, /l64)
-            if ct gt 0 then begin ;; im1 has continuous pixels
-              h=histogram(im2[q]) & ch = [h[110],total(h[0:39]),total(h[40:100])]
-              change[*,2] = ch
-            endif
-            uchange = strtrim(ulong64(change),2)
+                       
+            ;; b) the histogram values as a table
+            h = histogram(diffsim,/l64) & marea = (size(diffsim))[4]
+            h_rev = h & h_rev[0:200] = reverse(h[0:200])
             
-            ;; save the tables into a txt-file
+            ss = replicate('High decrease (red)',256) & ss[80:89] = 'Medium decrease (orange)'
+            ss[90:98] = 'Low decrease (yellow)' & ss[99:101] = 'Insignificant or no change (light gray)'
+            ss[102:110] = 'Low increase (light green)' & ss[111:120] = 'Medium increase (medium green)'
+            ss[121:200] = 'High increase (dark green)' & ss[201:249] = ' '
+            ss[250:*] = ['Foreground gain (BG->FG bright green)', 'Foreground loss (FG->BG black)', 'BG stable (BG->BG gray)',$
+              'Water at one/both time(s) (blue)', 'Missing at one/both time(s) (white)', 'Outside at one/both time(s) (white)']
+            ;; the delta value   
+            ss2 = strtrim(indgen(256) - 100,2) & ss2[201:*] = ''
+            if strlen(fosclass) eq 10 then method = strmid(fosclass,0,3) else method = strmid(fosclass,0,7)
+            
             ch_pref = 'fos-' + strlowcase(fosclass)+ '_' + a_kdim
-            f_out = outdir + ch_pref + '-change.txt' 
-            close,12 & openw,12, f_out
-            printf,12, ch_pref + ': Fragmentation class change from A -> B'
-            printf,12, 'A-' + fn_a
-            printf,12, 'B-' + fn_b
-            printf,12, '=============================================================================================================================================='
-            printf,12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
-            printf,12, '(Pixel resolution: ' + pixres_str + '[m], Window size: ' + kdim_str + 'x' + kdim_str +')'
-            printf,12, '=============================================================================================================================================='
-            printf,12, '# pixels A->B  :     B0-Background           B1-Separated         B2-Continuous'
-            printf,12, format='(a16,7(a18))','A0-Background  :', uchange[*,0]
-            printf,12, format='(a16,7(a18))','A1-Separated   :', uchange[*,1]
-            printf,12, format='(a16,7(a18))','A2-Continuous  :', uchange[*,2]
-            gain=total(change[1:*,0]) & loss=total(change[0,1:*]) & nc=gain-loss & if nc lt 0.0 then sig = '-' else sig = '' & nc2 = strtrim(ulong64(abs(nc)),2)
-            printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(ulong64(gain),2) + ' pixels'
-            printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(ulong64(loss),2) + ' pixels'
-            printf,12, 'Net area change (A->B): ' + sig + nc2 + ' pixels'
-            if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A->B) [%]: ' + strtrim(a_fad_av,2) + ' -> ' + $
-               strtrim(b_fad_av,2) + ': ' + strtrim(a_fad_av - b_fad_av,2)
-            close, 12
+            f_out = outdir + ch_pref + '-hist.csv'
+            close, 1 & openw, 1, f_out
+            printf,1,'Pixel Value, Delta-' + method + ', Pixel Count, Connectivity'
+            ;; show the full change entries of the histogram in [0, 200]
+            for i = 0, 200 do printf, 1, strtrim(i,2) + ', ' + ss2[i] + ', ' + strtrim(h_rev[i],2) + ', ' + ss[i]
+            ;; skip the empty histogram entries, usually [201, 249] but if there wrong ones then show them anyway
+            for i = 201, 255 do begin
+              if h_rev[i] gt 0 then printf, 1, strtrim(i,2) + ', ' + ss2[i] + ', ' + strtrim(h_rev[i],2) + ', ' + ss[i]
+            endfor
+         
             
-            ;; save the tables as a csv-file
-            z=strtrim(change,2) 
-            f_out = outdir + ch_pref + '-change.csv'
+            ;; 7-class statistical summary
+            x = indgen(201)-100 & y = h[0:200]
+            ;; forcom = forest area at both times, which is subject to fragmentation change
+            ;; equivalent to area under the histogram curve
+            forcom = total(y,/double)
+            dec3 = total(y[0:79],/double) / forcom * 100.0 & if finite(dec3) eq 0b then dec3 = 'NaN'
+            dec2 = total(y[80:89],/double) /forcom * 100.0 & if finite(dec2) eq 0b then dec2 = 'NaN'
+            dec1 = total(y[90:98],/double) / forcom * 100.0 & if finite(dec1) eq 0b then dec1 = 'NaN'
+            neu = total(y[99:101],/double) /forcom * 100.0 & if finite(neu) eq 0b then neu = 'NaN'
+            inc1 = total(y[102:110],/double) / forcom * 100.0 & if finite(inc1) eq 0b then inc1 = 'NaN'
+            inc2 = total(y[111:120],/double) / forcom * 100.0 & if finite(inc2) eq 0b then inc2 = 'NaN'
+            inc3 = total(y[121:*],/double) / forcom * 100.0 & if finite(inc3) eq 0b then inc3 = 'NaN'
             
-            ;; test and warn if that file is currently open
-            IF (file_info(f_out)).exists EQ 1b THEN BEGIN
-              ;; check it it can be opened meaning it is accessible, if not we will get an error gt 0
-              close, 9 & openu, 9, f_out, error = error & close,9
-            ENDIF ELSE BEGIN ;; file does not exist
-              error = 0
-            ENDELSE
+            ;; interpolate change curve to retrieve threshold where half the changes take place
+;            q = where(y gt 0,ct)  ;; find out how many change categories (bars) we have
+;            if ct eq 1 then begin
+;              fc_index = q[0] - 100.0
+;            endif else if ct eq 2 then begin
+;              ;; test if one of the two is category 100
+;              if q[0] EQ 100 OR q[1] eq 100 then begin
+;                if q[0] EQ 100 then fc_index = q[1] - 100.0
+;                if q[1] EQ 100 then fc_index = q[0] - 100.0
+;              endif else goto, skip100
+;            endif else begin
+;              skip100:
+;              y[100] = 0
+;              forcomc = total(y,/double)
+;              forcomc2 = (forcomc)/2.0 ;; half the area
+;              y_cum = total(y,/cumulative,/double) ;; cumulative area under the curve
+;              z1 = (y_cum - forcomc2)
+;              q = where (z1 gt 0) & midx = q[0] ;; where do we go through zero?
+;              sum_y = abs(z1[midx-1])+z1[midx]
+;              y_proz = abs(z1[midx-1]/sum_y)
+;              q = midx-1 + y_proz
+;              fc_index = q-100.0
+;            endelse
+            printf, 1, ' '          
+            if fadru_avok eq 8 then begin
+              printf, 1, 'Average Connectivity at reporting unit level:'
+              printf, 1, 'AVCON (A) [%]:, ' + strtrim(a_fadru_av,2)
+              printf, 1, 'AVCON (B) [%]:, ' + strtrim(b_fadru_av,2)
+              printf, 1, 'Delta AVCON (A->B) [%]:, ' + strtrim(b_fadru_av - a_fadru_av,2)
+              printf, 1, ' '
+            endif
+            if fad_avok eq 8 then begin
+              printf, 1, 'Average Connectivity at foreground level:'
+              printf, 1, 'FOS-Type:, ' + strtrim(fosclass,2)
+              printf, 1, 'Method:, ' + method
+              printf, 1, 'Reporting classes:, ' + strmid(fostype,3)
+              printf, 1, 'Average ' + method + ' (A) [%]:, ' + strtrim(a_fad_av,2)
+              printf,1, 'Average ' + method + ' (B) [%]:, ' + strtrim(b_fad_av,2)
+              printf,1, 'Delta ' + method + ' (A->B) [%]:, ' + strtrim(b_fad_av - a_fad_av,2)             
+              printf, 1, ' '
+            endif
+            printf, 1, 'Map area [pixels]:,' + strtrim(marea,2)
+            printf, 1, 'Foreground cover at time A [pixels]:,' + strtrim(farea_a,2)
+            printf, 1, 'Foreground cover at time B [pixels]:,' + strtrim(farea_b,2)
+            printf, 1, 'Net foreground cover change (A->B) [pixels]:,' + strtrim(nc,2)
+            printf, 1, 'FORCOM: common foreground cover at both times [pixels]:,' + strtrim(forcom,2)
+            printf, 1, 'Percentage of FORCOM in Connectivity change category'
+            printf, 1, 'High connectivity decrease [%]:,' + strtrim(inc3,2)
+            printf, 1, 'Medium connectivity decrease [%]:,' + strtrim(inc2,2)
+            printf, 1, 'Low connectivity decrease [%]:,' + strtrim(inc1,2)
+            printf, 1, 'Insignificant/No Change [%]:,' + strtrim(neu,2)
+            printf, 1, 'Low connectivity increase [%]:,' + strtrim(dec1,2)
+            printf, 1, 'Medium connectivity increase [%]:,' + strtrim(dec2,2)
+            printf, 1, 'High connectivity increase [%]:,' + strtrim(dec3,2)
+            close, 1
+            
+            ;; c) the histogram plot within +/- %
+            y100 = y[100] & y[100] = 0 & forcomc = total(y,/double)           
+            xrg = 101 & wdt = 1.0 & y = h[0:200] ;; reset y to original histogram values because above we set y[100] to zero
+            if total(y[50:150])/forcomc gt 0.97 then xrg=51 ; was 51, 41 , etc
+            if total(y[60:140])/forcomc gt 0.97 then xrg=41
+            if total(y[70:130])/forcomc gt 0.97 then xrg=31
+            if total(y[80:120])/forcomc gt 0.97 then xrg=21
+            if total(y[90:110])/forcomc gt 0.97 then xrg=11
+            ymax = max(y)*1.05 & if ymax lt 1.0 then ymax = 1.05
+            tit = 'FOSchange'
+            showbar = 1 ;; 1 to show the barplot else set to 0
+            ;; invert foschange direction in [0,200]
+            y[0:200] = reverse(y[0:200])
+            
+            
+            b0 = barplot(x[99:101], y[99:101], xrange = [-xrg,xrg], yrange = [0, ymax], xticklen=0.02, yticklen=0.02, $
+              title = tit, width=wdt, histogram = 0, ytitle = 'Frequency', buffer = (1 - showbar),$
+              xtitle = '<-- connectivity decrease [% points]  |    connectivity increase [% points] -->', fill_color = [240,240,200]) ;; was [255,255,240]
+            b0 = barplot(x[90:98], y[90:98], width=wdt, histogram = 0, fill_color = [255,215,100], /overplot) ;; small increase
+            b0 = barplot(x[80:89], y[80:89],width=wdt, histogram = 0, fill_color = [255,150,40], /overplot) ;; medium increase
+            b0 = barplot(x[0:79], y[0:79],width=wdt, histogram = 0, fill_color = [205,75,0], /overplot) ;; strong increase
+            b0 = barplot(x[102:110], y[102:110], width=wdt, histogram = 0, fill_color = [130,210,170], /overplot) ;; small decrease
+            b0 = barplot(x[111:120], y[111:120], width=wdt, histogram = 0, fill_color = [90,170,130], /overplot) ;; medium decrease
+            b0 = barplot(x[121:200], y[121:200], width=wdt, histogram = 0, fill_color = [60,130,90], /overplot) ;; strong decrease
 
-            IF (error NE 0) then begin ;; file is blocked
-              msg = 'Please close your spreadsheet application, then try again.' + $
-                string(10b) + 'Returning...'
-              res = dialog_message(msg, /information)
-              openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
-              goto, fin
-            ENDIF
 
-            close,12 & openw,12, f_out
-            printf,12, ch_pref + ': Fragmentation class change from A -> B ' 
-            printf,12, 'A-' + fn_a
-            printf,12, 'B-' + fn_b
-            printf,12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
-            printf,12, '(Pixel resolution: ' + pixres_str + '[m] Window size: ' + kdim_str + 'x' + kdim_str +')'
-            printf,12, ' '
-            printf,12, '# pixels, B0-Background, B1-Separated, B2-Continuous'
-            printf,12, 'A0-Background,  '+z[0,0]+', '+z[1,0]+', '+z[2,0]
-            printf,12, 'A1-Separated,   '+z[0,1]+', '+z[1,1]+', '+z[2,1]
-            printf,12, 'A2-Continuous,  '+z[0,2]+', '+z[1,2]+', '+z[2,2]
-            printf,12, '  '
-            printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(gain,2) + ' pixels'
-            printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(loss,2) + ' pixels'
-            printf,12, 'Net area change (A->B): ' + strtrim(nc,2) + ' pixels'
-            if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A->B) [%]: ' + strtrim(a_fad_av,2) + ' -> ' + $
-              strtrim(b_fad_av,2) + ': ' + strtrim(a_fad_av - b_fad_av,2)
-            close, 12
-            goto, skip_otherfoschange
+;            b0 = barplot(x[90:98], y[90:98], width=wdt, histogram = 0, fill_color = [130,210,170], /overplot) ;; small increase
+;            b0 = barplot(x[80:89], y[80:89],width=wdt, histogram = 0, fill_color = [90,170,130], /overplot) ;; medium increase
+;            b0 = barplot(x[0:79], y[0:79],width=wdt, histogram = 0, fill_color = [60,130,90], /overplot) ;; strong increase
+;            b0 = barplot(x[102:110], y[102:110], width=wdt, histogram = 0, fill_color = [255,215,100], /overplot) ;; small decrease
+;            b0 = barplot(x[111:120], y[111:120], width=wdt, histogram = 0, fill_color = [255,150,40], /overplot) ;; medium decrease
+;            b0 = barplot(x[121:200], y[121:200], width=wdt, histogram = 0, fill_color = [205,75,0], /overplot) ;; strong decrease
+;            xarr = [fc_index,fc_index] & dx = 2*xrg*0.06 & yarr = [0, ymax]
+;            b0 = plot(xarr, yarr, color='RED', thick=2, linestyle=1,/overplot)
+;            x1 = -xrg*0.9 & x2 = x1+dx & x3 = x1+(dx*1.1) & y1 = ymax*0.95
+;            b0 = plot([x1,x2],[y1,y1],color='RED', thick=2, linestyle=1,/overplot)
+;            b0 = text(x3,ymax*0.94,'FC index',/data,/current,color='red')
+;            z = round(fc_index*100)/100.0 & z = strtrim(z,2)
+;            q = strpos(z, '.') & zz=strmid(z,0,q+3)
+;            if finite(fc_index) eq 0b then zz = 'NaN'
+;            b0 = text(x3, ymax*0.9,'('+zz+')',/data,/current,color='red')
+            b0.save, outdir + ch_pref + '-barplot.png', resolution=300
+                 
+          ENDIF ELSE BEGIN ;; no map output for _APP, set viewport to welcome startup
+            outdir = file_dirname(file_dirname(im1_file)) + info.os_sep
+            diffsim = rotate(* info.process,7)
+          ENDELSE
+               
+          ;; don't do change for APP
+          if fostype eq 'FOS-APP2' OR fostype eq 'FOS-APP5' then begin
+            msg = 'FOSchange analysis of APP maps makes little sense.' + string(10b) + 'Returning...'
+            res = dialog_message(msg, /information)
+            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit        
+            goto, contnormal
           endif
-           
-          change = dblarr(7, 7) & change0 = change
+          
+          ;; we have either FOS5 or FOS6 pixel-based data                  
           ;; potential values in scale images are the actual FAD values:
           ;; 1-100, 101-BG, 102-missing, 105-special BG, 106-specialBG non-fragm.
           ;;               
@@ -20166,112 +20458,106 @@ CASE strlowCase(eventValue) OF
           if ctmiss gt 0 then begin
             im1[q]=150b & im2[q]=150b
           endif
-          ;; collapse all background types in im1 and im2
-          q = where(im2 gt 100b and im2 lt 150b, ct, /l64) & if ct gt 0 then im2[q]=110b
+          ;; collapse all background types in im1 and im2, temporarily set them to 110b
+          q = where(im2 gt 100b and im2 lt 150b, ct, /l64) & if ct gt 0 then im2[q]=110b 
           q = where(im1 gt 100b and im1 lt 150b, ct, /l64) & if ct gt 0 then im1[q]=110b
-          ch = change0 ; reset change vector
+          
+          
+          if fostype eq 'FOS5' then begin
+            change = dblarr(6, 6) & change0 = change & ch = change0 ; reset change vector
+            ;; get pixels of each class type in im1 and look what they changed to in im2
+            if ct gt 0 then begin ;; im1 has BG-pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:100])]
+              change[*,0] = ch
+            endif
+            ch = ch*0 & q = where(im1 lt 10b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has rare pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:100])]
+              change[*,1] = ch
+            endif
+            ch = ch*0 & q = where(im1 ge 10b and im1 le 39b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has patchy pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:100])]
+              change[*,2] = ch
+            endif
+            ch = ch*0 & q = where(im1 ge 40b and im1 le 59b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has transitional pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:100])]
+              change[*,3] = ch
+            endif
+            ch = ch*0 & q = where(im1 ge 60b and im1 le 89b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has dominant pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:100])]
+              change[*,4] = ch
+            endif
+            ch = ch*0 & q = where(im1 ge 90b and im1 le 100b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has interior pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:100])]
+              change[*,5] = ch
+            endif         
+          endif else begin  ;; FOS 6-class
+            change = dblarr(7, 7) & change0 = change & ch = change0 ; reset change vector
+            ;; get pixels of each class type in im1 and look what they changed to in im2
+            if ct gt 0 then begin ;; im1 has BG-pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
+              change[*,0] = ch
+            endif
+            ch = ch*0 & q = where(im1 lt 10b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has rare pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
+              change[*,1] = ch
+            endif
+            ch = ch*0 & q = where(im1 ge 10b and im1 le 39b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has patchy pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
+              change[*,2] = ch
+            endif
+            ch = ch*0 & q = where(im1 ge 40b and im1 le 59b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has transitional pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
+              change[*,3] = ch
+            endif
+            ch = ch*0 & q = where(im1 ge 60b and im1 le 89b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has dominant pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
+              change[*,4] = ch
+            endif
+            ch = ch*0 & q = where(im1 ge 90b and im1 lt 100b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has interior pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
+              change[*,5] = ch
+            endif
+            ch = ch*0 & q = where(im1 eq 100b, ct, /l64)
+            if ct gt 0 then begin ;; im1 has 100-intact pixels
+              h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
+              change[*,6] = ch
+            endif
+          endelse
 
-          ;; get pixels of each class type in im1 and look what they changed to in im2
-          if ct gt 0 then begin ;; im1 has BG-pixels
-            h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
-            change[*,0] = ch
-          endif
-          ch = ch*0 & q = where(im1 lt 10b, ct, /l64)
-          if ct gt 0 then begin ;; im1 has rare pixels
-            h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
-            change[*,1] = ch
-          endif
-          ch = ch*0 & q = where(im1 ge 10b and im1 le 39b, ct, /l64)
-          if ct gt 0 then begin ;; im1 has patchy pixels
-            h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
-            change[*,2] = ch
-          endif
-          ch = ch*0 & q = where(im1 ge 40b and im1 le 59b, ct, /l64)
-          if ct gt 0 then begin ;; im1 has transitional pixels
-            h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
-            change[*,3] = ch
-          endif
-          ch = ch*0 & q = where(im1 ge 60b and im1 le 89b, ct, /l64)
-          if ct gt 0 then begin ;; im1 has dominant pixels
-            h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
-            change[*,4] = ch
-          endif
-          ch = ch*0 & q = where(im1 ge 90b and im1 lt 100b, ct, /l64)
-          if ct gt 0 then begin ;; im1 has interior pixels
-            h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
-            change[*,5] = ch
-          endif
-          ch = ch*0 & q = where(im1 eq 100b, ct, /l64)
-          if ct gt 0 then begin ;; im1 has 100-intact pixels
-            h=histogram(im2[q]) & ch = [h[110],total(h[0:9]),total(h[10:39]),total(h[40:59]),total(h[60:89]),total(h[90:99]),h[100]]
-            change[*,6] = ch
-          endif
-
-          ;; calculate percentage of change in the sub-matrix
-          perc = change*0
-          sum_below = total(change[1,2:*],/double) + total(change[2,3:*],/double) + total(change[3,4:*],/double) + total(change[4,5:*],/double) + change[5,6]
-          sum_above = total(change[2:*,1],/double) + total(change[3:*,2],/double) + total(change[4:*,3],/double) + total(change[5:*,4],/double) + change[6,5]
-          for ix = 1,6 do begin
-            for iy = 1,6 do begin
-              if iy gt ix then perc[ix,iy]=change[ix,iy]/sum_below*100.0
-              if iy lt ix then perc[ix,iy]=change[ix,iy]/sum_above*(-100.0)
+          ;; calculate percentage of change in the sub-matrix of change
+          mch = change[1:*,1:*]
+          ;; null diagonal
+          diag = 0
+          if fostype eq 'FOS6' then nft = 5 else nft = 4
+          for ix = 0,nft do begin
+            for iy = 0,nft do begin
+              if ix eq iy then begin
+                diag = diag + mch[ix,iy] 
+                mch[ix,iy] = 0
+              endif
             endfor
           endfor
-          ;; get integer numbers
-          if fostype eq 'FOS-APP5' OR fostype eq 'FOS5' then begin
-            change = change[0:5,0:5] & perc = perc[0:5,0:5]
-          endif
-          uchange = strtrim(ulong64(change),2)
+          chpix = total(mch)
+          perc = mch/chpix*100         
+          
+          ;; sum of percentage with connectivity increase = above matrix diagonal
+          sum_above = total(perc[0:*,0],/double) + total(perc[1:*,1],/double) + total(perc[2:*,2],/double) + total(perc[3:*,3],/double)
+          if fostype eq 'FOS6' then sum_above = sum_above + total(perc[4:*,4],/double)
+          ;; sum of percentage with connectivity decrease = below matrix diagonal
+          sum_below = total(perc,/double) - sum_above         
 
-          ;; save the tables into a txt-file
+          uchange = strtrim(ulong64(change),2)
           ch_pref = 'fos-' + strlowcase(fosclass)+ '_' + a_kdim
-          f_out = outdir + ch_pref + '-change.txt'    
-          close,12 & openw,12, f_out
-          printf,12, ch_pref + ': Fragmentation class change from A -> B'
-          printf,12, 'A-' + fn_a 
-          printf,12, 'B-' + fn_b
-          printf,12, '=============================================================================================================================================='
-          printf,12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
-          printf,12, '(Pixel resolution: ' + pixres_str + '[m], Window size: ' + kdim_str + 'x' + kdim_str +')'
-          printf,12, '=============================================================================================================================================='
-          if fostype eq 'FOS6' then begin
-            printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior         B6-Intact'
-          endif else begin
-            printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior'
-          endelse
-;          if fostype eq 'FOS' then printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior         B6-Intact'
-;          if fostype eq 'FOS-APP5' then printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior'
-          printf,12, format='(a16,7(a18))','A0-Background  :', uchange[*,0]
-          printf,12, format='(a16,7(a18))','A1-Rare        :', uchange[*,1]
-          printf,12, format='(a16,7(a18))','A2-Patchy      :', uchange[*,2]
-          printf,12, format='(a16,7(a18))','A3-Transitional:', uchange[*,3]
-          printf,12, format='(a16,7(a18))','A4-Dominant    :', uchange[*,4]
-          printf,12, format='(a16,7(a18))','A5-Interior    :', uchange[*,5]
-          if fostype eq 'FOS6' then printf,12, format='(a16,7(a18))','A6-Intact      :', uchange[*,6]
-          printf,12, '  '
-          gain=total(change[1:*,0]) & loss=total(change[0,1:*]) & nc=gain-loss & if nc lt 0.0 then sig = '-' else sig = '' & nc2 = strtrim(ulong64(abs(nc)),2)
-          printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(ulong64(gain),2) + ' pixels'
-          printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(ulong64(loss),2) + ' pixels'
-          printf,12, 'Net area change (A->B): ' + sig + nc2 + ' pixels'
-          if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A-B) [%]: ' + strtrim(a_fad_av,2) + ' - ' + $
-            strtrim(b_fad_av,2) + ': ' + strtrim(a_fad_av - b_fad_av,2)
-          printf,12, '  '
-          printf,12, 'Relative fragmentation value increase is found below the matrix diagonal and expressed with positive percentages.'
-          printf,12, 'Relative fragmentation value decrease is found above the matrix diagonal and expressed with negative percentages.'
-          if fostype eq 'FOS6' then begin
-            printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior       B6-Intact'
-          endif else begin
-            printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior'
-          endelse
-;          if fostype eq 'FOS-APP5' then printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior'
-          printf,12, format='(8(a16))','A1-Rare        :',perc[1:*,1]
-          printf,12, format='(8(a16))','A2-Patchy      :',perc[1:*,2]
-          printf,12, format='(8(a16))','A3-Transitional:',perc[1:*,3]
-          printf,12, format='(8(a16))','A4-Dominant    :',perc[1:*,4]
-          printf,12, format='(8(a16))','A5-Interior    :',perc[1:*,5]
-          if fostype eq 'FOS6' then printf,12, format='(8(a16))','A6-Intact      :',perc[1:*,6]
-          printf,12, '  '
-          close,12
 
           ;; save the tables as a csv-file
           z=strtrim(change,2) & zp=strtrim(perc,2)
@@ -20292,16 +20578,30 @@ CASE strlowCase(eventValue) OF
             openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             goto, fin
           ENDIF 
-         
+          
+          ;; test if forcom is defined, else calculate it
+          IF total(size(forcom)) LT 0.1 THEN BEGIN
+            forcom = total((im1 lE 100b)*(im2 LE 100b),/double)
+          ENDIF        
           close,12 & openw,12, f_out
           printf,12, ch_pref + ': Fragmentation class change from A -> B'
-          printf,12, 'A-' + fn_a 
-          printf,12, 'B-' + fn_b
-          printf,12, 'Fragmentation class at observation scale: ' + hec + ' hectares/' + acr + ' acres'
+          printf,12, 'A: ' + fn_a 
+          printf,12, 'B: ' + fn_b
+          printf,12, 'Fragmentation class at observation scale: ' + strtrim(hec,2) + ' hectares/' + strtrim(acr,2) + ' acres'
           printf,12, '(Pixel resolution: ' + pixres_str + '[m] Window size: ' + kdim_str + 'x' + kdim_str +')'
+          printf, 12, 'Foreground cover at time A [pixels]: ' + strtrim(farea_a,2)
+          printf, 12, 'Foreground cover at time B [pixels]: ' + strtrim(farea_b,2)
+          printf, 12, 'Net foreground cover change (A->B) [pixels]: ' + strtrim(nc,2)
+          if fadru_avok eq 8 then printf,12, 'AVCON (A->B) [%]: ' + strtrim(a_fadru_av,2) + ' -> ' + $
+            strtrim(b_fadru_av,2) + ': ' + strtrim(b_fadru_av - a_fadru_av,2)
+          if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A->B) [%]: ' + strtrim(a_fad_av,2) + ' -> ' + $
+            strtrim(b_fad_av,2) + ': ' + strtrim(b_fad_av - a_fad_av,2)
           printf,12, ' '
+          printf,12, 'Change matrix constrained to FORCOM: common foreground cover at both times [pixels]: ' + strtrim(forcom,2)
+          printf,12, 'Number of pixels in the same fragmentation class (matrix diagonal): ' + strtrim(diag,2)
+          printf,12, 'Number of pixels in different fragmentation classes: ' + strtrim(chpix,2)
           if fostype eq 'FOS6' then begin
-            printf,12, '# pixels, B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
+            printf,12, 'A->B [pixels], B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
             printf,12, 'A0-Background,  '+z[0,0]+', '+z[1,0]+', '+z[2,0]+', '+z[3,0]+', '+z[4,0]+', '+z[5,0]+', '+z[6,0]
             printf,12, 'A1-Rare,        '+z[0,1]+', '+z[1,1]+', '+z[2,1]+', '+z[3,1]+', '+z[4,1]+', '+z[5,1]+', '+z[6,1]
             printf,12, 'A2-Patchy,      '+z[0,2]+', '+z[1,2]+', '+z[2,2]+', '+z[3,2]+', '+z[4,2]+', '+z[5,2]+', '+z[6,2]
@@ -20309,50 +20609,37 @@ CASE strlowCase(eventValue) OF
             printf,12, 'A4-Dominant,    '+z[0,4]+', '+z[1,4]+', '+z[2,4]+', '+z[3,4]+', '+z[4,4]+', '+z[5,4]+', '+z[6,4]
             printf,12, 'A5-Interior,    '+z[0,5]+', '+z[1,5]+', '+z[2,5]+', '+z[3,5]+', '+z[4,5]+', '+z[5,5]+', '+z[6,5]
             printf,12, 'A6-Intact,      '+z[0,6]+', '+z[1,6]+', '+z[2,6]+', '+z[3,6]+', '+z[4,6]+', '+z[5,6]+', '+z[6,6]
-;          endif else if fostype eq 'FOS-APP5' then begin
           endif else begin
-            printf,12, '# pixels, B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
+            printf,12, 'A->B [pixels], B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
             printf,12, 'A0-Background,  '+z[0,0]+', '+z[1,0]+', '+z[2,0]+', '+z[3,0]+', '+z[4,0]+', '+z[5,0]
             printf,12, 'A1-Rare,        '+z[0,1]+', '+z[1,1]+', '+z[2,1]+', '+z[3,1]+', '+z[4,1]+', '+z[5,1]
             printf,12, 'A2-Patchy,      '+z[0,2]+', '+z[1,2]+', '+z[2,2]+', '+z[3,2]+', '+z[4,2]+', '+z[5,2]
             printf,12, 'A3-Transitional,'+z[0,3]+', '+z[1,3]+', '+z[2,3]+', '+z[3,3]+', '+z[4,3]+', '+z[5,3]
             printf,12, 'A4-Dominant,    '+z[0,4]+', '+z[1,4]+', '+z[2,4]+', '+z[3,4]+', '+z[4,4]+', '+z[5,4]
             printf,12, 'A5-Interior,    '+z[0,5]+', '+z[1,5]+', '+z[2,5]+', '+z[3,5]+', '+z[4,5]+', '+z[5,5]
-;          endif
           endelse
           printf,12, '  '
-          printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(gain,2) + ' pixels'
-          printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(loss,2) + ' pixels'
-          printf,12, 'Net area change (A->B): ' + strtrim(nc,2) + ' pixels'
-          if fad_avok eq 8 then printf,12, strmid(fosclass,0,3) + '_av (A-B) [%]: ' + strtrim(a_fad_av,2) + ' - ' + $
-            strtrim(b_fad_av,2) + ': ' + strtrim(a_fad_av - b_fad_av,2)
-          printf,12, '  '
-          printf,12, 'Relative fragmentation value increase is found below the matrix diagonal and expressed with positive percentages.'
-          printf,12, 'Relative fragmentation value decrease is found above the matrix diagonal and expressed with negative percentages.'
+          printf,12, 'Change matrix constrained to the ' + strtrim(chpix,2) + ' pixels in different fragmentation classes [%]: '
+          printf,12, 'Fragmentation decrease (=connectivity increase) - above the matrix diagonal [%]: ' + strtrim(sum_above,2)
+          printf,12, 'Fragmentation increase (=connectivity decrease) - below the matrix diagonal [%]: ' + strtrim(sum_below,2)
           if fostype eq 'FOS6' then begin
-            printf,12, '% change A->B  :,  B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
-            printf,12, 'A1-Rare        :,'+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]+','+zp[5,1]+','+zp[6,1]
-            printf,12, 'A2-Patchy      :,'+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]+','+zp[5,2]+','+zp[6,2]
-            printf,12, 'A3-Transitional:,'+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]+','+zp[5,3]+','+zp[6,3]
-            printf,12, 'A4-Dominant    :,'+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]+','+zp[6,4]
-            printf,12, 'A5-Interior    :,'+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]+','+zp[6,5]
-            printf,12, 'A6-Intact      :,'+zp[1,6]+','+zp[2,6]+','+zp[3,6]+','+zp[4,6]+','+zp[5,6]+','+zp[6,6]
+            printf,12, 'A->B [%], , B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
+            printf,12, 'A1-Rare      ,  ,'+zp[0,0]+','+zp[1,0]+','+zp[2,0]+','+zp[3,0]+','+zp[4,0]+','+zp[5,0]
+            printf,12, 'A2-Patchy    ,  ,'+zp[0,1]+','+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]+','+zp[5,1]
+            printf,12, 'A3-Transitional, ,'+zp[0,2]+','+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]+','+zp[5,2]
+            printf,12, 'A4-Dominant  ,  ,'+zp[0,3]+','+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]+','+zp[5,3]
+            printf,12, 'A5-Interior  ,  ,'+zp[0,4]+','+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]
+            printf,12, 'A6-Intact    ,  ,'+zp[0,5]+','+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]
           endif else begin
-            printf,12, '% change A->B  :,  B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
-            printf,12, 'A1-Rare        :,'+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]+','+zp[5,1]
-            printf,12, 'A2-Patchy      :,'+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]+','+zp[5,2]
-            printf,12, 'A3-Transitional:,'+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]+','+zp[5,3]
-            printf,12, 'A4-Dominant    :,'+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]
-            printf,12, 'A5-Interior    :,'+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]           
+            printf,12, 'A->B [%], , B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
+            printf,12, 'A1-Rare      ,  ,'+zp[0,0]+','+zp[1,0]+','+zp[2,0]+','+zp[3,0]+','+zp[4,0]
+            printf,12, 'A2-Patchy    ,  ,'+zp[0,1]+','+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]
+            printf,12, 'A3-Transitional, ,'+zp[0,2]+','+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]
+            printf,12, 'A4-Dominant  ,  ,'+zp[0,3]+','+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]
+            printf,12, 'A5-Interior  ,  ,'+zp[0,4]+','+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]           
           endelse        
           close,12
-                   
-          skip_otherfoschange:
-          msg = 'FOS change analysis finished. ' + string(10b) + $
-            'Change matrix tables (txt, csv) were saved to:' + string(10b) + outdir
-          res = dialog_message(msg, / information)   
-          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ' + msg + info.bline & free_lun, unit      
-          goto, contnormal ;;diffsim_finish
+          goto, diffsim_finish                      
         endif        
         ;;======================  end of   F O S  stuff  ========================================
             
@@ -20392,13 +20679,17 @@ CASE strlowCase(eventValue) OF
         ;; check if fad_av was saved, if so then use it
         a_tt = (size(fad_av))[1]
         if a_tt eq 6 then a_fad_av = fad_av
+        a_tt = (size(fadru_av))[1]
+        if a_tt eq 6 then a_fadru_av = fadru_av
 
         restore, fn_b[7] & b_xdim=xdim & b_ydim=ydim & b_fadtype = fadtype 
         ;; check if fad_av was saved, if so then use it
         b_tt = (size(fad_av))[1]        
         if b_tt eq 6 then b_fad_av = fad_av
+        b_tt = (size(fadru_av))[1]
+        if b_tt eq 6 then b_fadru_av = fadru_av
         fad_avok = a_tt + b_tt
-       
+        fadru_avok = a_tt + b_tt       
         res = (a_xdim eq b_xdim) + (a_ydim eq b_ydim) + (a_fadtype eq b_fadtype)
 
         if res ne 3b then begin
@@ -20412,7 +20703,7 @@ CASE strlowCase(eventValue) OF
        ;;========================================================================================
         ;; 1) reset the viewport image
         ;;========================================================================================
-        title = 'Change in FAD Processing'
+        title = 'Change in FAD_MS Processing'
         goto, resetfront
         backto_change_fad:
      
@@ -20425,6 +20716,8 @@ CASE strlowCase(eventValue) OF
           ;; loop over the 6 scales
           change = dblarr(7, 7) & ext = strtrim(kdim_str[isc],2)
           im1 = read_tiff(fn_a[isc]) & im2 = read_tiff(fn_b[isc])
+          farea_a = total(im1 LT 101b,/double) & farea_b = total(im2 LT 101b,/double) & nc = farea_b - farea_a
+          forcom = total((im1 lE 100b)*(im2 LE 100b),/double)
           ;; potential values in scale images are the actual FAD values: 
           ; 1-100, 101-BG, 102-missing, 105-special BG, 106-specialBG non-fragm.
                             
@@ -20475,119 +20768,117 @@ CASE strlowCase(eventValue) OF
             change[*,6] = ch
           endif
                     
-          ;; calculate percentage of change in the sub-matrix
-          perc = change*0
-          sum_below = total(change[1,2:*],/double) + total(change[2,3:*],/double) + total(change[3,4:*],/double) + total(change[4,5:*],/double) + change[5,6]
-          sum_above = total(change[2:*,1],/double) + total(change[3:*,2],/double) + total(change[4:*,3],/double) + total(change[5:*,4],/double) + change[6,5]
-          for ix = 1,6 do begin
-            for iy = 1,6 do begin
-              if iy gt ix then perc[ix,iy]=change[ix,iy]/sum_below*100.0
-              if iy lt ix then perc[ix,iy]=change[ix,iy]/sum_above*(-100.0)
+          ;; calculate percentage of change in the sub-matrix of change
+          mch = change[1:*,1:*]
+          ;; null diagonal
+          diag = 0 
+          for ix = 0,5 do begin
+            for iy = 0,5 do begin
+              if ix eq iy then begin
+                diag = diag + mch[ix,iy]
+                mch[ix,iy] = 0
+              endif
             endfor
-          endfor 
-          ;; get integer numbers
-          uchange = strtrim(ulong64(change),2)
-          if fadtype eq 'FAD' then lx = 6 else lx = 5
-         
+          endfor
+          chpix = total(mch)
+          perc = mch/chpix*100
+          ;; sum of percentage with connectivity increase = above matrix diagonal
+          sum_above = total(perc[0:*,0],/double) + total(perc[1:*,1],/double) + total(perc[2:*,2],/double) + total(perc[3:*,3],/double) + total(perc[4:*,4],/double)
+          ;; sum of percentage with connectivity decrease = below matrix diagonal
+          sum_below = total(perc,/double) - sum_above 
+          
+          uchange = strtrim(ulong64(change),2) ; ;; get integer numbers      
           ;; save the tables into tmp as a txt-file
           close,12 & openw,12, info.dir_tmp + fadtype + '_change_' + ext + '.txt'
           printf,12, fadtype + ': Fragmentation class change from A -> B at observation scale: ' + kstr[isc]
-          printf,12, 'A-' + fn_a[isc] + '   ->   ' 
+          printf,12, 'A-' + fn_a[isc] + '   ->   '
           printf,12, 'B-' + fn_b[isc]
           printf,12, '=============================================================================================================================================='
-          if fadtype eq 'FAD' then printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior         B6-Intact'
-          if fadtype eq 'FAD-APP5' then printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior'
-          printf,12, format='(a16,7(a18))','A0-Background  :', uchange[0:lx,0]
-          printf,12, format='(a16,7(a18))','A1-Rare        :', uchange[0:lx,1]
-          printf,12, format='(a16,7(a18))','A2-Patchy      :', uchange[0:lx,2]
-          printf,12, format='(a16,7(a18))','A3-Transitional:', uchange[0:lx,3]
-          printf,12, format='(a16,7(a18))','A4-Dominant    :', uchange[0:lx,4]
-          printf,12, format='(a16,7(a18))','A5-Interior    :', uchange[0:lx,5]
-          if fadtype eq 'FAD' then printf,12, format='(a16,7(a18))','A6-Intact      :', uchange[*,6]
+          printf,12, '# pixels A->B  :     B0-Background           B1-Rare         B2-Patchy    B3-Transitional      B4-Dominant       B5-Interior         B6-Intact'
+          printf,12, format='(a16,7(a18))','A0-Background  :', uchange[*,0]
+          printf,12, format='(a16,7(a18))','A1-Rare        :', uchange[*,1]
+          printf,12, format='(a16,7(a18))','A2-Patchy      :', uchange[*,2]
+          printf,12, format='(a16,7(a18))','A3-Transitional:', uchange[*,3]
+          printf,12, format='(a16,7(a18))','A4-Dominant    :', uchange[*,4]
+          printf,12, format='(a16,7(a18))','A5-Interior    :', uchange[*,5]
+          printf,12, format='(a16,7(a18))','A6-Intact      :', uchange[*,6]
           printf,12, '  '
-          gain=total(change[1:*,0]) & loss=total(change[0,1:*]) & nc=gain-loss & if nc lt 0.0 then sig = '-' else sig = '' & nc2 = strtrim(ulong64(abs(nc)),2)
-          printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(ulong64(gain),2) + ' pixels'
-          printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(ulong64(loss),2) + ' pixels'
-          printf,12, 'Net area change (A->B): ' + sig + nc2 + ' pixels'
+          printf, 12, 'Foreground cover at time A [pixels]: ' + strtrim(farea_a,2)
+          printf, 12, 'Foreground cover at time B [pixels]: ' + strtrim(farea_b,2)
+          printf, 12, 'Net foreground cover change (A->B) [pixels]: ' + strtrim(nc,2)
           if fad_avok eq 12 then begin
-            printf, 12, '========================================================================================='            
+            printf, 12, '========================================================================================='
             printf, 12, 'Observation scale:        1          2           3           4           5         mscale'
             printf, 12, 'Neighborhood area:       7x7       13x13       27x27       81x81      243x243'
-            deltafad_av = a_fad_av - b_fad_av           
-            printf,12, format='(a18,7(a12))','Diff: FAD_AV(A-B):', deltafad_av            
-          endif          
+            deltafad_av = b_fad_av - a_fad_av
+            printf,12, format='(a18,7(a12))','Diff: FAD_AV(A->B):', deltafad_av
+          endif
+          if fadru_avok eq 12 then begin
+            deltafadru_av = b_fadru_av - a_fadru_av
+            printf,12, format='(a18,7(a12))','Diff: AVCON(A->B):', deltafadru_av
+          endif
           printf,12, '  '
-          printf,12, 'Relative fragmentation value increase is found below the matrix diagonal and expressed with positive percentages.'
-          printf,12, 'Relative fragmentation value decrease is found above the matrix diagonal and expressed with negative percentages.'
-          if fadtype eq 'FAD' then printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior       B6-Intact'
-          if fadtype eq 'FAD-APP5' then printf,12, '% change A->B  :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior'
-          printf,12, format='(8(a16))','A1-Rare        :',perc[1:lx,1]
-          printf,12, format='(8(a16))','A2-Patchy      :',perc[1:lx,2]
-          printf,12, format='(8(a16))','A3-Transitional:',perc[1:lx,3]
-          printf,12, format='(8(a16))','A4-Dominant    :',perc[1:lx,4]
-          printf,12, format='(8(a16))','A5-Interior    :',perc[1:lx,5]
-          if fadtype eq 'FAD' then printf,12, format='(8(a16))','A6-Intact      :',perc[1:*,6]
+          printf,12, 'Change matrix constrained to the ' + strtrim(chpix,2) + ' pixels in different fragmentation classes [%]: '
+          printf,12, 'Fragmentation decrease (=connectivity increase) - above the matrix diagonal [%]: ' + strtrim(sum_above,2)
+          printf,12, 'Fragmentation increase (=connectivity decrease) - below the matrix diagonal [%]: ' + strtrim(sum_below,2)
+          printf,12, 'A->B [%]     :         B1-Rare       B2-Patchy   B3-Transitional   B4-Dominant     B5-Interior       B6-Intact'
+          printf,12, format='(8(a16))','A1-Rare        :',perc[1:*,0]
+          printf,12, format='(8(a16))','A2-Patchy      :',perc[1:*,1]
+          printf,12, format='(8(a16))','A3-Transitional:',perc[1:*,2]
+          printf,12, format='(8(a16))','A4-Dominant    :',perc[1:*,3]
+          printf,12, format='(8(a16))','A5-Interior    :',perc[1:*,4]
+          printf,12, format='(8(a16))','A6-Intact      :',perc[1:*,5]
           printf,12, '  '
           close,12
-          
+                 
           ;; save the tables into tmp as a csv-file
           z=strtrim(change,2) & zp=strtrim(perc,2)           
           close,12 & openw,12, info.dir_tmp + fadtype + '_change_' + ext + '.csv'          
           printf,12, fadtype + ': Fragmentation class change: A-' + fn_a[isc] + '   ->   ' + 'B-' + fn_b[isc] + ' at observation scale: ' + kstr[isc]
-          if fadtype eq 'FAD' then begin
-            printf,12, '# pixels, B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
-            printf,12, 'A0-Background,  '+z[0,0]+', '+z[1,0]+', '+z[2,0]+', '+z[3,0]+', '+z[4,0]+', '+z[5,0]+', '+z[6,0]
-            printf,12, 'A1-Rare,        '+z[0,1]+', '+z[1,1]+', '+z[2,1]+', '+z[3,1]+', '+z[4,1]+', '+z[5,1]+', '+z[6,1]
-            printf,12, 'A2-Patchy,      '+z[0,2]+', '+z[1,2]+', '+z[2,2]+', '+z[3,2]+', '+z[4,2]+', '+z[5,2]+', '+z[6,2]
-            printf,12, 'A3-Transitional,'+z[0,3]+', '+z[1,3]+', '+z[2,3]+', '+z[3,3]+', '+z[4,3]+', '+z[5,3]+', '+z[6,3]
-            printf,12, 'A4-Dominant,    '+z[0,4]+', '+z[1,4]+', '+z[2,4]+', '+z[3,4]+', '+z[4,4]+', '+z[5,4]+', '+z[6,4]
-            printf,12, 'A5-Interior,    '+z[0,5]+', '+z[1,5]+', '+z[2,5]+', '+z[3,5]+', '+z[4,5]+', '+z[5,5]+', '+z[6,5]
-            printf,12, 'A6-Intact,      '+z[0,6]+', '+z[1,6]+', '+z[2,6]+', '+z[3,6]+', '+z[4,6]+', '+z[5,6]+', '+z[6,6]
-          endif else begin ;; FAD-APP5
-            printf,12, '# pixels, B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
-            printf,12, 'A0-Background,  '+z[0,0]+', '+z[1,0]+', '+z[2,0]+', '+z[3,0]+', '+z[4,0]+', '+z[5,0]
-            printf,12, 'A1-Rare,        '+z[0,1]+', '+z[1,1]+', '+z[2,1]+', '+z[3,1]+', '+z[4,1]+', '+z[5,1]
-            printf,12, 'A2-Patchy,      '+z[0,2]+', '+z[1,2]+', '+z[2,2]+', '+z[3,2]+', '+z[4,2]+', '+z[5,2]
-            printf,12, 'A3-Transitional,'+z[0,3]+', '+z[1,3]+', '+z[2,3]+', '+z[3,3]+', '+z[4,3]+', '+z[5,3]
-            printf,12, 'A4-Dominant,    '+z[0,4]+', '+z[1,4]+', '+z[2,4]+', '+z[3,4]+', '+z[4,4]+', '+z[5,4]
-            printf,12, 'A5-Interior,    '+z[0,5]+', '+z[1,5]+', '+z[2,5]+', '+z[3,5]+', '+z[4,5]+', '+z[5,5]
-          endelse                   
+          printf,12, 'Change matrix constrained to FORCOM: common foreground cover at both times [pixels]: ' + strtrim(forcom,2)
+          printf,12, 'Number of pixels in the same fragmentation class (matrix diagonal): ' + strtrim(diag,2)
+          printf,12, 'Number of pixels in different fragmentation classes: ' + strtrim(chpix,2)
+          printf,12, 'A->B [pixels], B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
+          printf,12, 'A0-Background,  '+z[0,0]+', '+z[1,0]+', '+z[2,0]+', '+z[3,0]+', '+z[4,0]+', '+z[5,0]+', '+z[6,0]
+          printf,12, 'A1-Rare,        '+z[0,1]+', '+z[1,1]+', '+z[2,1]+', '+z[3,1]+', '+z[4,1]+', '+z[5,1]+', '+z[6,1]
+          printf,12, 'A2-Patchy,      '+z[0,2]+', '+z[1,2]+', '+z[2,2]+', '+z[3,2]+', '+z[4,2]+', '+z[5,2]+', '+z[6,2]
+          printf,12, 'A3-Transitional,'+z[0,3]+', '+z[1,3]+', '+z[2,3]+', '+z[3,3]+', '+z[4,3]+', '+z[5,3]+', '+z[6,3]
+          printf,12, 'A4-Dominant,    '+z[0,4]+', '+z[1,4]+', '+z[2,4]+', '+z[3,4]+', '+z[4,4]+', '+z[5,4]+', '+z[6,4]
+          printf,12, 'A5-Interior,    '+z[0,5]+', '+z[1,5]+', '+z[2,5]+', '+z[3,5]+', '+z[4,5]+', '+z[5,5]+', '+z[6,5]
+          printf,12, 'A6-Intact,      '+z[0,6]+', '+z[1,6]+', '+z[2,6]+', '+z[3,6]+', '+z[4,6]+', '+z[5,6]+', '+z[6,6]
           printf,12, '  '
-          printf,12, 'Gross area gain (Class A0 -> Class B*): ' + strtrim(gain,2) + ' pixels'
-          printf,12, 'Gross area loss (Class A* -> B0): ' + strtrim(loss,2) + ' pixels'
-          printf,12, 'Net area change (A->B): ' + strtrim(nc,2) + ' pixels'          
+          printf, 12, 'Foreground cover at time A [pixels]: ' + strtrim(farea_a,2)
+          printf, 12, 'Foreground cover at time B [pixels]: ' + strtrim(farea_b,2)
+          printf, 12, 'Net foreground cover change (A->B) [pixels]: ' + strtrim(nc,2)      
           if fad_avok eq 12 then begin
             z = strtrim(deltafad_av,2)
             printf,12, 'Observation scale:, 1, 2, 3, 4, 5, Summary'
             printf, 12, 'Neighborhood area:, 7x7, 13x13, 27x27, 81x81, 243x243,' 
-            printf,12,'Diff: FAD_AV(A-B):, ' +z[0]+', '+z[1]+', '+z[2]+', '+z[3]+', '+z[4]+', '+z[5]
-          endif                  
+            printf,12,'Diff: FAD_AV(A->B):, ' +z[0]+', '+z[1]+', '+z[2]+', '+z[3]+', '+z[4]+', '+z[5]
+          endif      
+          if fadru_avok eq 12 then begin
+            z = strtrim(deltafadru_av,2)
+            printf,12,'Diff: AVCON(A->B):, ' +z[0]+', '+z[1]+', '+z[2]+', '+z[3]+', '+z[4]+', '+z[5]
+          endif
+                      
           printf,12, '  '
-          printf,12, 'Relative fragmentation value increase is found below the matrix diagonal and expressed with positive percentages.'
-          printf,12, 'Relative fragmentation value decrease is found above the matrix diagonal and expressed with negative percentages.'
-          if fadtype eq 'FAD' then begin
-            printf,12, '% change A->B,  B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
-            printf,12, 'A1-Rare,'+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]+','+zp[5,1]+','+zp[6,1]
-            printf,12, 'A2-Patchy,'+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]+','+zp[5,2]+','+zp[6,2]
-            printf,12, 'A3-Transitional,'+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]+','+zp[5,3]+','+zp[6,3]
-            printf,12, 'A4-Dominant,'+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]+','+zp[6,4]
-            printf,12, 'A5-Interior,'+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]+','+zp[6,5]
-            printf,12, 'A6-Intact,'+zp[1,6]+','+zp[2,6]+','+zp[3,6]+','+zp[4,6]+','+zp[5,6]+','+zp[6,6]           
-          endif else begin ;; FAD-APP5
-            printf,12, '% change A->B,  B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
-            printf,12, 'A1-Rare,'+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]+','+zp[5,1]
-            printf,12, 'A2-Patchy,'+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]+','+zp[5,2]
-            printf,12, 'A3-Transitional,'+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]+','+zp[5,3]
-            printf,12, 'A4-Dominant,'+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]
-            printf,12, 'A5-Interior,'+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]
-          endelse       
+          printf,12, 'Change matrix constrained to the ' + strtrim(chpix,2) + ' pixels in different fragmentation classes [%]: '
+          printf,12, 'Fragmentation decrease (=connectivity increase) - above the matrix diagonal [%]: ' + strtrim(sum_above,2)
+          printf,12, 'Fragmentation increase (=connectivity decrease) - below the matrix diagonal [%]: ' + strtrim(sum_below,2)
+          printf,12, 'A->B [%], , B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
+          printf,12, 'A1-Rare      ,  ,'+zp[0,0]+','+zp[1,0]+','+zp[2,0]+','+zp[3,0]+','+zp[4,0]+','+zp[5,0]
+          printf,12, 'A2-Patchy    ,  ,'+zp[0,1]+','+zp[1,1]+','+zp[2,1]+','+zp[3,1]+','+zp[4,1]+','+zp[5,1]
+          printf,12, 'A3-Transitional, ,'+zp[0,2]+','+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]+','+zp[5,2]
+          printf,12, 'A4-Dominant   , ,'+zp[0,3]+','+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]+','+zp[5,3]
+          printf,12, 'A5-Interior  ,  ,'+zp[0,4]+','+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]
+          printf,12, 'A6-Intact    ,  ,'+zp[0,5]+','+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]            
           close,12
 
         endfor ;; loop over observation scales
-        
+
         ;; show the summary image statistics
         xdisplayfile, info.dir_tmp + fadtype + '_change_mscale.txt', title = 'FAD change for mscale image', width=100,/grow
-
+       
         ;;========================================================================================
         ;; 3) the FAD change chart
         ;;==============================================================
@@ -20602,21 +20893,13 @@ CASE strlowCase(eventValue) OF
         restore, info.dir_guidossub + 'fadcolors.sav' & tvlct,r,g,b
         info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 8 ;; fad
         scales = indgen(6)+1 & x_sum = [5.8, 6.2]
-        if fadtype eq 'FAD' then begin
-          b1 = PLOT(scales[0:4], b_intact[0:4], Color=[0,120,0], thick=3, yrange=[-4,104], xrange=[0.2, 9.9],$
-            ytitle='Foreground proportion [%]', xtitle='              Observation scale | MultiScale | Legend', $
-            title='Change in ' +fadtype + ': A -> B', xticklen=0.02,yticklen=0.02,xminor=1, xtickv=[1,2,3,4,5],/buffer)
-          b1a = PLOT(x_sum, [b_intact[5],b_intact[5]], Color=[0,120,0], thick=3, /overplot)
-          y2 = b_interior+b_intact
-          b2 = PLOT(scales[0:4],y2[0:4], Color=[0,175,0], thick=3, /overplot)
-          b2a = PLOT(x_sum, [y2[5],y2[5]], Color=[0,175,0], thick=3, /overplot)
-        endif else begin ;; FAD-APP5
-          b1 = PLOT(scales[0:4], b_interior[0:4], Color=[0,175,0], thick=3, yrange=[-4,104], xrange=[0.2, 9.9],$
-            ytitle='Foreground proportion [%]', xtitle='              Observation scale | MultiScale | Legend', $
-            title='Change in ' +fadtype + ': A -> B', xticklen=0.02,yticklen=0.02,xminor=1, xtickv=[1,2,3,4,5],/buffer)
-          b1a = PLOT(x_sum, [b_interior[5],b_interior[5]], Color=[0,175,0], thick=3, /overplot)
-          y2 = b_interior
-        endelse
+        b1 = PLOT(scales[0:4], b_intact[0:4], Color=[0,120,0], thick=3, yrange=[-4,104], xrange=[0.2, 9.9],$
+          ytitle='Foreground proportion [%]', xtitle='              Observation scale | MultiScale | Legend', $
+          title='Change in ' +fadtype + ': A -> B', xticklen=0.02,yticklen=0.02,xminor=1, xtickv=[1,2,3,4,5],/buffer)
+        b1a = PLOT(x_sum, [b_intact[5],b_intact[5]], Color=[0,120,0], thick=3, /overplot)
+        y2 = b_interior+b_intact
+        b2 = PLOT(scales[0:4],y2[0:4], Color=[0,175,0], thick=3, /overplot)
+        b2a = PLOT(x_sum, [y2[5],y2[5]], Color=[0,175,0], thick=3, /overplot)
         y2 = b_dominant+y2
         b3 = PLOT(scales[0:4],y2[0:4], Color=[140,200,100], thick=3,/overplot)
         b3a = PLOT(x_sum, [y2[5],y2[5]], Color=[140,200,100], thick=3, /overplot)
@@ -20638,16 +20921,14 @@ CASE strlowCase(eventValue) OF
         c = symbol(6.9,71,'square',/data, /sym_filled, sym_color=[255,200,0],sym_size=2,LABEL_STRING='Transitional')
         c = symbol(6.9,64,'square',/data, /sym_filled, sym_color=[140,200,100],sym_size=2,LABEL_STRING='Dominant')
         c = symbol(6.9,57,'square',/data, /sym_filled, sym_color=[0,175,0],sym_size=2,LABEL_STRING='Interior')
-        if fadtype eq 'FAD' then c = symbol(6.9,50,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Intact')
+        c = symbol(6.9,50,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Intact')
         q = plot([6.8, 7.2],[40, 40], /data, color='Black',/overplot, thick=2, linestyle=1)
         a = text(7.4, 39, 'Time A',/data)
         q = plot([6.8, 7.2],[34, 34], /data, color='Black',/overplot, thick=2)
         a = text(7.4, 33, 'Time B',/data)
         ;; now the time A stats
-        if fadtype eq 'FAD' then begin
-          b1 = PLOT(scales[0:4], a_intact[0:4], Color=[0,120,0], thick=3, linestyle=1, /overplot)
-          b1a = PLOT(x_sum, [a_intact[5],a_intact[5]], Color=[0,120,0], thick=3, linestyle=1, /overplot)
-        endif
+        b1 = PLOT(scales[0:4], a_intact[0:4], Color=[0,120,0], thick=3, linestyle=1, /overplot)
+        b1a = PLOT(x_sum, [a_intact[5],a_intact[5]], Color=[0,120,0], thick=3, linestyle=1, /overplot) 
         y2 = a_interior+a_intact
         b2 = PLOT(scales[0:4],y2[0:4], Color=[0,175,0], thick=3, linestyle=1, /overplot)
         b2a = PLOT(x_sum, [y2[5],y2[5]], Color=[0,175,0], thick=3, linestyle=1, /overplot)
@@ -21074,17 +21355,14 @@ CASE strlowCase(eventValue) OF
       ENDIF ELSE * info.image0 = * info.fr_image
      
       info.xsize = s(1) & info.ysize = s(2)
-
-      info.is_mspa = 0 & info.is_fragm = 0 & info.is_contort = 0 & info.is_dist = 0 & info.is_influ = 0
-      info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
-      info.add_title = ''  
-      info.is_orig = 0
+      info.is_mspa = 0  & info.mspa_stats_show = 0b & info.do_mspa_stats_id = 0 & info.do_label_groups_id = 0 & info.is_orig = 0
+      info.is_fragm = 0 & info.is_contort = 0 & info.is_dist = 0 & info.is_influ = 0 & info.is_cs22 = 0 & info.is_nw = 0 & info.is_cost = 0
+      info.add_title = ''         
 
       if eventValue2 eq 'change_simple' or eventValue2 eq 'change_morph' then begin
         restore, info.dir_guidossub + 'mspacolorston.sav' & tvlct, r, g, b
         info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 3 ;; classification
-      endif      
-     
+      endif
    END
    
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22049,6 +22327,14 @@ CASE strlowCase(eventValue) OF
         'homepage_atl': webl = ' https://forest.jrc.ec.europa.eu/european-atlas/'
         'homepage_opf': webl = ' http://www.openforis.org'
         'homepage_spl': webl = ' https://sepal.io'
+        'homepage_acc': webl = ' https://ies-ows.jrc.ec.europa.eu/gtb/NLCD/Concept_Accounting.pdf'
+        'homepage_psa': webl = ' https://ies-ows.jrc.ec.europa.eu/gtb/GTB/psheets/GTB-Objects-Accounting.pdf'
+        'homepage_pat': webl = ' https://ies-ows.jrc.ec.europa.eu/gtb/NLCD/Concept_Pattern.pdf'
+        'homepage_psp': webl = ' https://ies-ows.jrc.ec.europa.eu/gtb/GTB/psheets/GTB-Pattern-Morphology.pdf'
+        'homepage_fra': webl = ' https://ies-ows.jrc.ec.europa.eu/gtb/NLCD/Concept_Fragmentation.pdf'
+        'homepage_psf': webl = ' https://ies-ows.jrc.ec.europa.eu/gtb/GTB/psheets/GTB-Fragmentation-FADFOS.pdf'
+        'homepage_lmc': webl = ' https://ies-ows.jrc.ec.europa.eu/gtb/NLCD/Concept_LandscapeMosaic.pdf'       
+        'homepage_psl': webl = ' https://ies-ows.jrc.ec.europa.eu/gtb/GTB/psheets/GTB-Pattern-LM.pdf'
         ELSE: GOTO, fin
       ENDCASE
       
@@ -22635,7 +22921,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, August 2024' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, May 2025' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -22661,13 +22947,10 @@ CASE strlowCase(eventValue) OF
         '- Contortion/ConeforInputs: 5,000 x 5,000' + string(10b) + $
         '- MSPA: ' + mspamax + ' x ' + mspamax + string(10b) + $
         '- For MSPA-processing of larger images please use: ' + string(10b) + $
-        '     the Linux or macOS version of GTB, ' + string(10b) + $
-        '     or very slow and less ideal:' + string(10b) + $
-        '     File -> Batch Process -> Pattern -> ' + string(10b) + $
-        '             Morphological -> MSPA Tiling' + string(10b) + $
-        '     NOTE: use GWB for operational processing!' + string(10b) + $
+        '    the Linux or macOS version of GTB or ' + string(10b) + $
+        '    use GWB for operational processing.' + string(10b) + $
         '- Additional information is available under: ' + string(10b) + $
-        '     Help -> GTB Documentation '
+        '    Help -> GTB Documentation '
       
       ;; define output depending on info panel or for bug reporting
       ;;===============================================================
@@ -22872,18 +23155,25 @@ info.bigim = info.resfac GT 1
 * info.data_max = 2b
 info.datatype = ''
 info.ctbl = - 1
-info.disp_colors_id = 18
+info.disp_colors_id = 19
 info.disp_range_id = 0
 info.selsubregion_id = 0
 info.autostretch_id = 1b 
-info.title = title
+condition = (info.title EQ 'FOSchange') OR (info.title EQ 'Simple change (A->B)') OR $
+  (strmid(info.title,0,13) eq 'MCD (A->B) FG') OR (strmid(info.title,0,38) EQ info.start_title)
+IF condition THEN BEGIN
+  info.title = info.start_title 
+  cmd = 'Move cursor in display to read out location and value.'
+ENDIF ELSE BEGIN
+  info.title = title
+  cmd = 'Please wait for ' + title + ' to finish.'
+ENDELSE
 info.add_title = ''
 info.is_mspa = 0 & info.is_contort = 0
 info.is_fragm = 0
 info.mspa_stats_show = 0b
 info.do_mspa_stats_id = 0
 
-cmd = 'Please wait for ' + title + ' to finish.'
 widget_control, info.w_iminfo, sensitive = 1
 widget_control, info.w_iminfo2, sensitive = 1
 WIDGET_CONTROL, info.w_rdpx, SET_VALUE = cmd
@@ -22948,7 +23238,6 @@ condition = info.is_mspa EQ 0 OR info.is_contort EQ 0 OR info.is_nw EQ 0 OR info
 widget_control, info.w_c2ge, sensitive = condition EQ 1
 widget_control, info.w_recode, sensitive = info.datatype EQ 'byte'
 
-
 case eventvalue of
   'batch_ci': goto, backto_batch_ci
   'batch_mspanw': goto, backto_batch_mspanw
@@ -22976,6 +23265,7 @@ case eventvalue of
     if eventValue2 eq 'change_fos' then goto, backto_change_fos
     if eventValue2 eq 'change_rss' then goto, backto_change_rss
   end
+  else: goto, fin
 endcase
 ;;========================================================================
 
@@ -23085,6 +23375,7 @@ IF mev EQ 0 THEN BEGIN
    widget_control, info.tlb, tlb_set_title = info.title
    widget_control, info.w_file_save, sensitive = 0
 ENDIF
+
 
 ;; backup current colors
 tvlct, r, g, b, /get & save, r,g,b, filename = info.dir_tmp2 + 'currcolors.sav'
@@ -23527,8 +23818,10 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
      fname = fname + '_gsc' + tt       
      res = (file_info(info.dir_tmp + 'noGSCimage')).exists
      if res then goto, fin ;; skip directly to statistics output only
-   ENDIF ELSE BEGIN
-    fname = fname + '_result'
+  ENDIF ELSE IF info.title EQ 'FOSchange' THEN BEGIN ;; FOSchange
+     fname = 'FOSchange' 
+  ENDIF ELSE BEGIN
+     fname = fname + '_result'
   ENDELSE
 endif
 gednodata = ''
@@ -23642,7 +23935,7 @@ CASE fileaction OF
             s = size(image0) & dim_pos = where(s EQ 3) & dim_pos = dim_pos(1)
             ;;remap true color images
             image0 = color_quan(image0, dim_pos, r, g, b, / map_all)
-            tvlct, r, g, b & info.disp_colors_id = 18 & info.ctbl = - 1
+            tvlct, r, g, b & info.disp_colors_id = 19 & info.ctbl = - 1
          ENDIF ELSE BEGIN
             msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
             res = dialog_message(msg, / information)
@@ -23735,6 +24028,9 @@ CASE fileaction OF
         17:BEGIN ;; LM_ANT
           restore, info.dir_guidossub + 'lmcolors_ANT.sav'
         END      
+        18:BEGIN ;; FOSchange
+          restore, info.dir_guidossub + 'foschangecolors.sav'
+        END
       ENDCASE   
       tvlct, r, g, b     
          
@@ -24048,8 +24344,11 @@ CASE fileaction OF
         close, 1
         fnsaves = fnsaves + z + string(10b)
       ENDIF 
-           
-      fname = info.dir_data + file_basename(fname) + '.png'
+      
+      ;; fname = info.dir_data + file_basename(fname) + '.png'
+      fname = useropt.filename
+      IF info.title EQ 'FOSchange' THEN z = strmid(fname,0,strlen(fname)-4) + '.tif'
+      
       GOTO, fin
    END
 
@@ -24091,7 +24390,10 @@ CASE fileaction OF
          endelse
          if info.is_mspa eq 1 then savestats = 0                 
          x = info.x * info.resfac & y = info.y * info.resfac
-         image0 = image0(x(0):x(1) + 1, y(0):y(1) + 1)
+         ;; ensure we stay within the map limits
+         xmm = (size(image0,/dim))[0]-2 & x[1] = x[1] < xmm
+         ymm = (size(image0,/dim))[1]-2 & y[1] = y[1] < ymm        
+         image0 = image0(x[0]:x[1] + 1, y[0]:y[1] + 1)
          image0 = rotate(image0, 7)
       ENDIF ELSE BEGIN  ;; full image
          if info.is_dist eq 1 then begin
@@ -24131,7 +24433,7 @@ CASE fileaction OF
       if strmid(info.title,0,13) eq 'MCD (A->B) FG' then begin
         fname='morphdiff' & mcdchange = 1
       endif
-      
+           
       ;; ensure stuff is written out appropriately when saving in different formats
       if (info.is_fragm eq 3) or (is_lmms eq 1) or (is_lm eq 1) then begin  ;; write out FAD/FOS/LM/LMMS result
         fadskipper:        
@@ -24333,6 +24635,9 @@ CASE fileaction OF
           z = dir_test + fname + '.sav'
           file_copy, info.dir_tmp + 'fos.sav', z, / overwrite
           fnsaves = fnsaves + z + string(10b)
+          z = dir_test + fname + '.png'
+          file_copy, info.dir_tmp + 'fos.png', z, / overwrite
+          fnsaves = fnsaves + z + string(10b)          
           ;; go back in stack
           popd
           res = dialog_message(fnsaves, / information)
@@ -24578,6 +24883,7 @@ CASE fileaction OF
             IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
           endelse
       ENDELSE
+          
       fnsaves = fnsaves + z + string(10b)
       fname = im_file
       
@@ -24666,7 +24972,7 @@ CASE fileaction OF
       if strmid(info.title,0,13) eq 'MCD (A->B) FG' then begin
         fname='morphdiff' & mcdchange = 1
       endif
-
+      IF info.title EQ 'FOSchange' THEN z = info.dir_data + fname + '.tif' ;; needed for save generic
 
       if eventvalue2 eq 'save_generic_tif' then begin ;; output tif
         im_file = $
@@ -24678,7 +24984,7 @@ CASE fileaction OF
           IF im_file EQ '' THEN GOTO, finall ;; 'cancel' selected
           fname_cost = im_file
       endif else begin  ;; output png
-        image0 = rotate(image0,7)
+        image0 = rotate(image0,7)      
         IF dtype EQ 'byte' THEN BEGIN
           res = dialog_write_image(image0, r, g, b, file = fname + '.png', $
             / warn_exist, type='png', /fix_type, path = info.dir_data, options = useropt)
@@ -25007,7 +25313,6 @@ CASE fileaction OF
 
 ENDCASE
 
-
 ;; flip image vertically
 image0 = rotate(temporary(image0), 7)
 
@@ -25166,6 +25471,7 @@ condition = info.is_mspa EQ 0 OR info.is_contort EQ 0 OR info.is_nw EQ 0 OR info
   info.is_dist EQ 0 OR info.is_influ EQ 0 AND (info.epsg NE '4326' AND info.is_geotiff EQ 1)
 widget_control, info.w_c2ge, sensitive = condition EQ 1
 widget_control, info.w_recode, sensitive = info.datatype EQ 'byte'
+widget_control, info.w_qa, /sensitive
 
 ;; center the tlb
 ;;centertlb, info.tlb
@@ -25211,12 +25517,17 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
      fx = info.dir_tmp + 'fos.txt'
      res = file_info(fx) & res = res.exists
      IF res EQ 1b THEN file_copy, fx, fname, /overwrite
-     fnsaves = fnsaves + fname + string(10b)
+     fnsaves = fnsaves + fname + string(10b)     
      fname = fnbase + '.csv'
      fx = info.dir_tmp + 'fos.csv'
      res = file_info(fx) & res = res.exists
      IF res EQ 1b THEN file_copy, fx, fname, /overwrite
      fnsaves = fnsaves + fname + string(10b)
+     fname = fnbase + '.png'
+     fx = info.dir_tmp + 'fos.png'
+     res = file_info(fx) & res = res.exists
+     IF res EQ 1b THEN file_copy, fx, fname, /overwrite
+     fnsaves = fnsaves + fname + string(10b)        
      res = dialog_message(fnsaves, / information)
      goto,finall
    endif
@@ -25312,6 +25623,19 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
         ENDIF
         file_copy, fx, fname,/overwrite
         fnsaves = fnsaves + fname + string(10b)
+        ;; add proximity barplots if they exist
+        fx = info.dir_tmp2 + 'prox11h.png' & res = file_info(fx)
+        IF res.exists EQ 1 THEN BEGIN
+          fname = fnbase + '-CAGConn.png'
+          file_copy, fx, fname,/overwrite
+          fnsaves = fnsaves + fname + string(10b)
+        ENDIF
+        fx = info.dir_tmp2 + 'prox12h.png' & res = file_info(fx)
+        IF res.exists EQ 1 THEN BEGIN
+          fname = fnbase + '-ConnLength.png'
+          file_copy, fx, fname,/overwrite
+          fnsaves = fnsaves + fname + string(10b)
+        ENDIF                 
        ENDIF
        zstep=0
        doitagain0:
@@ -25797,6 +26121,31 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
          fnsaves = fnsaves + fname + string(10b)
       ENDIF ;; only for fullres
    ENDIF  ;; end of CS22
+   
+   ;; add FOSchange
+   IF info.title EQ 'FOSchange' THEN BEGIN
+     fosbname = strmid(z,0,strpos(z,'.tif',/reverse_search))
+     ;; add statistics from tmp
+     tt = file_search(info.dir_tmp + '*change.csv') & q = strlen(tt[0])
+     IF q GT 0 THEN BEGIN
+       fn = tt[0] & file_copy, fn, fosbname + '.csv',/overwrite
+       z = fosbname + '.csv'
+       fnsaves = fnsaves + z + string(10b)
+     ENDIF
+     tt = file_search(info.dir_tmp + '*barplot.png') & q = strlen(tt[0])
+     IF q GT 0 THEN BEGIN
+       fn = tt[0] & file_copy, fn, fosbname + '.png',/overwrite
+       z = fosbname + '.png'
+       fnsaves = fnsaves + z + string(10b)
+     ENDIF
+     tt = file_search(info.dir_tmp + '*hist.csv') & q = strlen(tt[0])
+     IF q GT 0 THEN BEGIN
+       fn = tt[0] & file_copy, fn, fosbname + '_hist.csv',/overwrite
+       z = fosbname + '_hist.csv'
+       fnsaves = fnsaves + z + string(10b)
+     ENDIF
+   ENDIF
+
    ;;=====================================================
    ;; echo info what was saved
    ;;=====================================================
@@ -26326,17 +26675,37 @@ IF event.type EQ 2 AND info.set_zoom EQ 0 THEN BEGIN
            else: cmd2 = '   invalid setting: ' + strtrim(zm, 2)
          endcase
 
+       ENDIF ELSE IF info.title EQ 'FOSchange' THEN BEGIN
+         ;; FOS change      
+         zm = ( * info.fr_image)[xm, ym] + 0 & zm2 = 100 - zm
+         case 1 of
+           (zm LT 80): cmd2 = '  High connectivity increase: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 80) AND (zm LE 89): cmd2 = '  Medium connectivity increase: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 90) AND (zm LE 98): cmd2 = '  Low connectivity increase: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 99) AND (zm LE 101): cmd2 = '  Insignificant or no change: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 102) AND (zm LE 110): cmd2 = '  Low connectivity decrease: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 111) AND (zm LE 120): cmd2 = '  Medium connectivity decrease: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 120) AND (zm LE 200): cmd2 = '  High connectivity decrease: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm EQ 250): cmd2 = '  Foreground gain (BG->FG)'
+           (zm EQ 251): cmd2 = '  Foreground loss (FG->BG)' 
+           (zm EQ 252): cmd2 = '  BG stable (BG->BG)'
+           (zm EQ 253): cmd2 = '  Water at one/both time(s)' 
+           (zm EQ 254): cmd2 = '  Missing at one/both time(s)' 
+           (zm EQ 255): cmd2 = '  Outside at one/both time(s)'
+          else: cmd2 = '  invalid setting: ' + strtrim(zm, 2)
+         endcase
+
        ENDIF ELSE IF is_mcd EQ 1 THEN BEGIN
-         ;; morph change      
+         ;; morph change
          zm = ( * info.fr_image)[xm, ym] + 0
          case zm of
            11: cmd2 = '   BG-stable: ' + strtrim(zm, 2)
            22: cmd2 = '   FG-stable: ' + strtrim(zm, 2)
            21: cmd2 = '   Loss: ' + strtrim(zm, 2)
            12: cmd2 = '   Gain: ' + strtrim(zm, 2)
-          176: cmd2 = '   spurious: ' + strtrim(zm, 2)
-          255: cmd2 = '   missing: ' + strtrim(zm, 2)
-          else: cmd2 = '   invalid setting: ' + strtrim(zm, 2)
+           176: cmd2 = '   spurious: ' + strtrim(zm, 2)
+           255: cmd2 = '   missing: ' + strtrim(zm, 2)
+           else: cmd2 = '   invalid setting: ' + strtrim(zm, 2)
          endcase
 
        ENDIF ELSE IF is_mcd EQ 2 THEN BEGIN
@@ -26752,6 +27121,26 @@ IF event.type EQ 2 AND info.set_zoom EQ 0 THEN BEGIN
            else: cmd2 = '   invalid setting: ' + strtrim(zm, 2)
          endcase
 
+       ENDIF ELSE IF info.title EQ 'FOSchange' THEN BEGIN
+         ;; FOS change
+         zm = ( * info.fr_image)[xm, ym] + 0 & zm2 = 100 - zm
+         case 1 of
+           (zm LT 80): cmd2 = '  High connectivity increase: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 80) AND (zm LE 89): cmd2 = '  Medium connectivity increase: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 90) AND (zm LE 98): cmd2 = '  Low connectivity increase: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 99) AND (zm LE 101): cmd2 = '  Insignificant or no change: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 102) AND (zm LE 110): cmd2 = '  Low connectivity decrease: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 111) AND (zm LE 120): cmd2 = '  Medium connectivity decrease: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm GE 120) AND (zm LE 200): cmd2 = '  High connectivity decrease: ' + strtrim(zm2, 2) + ' percentage points'
+           (zm EQ 250): cmd2 = '  Foreground gain (BG->FG)'
+           (zm EQ 251): cmd2 = '  Foreground loss (FG->BG)'
+           (zm EQ 252): cmd2 = ' BG stable (BG->BG)'
+           (zm EQ 253): cmd2 = '  Water at one/both time(s)'
+           (zm EQ 254): cmd2 = '  Missing at one/both time(s)'
+           (zm EQ 255): cmd2 = '  Outside at one/both time(s)'
+           else: cmd2 = '  invalid setting: ' + strtrim(zm, 2)
+         endcase
+       
        ENDIF ELSE IF is_mcd EQ 1 THEN BEGIN
          ;; morph change
          zm = ( * info.fr_image)[xm, ym] + 0
@@ -27900,7 +28289,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.303
+gtb_version = 3.306
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -28161,10 +28550,9 @@ ENDIF
 GTBv = strtrim(gtb_version,2)
 GTBrev = strmid(GTBv,3,2) & GTBv = strmid(GTBv,0,3)
 if strmid(GTBrev,0,1) eq '0' then GTBrev=strmid(GTBrev,1,1)
-title = 'GuidosToolbox ' + gtbv + ', Revision ' + gtbrev + $
-  ' (' + strtrim(sysarch,2) + ' bit)'
-TLB = Widget_Base( TLB_Frame_Attr = 1, Title = title, $
- MBar = w_menubar, / row)
+title = 'GuidosToolbox ' + gtbv + ', Revision ' + gtbrev + ' (' + strtrim(sysarch,2) + ' bit)'
+start_title = title
+TLB = Widget_Base( TLB_Frame_Attr = 1, Title = title, MBar = w_menubar, / row)
 
 ;; 2) left vertical: pre-processing options
 w_ToolbarBase = WIDGET_BASE(TLB, / column, / TOOLBAR, $
@@ -28385,9 +28773,9 @@ IF my_os EQ 'apple' THEN BEGIN
    if res.exists EQ 1 then qgis_exe = res.name + '/Contents/MacOS/QGIS'
 ENDIF ELSE IF my_os EQ 'linux' THEN BEGIN
    spawn, 'unset LD_LIBRARY_PATH; which qgis 2>/dev/null', res & res = res[0]
-   IF strmid(res, 0, 1) EQ '/' THEN qgis_exe = res   
+   IF strmid(res, 0, 1) EQ '/' THEN qgis_exe = 'unset LD_LIBRARY_PATH; ' + res   
    spawn, 'unset LD_LIBRARY_PATH; which xdg-open 2>/dev/null', res &  res = res[0]
-   IF strmid(res, 0, 1) EQ '/' THEN xdgop = res   
+   IF strmid(res, 0, 1) EQ '/' THEN xdgop = 'unset LD_LIBRARY_PATH; ' + res   
 ENDIF ELSE IF my_os EQ 'windows' THEN BEGIN 
    tt = file_search(getenv('PROGRAMFILES') + '\QGIS*\bin\qgis.bat')
    nr = n_elements(tt) & if nr gt 0 then qgis_exe = (tt)[nr-1]
@@ -28481,6 +28869,21 @@ button = Widget_Button(w_at, Value = 'Show Optimum Big 5', uvalue = 'cost_restor
 button = Widget_Button(w_at, Value = 'Isochrone Map A', uvalue = 'cost_map_aa', / Separator)
 button = Widget_Button(w_at, Value = 'Isochrone Map AB', uvalue = 'cost_map_ab')
 
+
+;;-----------------------------------------------------------------------
+;; Quick Access
+;;-----------------------------------------------------------------------
+w_qa = $
+  Widget_Button(w_menubar, Value = 'Quick Access', / Menu, $
+  Event_Pro = 'guidos_processing', sensitive = 0)
+button = Widget_Button(w_qa, Value = 'Overview', uvalue = 'overview_quickaccess')
+button = Widget_Button(w_qa, Value = 'Recode Classes', uvalue = 'mspainp_recode', /Separator)
+button = Widget_Button(w_qa, Value = 'Setup Batch Recode Table', uvalue = 'setup_recodetable')
+button = Widget_Button(w_qa, Value = 'Accounting', uvalue = 'accounting')
+button = Widget_Button(w_qa, Value = 'Pattern', uvalue = 'mspa')
+button = Widget_Button(w_qa, Value = 'Fragmentation', uvalue = 'frag_fos')
+button = Widget_Button(w_qa, Value = 'Landscape Mosaic', uvalue = 'kernel_lm')
+
 ;;-----------------------------------------------------------------------
 ;; HELP
 ;;-----------------------------------------------------------------------
@@ -28493,19 +28896,31 @@ button = widget_button(w_help_docu, value = 'GSC Guide', uvalue = 'gsc_guide')
 button = widget_button(w_help_docu, value = 'Changelog', uvalue = 'gt_changelog')
 button = widget_button(w_help_docu, value = 'EULA', uvalue = 'gt_eula')
 
+w_help_training = widget_button(w_help, value = 'GTB Training',/ menu)
+w_help_acc = widget_button(w_help_training, value = 'Accounting',/ menu)
+button = widget_button(w_help_acc, value = 'Concept', uvalue = 'homepage_acc')
+button = widget_button(w_help_acc, value = 'Product Sheet', uvalue = 'homepage_psa')
+button = widget_button(w_help_acc, value = 'Tutorial', uvalue = 'NLCD_Accounting')
+w_help_pat = widget_button(w_help_training, value = 'Pattern',/ menu)
+button = widget_button(w_help_pat, value = 'Concept', uvalue = 'homepage_pat')
+button = widget_button(w_help_pat, value = 'Product Sheet', uvalue = 'homepage_psp')
+button = widget_button(w_help_pat, value = 'Tutorial', uvalue = 'NLCD_Pattern')
+w_help_fra = widget_button(w_help_training, value = 'Fragmentation',/ menu)
+button = widget_button(w_help_fra, value = 'Concept', uvalue = 'homepage_fra')
+button = widget_button(w_help_fra, value = 'Product Sheet', uvalue = 'homepage_psf')
+button = widget_button(w_help_fra, value = 'Tutorial', uvalue = 'NLCD_Fragmentation')
+w_help_lm = widget_button(w_help_training, value = 'Landscape Mosaic',/ menu)
+button = widget_button(w_help_lm, value = 'Concept', uvalue = 'homepage_lmc')
+button = widget_button(w_help_lm, value = 'Product Sheet', uvalue = 'homepage_psl')
+button = widget_button(w_help_lm, value = 'Tutorial', uvalue = 'NLCD_LandscapeMosaic')
+button = widget_button(w_help_training, value = 'GWS (GTB Workshop)', uvalue = 'installgws')
+
 w_help_online = widget_button(w_help, value = 'GTB Online', /menu)
 button = widget_button(w_help_online, value = 'GTB News', uvalue = 'news')
 button = widget_button(w_help_online, value = 'GTB Homepage', uvalue = 'homepage_gtb')
 button = widget_button(w_help_online, value = 'Check for Updates', uvalue = 'check4updates')
 button = widget_button(w_help_online, value = 'GTB Product Sheets', uvalue = 'productsheets')
 button = widget_button(w_help_online, value = 'GWB (GTB Workbench)', uvalue = 'homepage_gwb')
-w_training = widget_button(w_help_online, value = 'GTB Training',/ menu)
-button = widget_button(w_training, value = 'NLCD_Accounting', uvalue = 'NLCD_Accounting')
-button = widget_button(w_training, value = 'NLCD_Pattern', uvalue = 'NLCD_Pattern')
-button = widget_button(w_training, value = 'NLCD_Fragmentation', uvalue = 'NLCD_Fragmentation')
-button = widget_button(w_training, value = 'NLCD_LandscapeMosaic', uvalue = 'NLCD_LandscapeMosaic')
-button = widget_button(w_training, value = 'GWS (GTB Workshop)', uvalue = 'installgws')
-
 
 w_help_online2 = widget_button(w_help, value = 'Related Resources', /menu)
 button = widget_button(w_help_online2, value = 'GIS Introduction', uvalue = 'homepage_gis')
@@ -28556,7 +28971,7 @@ button = $
   widget_label(w_ctbl, value = 'Select Colortable', / align_center)
 tls = ['grayscale', 'Rainbow', 'Temperature', 'Classification', $
   'Distance', 'Normalized', 'Contortion', 'LM', 'FOS_6', 'FOS_5', 'FOS-APP_2', 'Resistance', $
-  'LM_AGR', 'LM_NAT', 'LM_DEV', 'LM_BGR', 'LM_DIV', 'LM_ANT', 'User-defined', 'Save/Restore']
+  'LM_AGR', 'LM_NAT', 'LM_DEV', 'LM_BGR', 'LM_DIV', 'LM_ANT', 'FOSchange', 'User-defined', 'Save/Restore']
 w_disp_colors  = Widget_Combobox(w_ctbl, Value = tls, UVALUE = 'disp_colors')
 
 ;; zoom factor and factor
@@ -28794,7 +29209,7 @@ CASE my_os OF
     ;; check for terminal
     ;;=======================================================================
     ;; test which terminal is available in this sequence to put the best at the end
-    termtest = ['konsole', 'mate-terminal', 'gnome-terminal', 'aterm', 'eterm', 'Eterm', 'lxterm', 'roxterm', 'rxvt', 'xterm']
+    termtest = ['konsole', 'mate-terminal', 'gnome-terminal', 'aterm', 'eterm', 'Eterm', 'lxterm', 'roxterm', 'rxvt', 'xterm', 'ptyxis']
     for idx = 0, n_elements(termtest)-1 do begin
       spawn, 'unset LD_LIBRARY_PATH; which '+termtest[idx]+' 2>/dev/null', res & res = res[0]
       IF strmid(res, 0, 1) EQ '/' THEN BEGIN
@@ -28804,7 +29219,7 @@ CASE my_os OF
     if linterm eq '' then begin
       msg='No terminal found. Please install any of: ' + string(10b) + $
         'konsole, mate-terminal, gnome-terminal, aterm,' + string(10b) + $
-        'eterm, lxterm, roxterm, rxvt, xterm' + string(10b) + $
+        'eterm, lxterm, roxterm, rxvt, xterm, ptyxis' + string(10b) + $
         'or let me know which different terminal you use!' + string(10b) + 'Exiting...'
       res = dialog_message(msg, title='GTB startup check:',/ error)
       exit
@@ -28936,7 +29351,7 @@ Guidos_Image, process, 1
 ;; default settings in left panel
 ;;=========================================================
 ;; exclusive button list:  set the first option (0)  on
-ctbl = - 1 & disp_colors_id = 18
+ctbl = - 1 & disp_colors_id = 19 ;; user-defined)
 widget_control, w_disp_colors, set_combobox_select = disp_colors_id
 prev_disp_colors_id = disp_colors_id
 widget_control, zoomfactor, set_combobox_select = 2
@@ -29180,9 +29595,11 @@ info = { image0:Ptr_New(image0), $    ;; A pointer to the original image.
          windrive:windrive, $     ;; drive letter on MS-Windows where GTB is running
          screen_size:screen_size, $      ;; screen size dimensions
          title:title, $                  ;; The window title.
+         start_title:start_title, $      ;; the intial startup title
          OS_sep:OS_sep, $                ;; OS filepath delimiter
          my_os:my_os, $        ;; the used operating system
          sysarch:sysarch, $        ;; the system architecture
+         w_qa:w_qa, $
          w_help:w_help, $
          w_file:w_file, $
          w_file_save:w_file_save, $
