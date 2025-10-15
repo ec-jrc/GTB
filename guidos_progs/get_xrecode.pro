@@ -137,7 +137,7 @@ END
 
 
 ;;**************************************************************************
-PRO Get_xrecode, upv = upv, batch = batch, tit = tit, Cancel = cancel, seltab=seltab, Group_Leader = groupleader
+PRO Get_xrecode, upv = upv, batch = batch, setxrec = setxrec, tit = tit, Cancel = cancel, seltab=seltab, Group_Leader = groupleader
 ;; Return to caller if there is an error. Set the cancel
 ;; flag and destroy the group leader if it was created.
 Catch, theError
@@ -175,10 +175,11 @@ endelse
 ;; and right side
 lrpart = widget_base(lowerpart, / column, / frame)
 dummy = widget_label(lrpart, value = 'Options')
-if tit ne "Setup recode values in [0, 255]" then acceptID = $
- Widget_Button(lrpart, Value = 'Accept', uvalue = 'accept', event_pro = 'get_xrecode_done')
-cancelID = $
- Widget_Button(lrpart, Value = 'Exit', uvalue = 'cancel', event_pro = 'get_xrecode_done')
+if setxrec eq 0 then begin
+  if tit ne "Setup recode values in [0, 255]" then acceptID = $
+    Widget_Button(lrpart, Value = 'Accept', uvalue = 'accept', event_pro = 'get_xrecode_done')
+endif
+cancelID = Widget_Button(lrpart, Value = 'Exit', uvalue = 'cancel', event_pro = 'get_xrecode_done')
 
 loadID = Widget_Button(lrpart, Value = 'Restore', uvalue = 'restore')
 saveID = Widget_Button(lrpart, Value = 'Save', uvalue = 'save')

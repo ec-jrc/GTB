@@ -16,7 +16,7 @@
 ;;
 ;; GTB is written in the IDL language, and you must be the legal owner of
 ;; an IDL licence to compile the IDL source code. Further information
-;; on the IDL software can be found at: https://www.harrisgeospatial.com.
+;; on the IDL software can be found at: https://www.nv5geospatialsoftware.com/Products/IDL.
 ;; Alternative to using IDL, feel free to recode the IDL source code
 ;; to the programming language of your choice.
 ;;
@@ -1767,7 +1767,7 @@ CASE strlowCase(eventValue) OF
      v = strtrim(info.gtb_version, 2) & vbase = strmid(v, 0, 3)
      fv = fix(round(float(v)*1000)) & fvb = fix(round(float(vbase)*1000)) & strvrev = strtrim(fv - fvb,2)
      aa = ', Revision '  + strvrev + ' (' + strtrim(!version.memory_bits,2) + ' bit)'
-     tt = 'GuidosToolbox ' + vbase + aa & ttl = strlen(tt)
+     tt = 'GTB ' + vbase + aa & ttl = strlen(tt)
      ttt = strmid(info.title, 0, ttl)
      
      ;; we are not fresh, already loaded/processed a file and hence should not change the data directory here
@@ -2660,7 +2660,7 @@ CASE strlowCase(eventValue) OF
               ENDIF ELSE BEGIN ;; Linux
                 IF strlen(info.xdgop) EQ 0 THEN BEGIN
                   st = "Please install xdg-open to automatically" + $
-                    "display barplots within GuidosToolbox."
+                    "display barplots within GTB."
                   result = dialog_message(st, / information)
                 ENDIF ELSE BEGIN
                   spawn, info.xdgop + ' "' + info.dir_tmp2 + 'prox11h.png' + '"'
@@ -2705,7 +2705,7 @@ CASE strlowCase(eventValue) OF
             ENDIF ELSE BEGIN ;; Linux
               IF strlen(info.xdgop) EQ 0 THEN BEGIN
                 st = "Please install xdg-open to automatically" + $
-                  "display barplots within GuidosToolbox."
+                  "display barplots within GTB."
                 result = dialog_message(st, / information)
               ENDIF ELSE BEGIN
                 spawn, info.xdgop + ' "' + info.dir_tmp + 'barplot_dist.png' + '"'
@@ -4952,7 +4952,7 @@ CASE strlowCase(eventValue) OF
       ENDIF ELSE BEGIN ;; Linux
         IF strlen(info.xdgop) EQ 0 THEN BEGIN
           st = "Please install xdg-open to automatically" + $
-            "display barplots within GuidosToolbox."
+            "display barplots within GTB."
           result = dialog_message(st, / information)
         ENDIF ELSE BEGIN
           spawn, info.xdgop + ' "' + info.dir_tmp + 'barplot.png' + '"'
@@ -5788,18 +5788,35 @@ CASE strlowCase(eventValue) OF
      ;; plot histogram wrt %FG (/qFG) and total FG pixel number
      ;; add the histogram series to the output files below 
      if strlen(fosclass) eq 10 then begin
-      method = strmid(fosclass,0,3) & hcolor = 'orange'
+      method = strmid(fosclass,0,3) & rep = strmid(fosclass,4) 
      endif else begin
-      method = strmid(fosclass,0,7) & hcolor = 'yellow'
+      method = strmid(fosclass,0,7) & rep = strmid(fosclass,8) 
      endelse
-     bins = findgen(101)-0.5 & xtit = method & tit = 'Foreground pixel histogram (WS: ' + kdim_str + ')' & amax = max(hist)
+     bins = findgen(101)-0.5 & xtit = method & tit = 'Foreground pixel histogram (WS: ' + kdim_str + ')'
      ;; plot as percentage by FG-area
-     hist2 = float(hist)/n_elements(qfg)*100.0 & bmax = max(hist2)       
-     bp = barplot(bins, hist2, fill_color=hcolor, xtitle=xtit, /buffer, $
-       ytitle = 'Occurrence frequency [%]', title = tit, xrange = [0,105], histogram=1)
-     ;bp = text(5,bmax*0.95,'Average value at',/data,/current)
-     ;bp = text(5,bmax*0.90,'Foreground level: ' + strtrim(fad_av,2) + '%',/data,/current)
-     ;bp = text(5,bmax*0.85,'Reporting unit level: ' + strtrim(fadru_av,2) + '%',/data,/current)
+     hist2 = float(hist)/n_elements(qfg)*100.0 & bmax = max(hist2) * 1.05       
+     
+     IF rep EQ '5class' THEN BEGIN
+       bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $ 
+         ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0, bmax],histogram=1, font_size=12) ;; very low
+       bp = barplot(bins[10:39], hist2[10:39], fill_color = [250,140,90],thick=0,histogram=1, /overplot) ;; low
+       bp = barplot(bins[40:59], hist2[40:59], fill_color = [255,200,0],thick=0,histogram=1, /overplot) ;; intermediate
+       bp = barplot(bins[60:89], hist2[60:89], fill_color = [140,200,100],thick=0,histogram=1, /overplot) ;; high
+       bp = barplot(bins[90:100], hist2[90:100], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high
+     ENDIF ELSE IF rep EQ '6class' THEN BEGIN
+       bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $ 
+         ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0,bmax],histogram=1, font_size=12)
+       bp = barplot(bins[10:39], hist2[10:39], fill_color = [250,140,90],thick=0,histogram=1, /overplot) ;; low
+       bp = barplot(bins[40:59], hist2[40:59], fill_color = [255,200,0],thick=0,histogram=1, /overplot) ;; intermediate
+       bp = barplot(bins[60:89], hist2[60:89], fill_color = [140,200,100],thick=0,histogram=1, /overplot) ;; high
+       bp = barplot(bins[90:99], hist2[90:99], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high
+       bp = barplot(bins[100:100], hist2[100:100], fill_color = [0,120,0],thick=0,histogram=1, /overplot) ;; intact
+     ENDIF ELSE IF rep EQ '2class' THEN BEGIN
+       bp = barplot(bins[0:39], hist2[0:39], fill_color=[0,120,0], xtitle=xtit, /buffer, thick=0, $
+         ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0,bmax],histogram=1, font_size=12)
+       bp = barplot(bins[40:100], hist2[40:100], fill_color = [140,200, 101],thick=0,histogram=1, /overplot) ;; low    
+     ENDIF
+     
      qFG = 0
      fx = info.dir_tmp + 'fos.png' & file_delete,fx,/allow_nonexistent,/quiet
      bp.save, fx, resolution=300 
@@ -5815,7 +5832,7 @@ CASE strlowCase(eventValue) OF
      ENDIF ELSE BEGIN ;; Linux
        IF strlen(info.xdgop) EQ 0 THEN BEGIN
          st = "Please install xdg-open to automatically" + $
-           "display barplots within GuidosToolbox."
+           "display barplots within GTB."
          result = dialog_message(st, / information)
        ENDIF ELSE BEGIN
          spawn, info.xdgop + ' "' + info.dir_tmp + 'fos.png' + '"'
@@ -6456,18 +6473,35 @@ CASE strlowCase(eventValue) OF
        ;; build histogram
        hist = histogram(im[qFG],/l64) & hist = hist[0:100]
        if strlen(fosclass) eq 10 then begin
-         method = strmid(fosclass,0,3) & hcolor = 'orange'
+         method = strmid(fosclass,0,3) & rep = strmid(fosclass,4) 
        endif else begin
-         method = strmid(fosclass,0,7) & hcolor = 'yellow'
+         method = strmid(fosclass,0,7) & rep = strmid(fosclass,8) 
        endelse                    
-       bins = findgen(101)-0.5 & xtit = method & tit = 'Foreground pixel histogram (WS: ' + kdim_str + ')' & amax = max(hist)
+       bins = findgen(101)-0.5 & xtit = method & tit = 'Foreground pixel histogram (WS: ' + kdim_str + ')' 
        ;; plot as percentage by FG-area
-       hist2 = float(hist)/n_elements(qfg)*100.0 & bmax = max(hist2)
-       bp = barplot(bins, hist2, fill_color=hcolor, xtitle=xtit, /buffer, $
-         ytitle = 'Occurrence frequency [%]', title = tit, xrange = [0,105], histogram=1)
-       ;bp = text(5,bmax*0.95,'Average value at',/data,/current)
-       ;bp = text(5,bmax*0.90,'Foreground level: ' + strtrim(fad_av,2) + '%',/data,/current)
-       ;bp = text(5,bmax*0.85,'Reporting unit level: ' + strtrim(fadru_av,2) + '%',/data,/current)
+       hist2 = float(hist)/n_elements(qfg)*100.0 & bmax = max(hist2) * 1.05
+       
+       IF rep EQ '5class' THEN BEGIN
+         bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $
+           ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0, bmax],histogram=1, font_size=12) ;; very low
+         bp = barplot(bins[10:39], hist2[10:39], fill_color = [250,140,90],thick=0,histogram=1, /overplot) ;; low
+         bp = barplot(bins[40:59], hist2[40:59], fill_color = [255,200,0],thick=0,histogram=1, /overplot) ;; intermediate
+         bp = barplot(bins[60:89], hist2[60:89], fill_color = [140,200,100],thick=0,histogram=1, /overplot) ;; high
+         bp = barplot(bins[90:100], hist2[90:100], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high
+       ENDIF ELSE IF rep EQ '6class' THEN BEGIN
+         bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $
+           ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0,bmax],histogram=1, font_size=12)
+         bp = barplot(bins[10:39], hist2[10:39], fill_color = [250,140,90],thick=0,histogram=1, /overplot) ;; low
+         bp = barplot(bins[40:59], hist2[40:59], fill_color = [255,200,0],thick=0,histogram=1, /overplot) ;; intermediate
+         bp = barplot(bins[60:89], hist2[60:89], fill_color = [140,200,100],thick=0,histogram=1, /overplot) ;; high
+         bp = barplot(bins[90:99], hist2[90:99], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high
+         bp = barplot(bins[100:100], hist2[100:100], fill_color = [0,120,0],thick=0,histogram=1, /overplot) ;; intact
+       ENDIF ELSE IF rep EQ '2class' THEN BEGIN
+         bp = barplot(bins[0:39], hist2[0:39], fill_color=[0,120,0], xtitle=xtit, /buffer, thick=0, $
+           ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0,bmax],histogram=1, font_size=12)
+         bp = barplot(bins[40:100], hist2[40:100], fill_color = [140,200, 101],thick=0,histogram=1, /overplot) ;; low
+       ENDIF
+
        qFG = 0 
        fx = info.dir_tmp + 'fos.png' & file_delete,fx,/allow_nonexistent,/quiet
        bp.save, fx, resolution=300
@@ -8815,7 +8849,7 @@ CASE strlowCase(eventValue) OF
       ENDIF ELSE BEGIN ;; Linux
         IF strlen(info.xdgop) EQ 0 THEN BEGIN
           st = "Please install xdg-open to automatically" + $
-            "display images within GuidosToolbox."
+            "display images within GTB."
           result = dialog_message(st, / information)
         ENDIF ELSE BEGIN
           spawn, info.xdgop + ' "' + info.dir_tmp + 'heatmap.png' + '"'
@@ -9217,7 +9251,7 @@ CASE strlowCase(eventValue) OF
      ENDIF ELSE BEGIN ;; Linux
        IF strlen(info.xdgop) EQ 0 THEN BEGIN
          st = "Please install xdg-open to automatically" + $
-           "display images within GuidosToolbox."
+           "display images within GTB."
          result = dialog_message(st, / information)
        ENDIF ELSE BEGIN
          spawn, info.xdgop + ' "' + info.dir_tmp + 'heatmap.png' + '"'
@@ -14786,7 +14820,7 @@ CASE strlowCase(eventValue) OF
         ENDIF ELSE BEGIN ;; Linux
           IF strlen(info.xdgop) EQ 0 THEN BEGIN
             st = "Please install xdg-open to automatically" + $
-              "display barplots within GuidosToolbox."
+              "display barplots within GTB."
             result = dialog_message(st, / information)
           ENDIF ELSE BEGIN
             spawn, info.xdgop + ' "' + info.dir_tmp + 'barplot2.png' + '"'
@@ -20176,15 +20210,14 @@ CASE strlowCase(eventValue) OF
           ENDIF          
           b_sav = tt
           ;; check for same coverage in geotiff
-          q = where(log1[2:*] NE log2[2:*],ct)
-          IF ct EQ 0 THEN BEGIN ;; we have equal coverage geotiff
+          q1 = (strmatch(log1[0],'*GeoTIFF*') + strmatch(log2[0],'*GeoTIFF*')) EQ 2b
+          q = where(log1[5:*] NE log2[5:*],ct)
+          IF (q1 eq 1b) AND (ct EQ 0) THEN BEGIN ;; we have both GeoTIFF and equal coverage geotiff
             info.is_geotiff = 1b
             * info.geotiffinfo = geotiffinfo1 
             info.fname_input = fn_a
           ENDIF
-          
-          
-          
+                             
           restore, a_sav
           ;; should contain the following variables:
           ;; GRAYT_STR, FOSINP, FOSTYPE, FOSCLASS, XDIM, YDIM, GEOTIFF_LOG, RARE, PATCHY, TRANSITIONAL, DOMINANT, INTERIOR, INTACT
@@ -20228,7 +20261,7 @@ CASE strlowCase(eventValue) OF
           fad_avok = a_tt + b_tt
           fadru_avok = a2_tt + b2_tt
      
-          res = (a_xdim eq b_xdim) + (a_ydim eq b_ydim) + (a_conn eq b_conn) + (a_pres eq b_pres) + (a_kdim eq b_kdim) + (a_fostype eq b_fostype) + $
+          res = (a_xdim eq b_xdim) + (a_ydim eq b_ydim) + (strmid(a_conn,0,6) eq strmid(b_conn,0,6)) + (a_pres eq b_pres) + (a_kdim eq b_kdim) + (a_fostype eq b_fostype) + $
             (a_fosclass eq b_fosclass)
           
           if res ne 7b then begin
@@ -20337,29 +20370,6 @@ CASE strlowCase(eventValue) OF
             inc2 = total(y[111:120],/double) / forcom * 100.0 & if finite(inc2) eq 0b then inc2 = 'NaN'
             inc3 = total(y[121:*],/double) / forcom * 100.0 & if finite(inc3) eq 0b then inc3 = 'NaN'
             
-            ;; interpolate change curve to retrieve threshold where half the changes take place
-;            q = where(y gt 0,ct)  ;; find out how many change categories (bars) we have
-;            if ct eq 1 then begin
-;              fc_index = q[0] - 100.0
-;            endif else if ct eq 2 then begin
-;              ;; test if one of the two is category 100
-;              if q[0] EQ 100 OR q[1] eq 100 then begin
-;                if q[0] EQ 100 then fc_index = q[1] - 100.0
-;                if q[1] EQ 100 then fc_index = q[0] - 100.0
-;              endif else goto, skip100
-;            endif else begin
-;              skip100:
-;              y[100] = 0
-;              forcomc = total(y,/double)
-;              forcomc2 = (forcomc)/2.0 ;; half the area
-;              y_cum = total(y,/cumulative,/double) ;; cumulative area under the curve
-;              z1 = (y_cum - forcomc2)
-;              q = where (z1 gt 0) & midx = q[0] ;; where do we go through zero?
-;              sum_y = abs(z1[midx-1])+z1[midx]
-;              y_proz = abs(z1[midx-1]/sum_y)
-;              q = midx-1 + y_proz
-;              fc_index = q-100.0
-;            endelse
             printf, 1, ' '          
             if fadru_avok eq 8 then begin
               printf, 1, 'Average Connectivity at reporting unit level:'
@@ -20394,47 +20404,43 @@ CASE strlowCase(eventValue) OF
             close, 1
             
             ;; c) the histogram plot within +/- %
-            y100 = y[100] & y[100] = 0 & forcomc = total(y,/double)           
-            xrg = 101 & wdt = 1.0 & y = h[0:200] ;; reset y to original histogram values because above we set y[100] to zero
+            y100 = y[100] & y[100] = 0 & forcomc = total(y,/double)
+            xrg = 101 & wdt = 1.0 & y = h[0:200]
             if total(y[50:150])/forcomc gt 0.97 then xrg=51 ; was 51, 41 , etc
             if total(y[60:140])/forcomc gt 0.97 then xrg=41
             if total(y[70:130])/forcomc gt 0.97 then xrg=31
             if total(y[80:120])/forcomc gt 0.97 then xrg=21
             if total(y[90:110])/forcomc gt 0.97 then xrg=11
+
+            y = h_rev[0:200]/forcom*100.0  ;; convert to %
             ymax = max(y)*1.05 & if ymax lt 1.0 then ymax = 1.05
-            tit = 'FOSchange'
-            showbar = 1 ;; 1 to show the barplot else set to 0
-            ;; invert foschange direction in [0,200]
-            y[0:200] = reverse(y[0:200])
-            
-            
+            tit = 'FOSchange'            
             b0 = barplot(x[99:101], y[99:101], xrange = [-xrg,xrg], yrange = [0, ymax], xticklen=0.02, yticklen=0.02, $
-              title = tit, width=wdt, histogram = 0, ytitle = 'Frequency', buffer = (1 - showbar),$
-              xtitle = '<-- connectivity decrease [% points]  |    connectivity increase [% points] -->', fill_color = [240,240,200]) ;; was [255,255,240]
-            b0 = barplot(x[90:98], y[90:98], width=wdt, histogram = 0, fill_color = [255,215,100], /overplot) ;; small increase
-            b0 = barplot(x[80:89], y[80:89],width=wdt, histogram = 0, fill_color = [255,150,40], /overplot) ;; medium increase
-            b0 = barplot(x[0:79], y[0:79],width=wdt, histogram = 0, fill_color = [205,75,0], /overplot) ;; strong increase
-            b0 = barplot(x[102:110], y[102:110], width=wdt, histogram = 0, fill_color = [130,210,170], /overplot) ;; small decrease
-            b0 = barplot(x[111:120], y[111:120], width=wdt, histogram = 0, fill_color = [90,170,130], /overplot) ;; medium decrease
-            b0 = barplot(x[121:200], y[121:200], width=wdt, histogram = 0, fill_color = [60,130,90], /overplot) ;; strong decrease
-
-
-;            b0 = barplot(x[90:98], y[90:98], width=wdt, histogram = 0, fill_color = [130,210,170], /overplot) ;; small increase
-;            b0 = barplot(x[80:89], y[80:89],width=wdt, histogram = 0, fill_color = [90,170,130], /overplot) ;; medium increase
-;            b0 = barplot(x[0:79], y[0:79],width=wdt, histogram = 0, fill_color = [60,130,90], /overplot) ;; strong increase
-;            b0 = barplot(x[102:110], y[102:110], width=wdt, histogram = 0, fill_color = [255,215,100], /overplot) ;; small decrease
-;            b0 = barplot(x[111:120], y[111:120], width=wdt, histogram = 0, fill_color = [255,150,40], /overplot) ;; medium decrease
-;            b0 = barplot(x[121:200], y[121:200], width=wdt, histogram = 0, fill_color = [205,75,0], /overplot) ;; strong decrease
-;            xarr = [fc_index,fc_index] & dx = 2*xrg*0.06 & yarr = [0, ymax]
-;            b0 = plot(xarr, yarr, color='RED', thick=2, linestyle=1,/overplot)
-;            x1 = -xrg*0.9 & x2 = x1+dx & x3 = x1+(dx*1.1) & y1 = ymax*0.95
-;            b0 = plot([x1,x2],[y1,y1],color='RED', thick=2, linestyle=1,/overplot)
-;            b0 = text(x3,ymax*0.94,'FC index',/data,/current,color='red')
-;            z = round(fc_index*100)/100.0 & z = strtrim(z,2)
-;            q = strpos(z, '.') & zz=strmid(z,0,q+3)
-;            if finite(fc_index) eq 0b then zz = 'NaN'
-;            b0 = text(x3, ymax*0.9,'('+zz+')',/data,/current,color='red')
+              title = tit, width=wdt, histogram = 0, ytitle = 'Frequency [%]', /buffer,thick=0, font_size=10, $
+              xtitle = '<- connectivity decrease [% points] | connectivity increase [% points] ->', fill_color = [240,240,200]) 
+            b0 = barplot(x[90:98], y[90:98], width=wdt, histogram = 0, fill_color = [255,215,100],thick=0, /overplot) ;; small increase
+            b0 = barplot(x[80:89], y[80:89],width=wdt, histogram = 0, fill_color = [255,150,40],thick=0, /overplot) ;; medium increase
+            b0 = barplot(x[0:79], y[0:79],width=wdt, histogram = 0, fill_color = [205,75,0],thick=0, /overplot) ;; strong increase
+            b0 = barplot(x[102:110], y[102:110], width=wdt, histogram = 0, fill_color = [130,210,170],thick=0, /overplot) ;; small decrease
+            b0 = barplot(x[111:120], y[111:120], width=wdt, histogram = 0, fill_color = [90,170,130],thick=0, /overplot) ;; medium decrease
+            b0 = barplot(x[121:200], y[121:200], width=wdt, histogram = 0, fill_color = [60,130,90],thick=0, /overplot) ;; strong decrease
+            ;; save and open barplot image
             b0.save, outdir + ch_pref + '-barplot.png', resolution=300
+            IF info.my_os EQ 'apple' THEN BEGIN
+              spawn, 'open ' + outdir + ch_pref + '-barplot.png'
+            ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
+              pushd, info.dir_tmp
+              spawn, 'start ' + outdir + ch_pref + '-barplot.png', / nowait
+              popd
+            ENDIF ELSE BEGIN ;; Linux
+              IF strlen(info.xdgop) EQ 0 THEN BEGIN
+                st = "Please install xdg-open to automatically" + $
+                  "display barplots within GTB."
+                result = dialog_message(st, / information)
+              ENDIF ELSE BEGIN
+                spawn, info.xdgop + ' ' + outdir + ch_pref + '-barplot.png'
+              ENDELSE
+            ENDELSE
                  
           ENDIF ELSE BEGIN ;; no map output for _APP, set viewport to welcome startup
             outdir = file_dirname(file_dirname(im1_file)) + info.os_sep
@@ -20960,7 +20966,7 @@ CASE strlowCase(eventValue) OF
         ENDIF ELSE BEGIN ;; Linux
           IF strlen(info.xdgop) EQ 0 THEN BEGIN
             st = "Please install xdg-open to automatically" + $
-              "display barplots within GuidosToolbox."
+              "display barplots within GTB."
             result = dialog_message(st, / information)
           ENDIF ELSE BEGIN
             spawn, info.xdgop + ' "' + info.dir_tmp + fadtype + '_change_barplot.png' + '"'
@@ -21917,7 +21923,7 @@ CASE strlowCase(eventValue) OF
        popd
      ENDIF ELSE BEGIN ;; Linux
        IF strlen(info.xdgop) EQ 0 THEN BEGIN
-         msg = "Please install xdg-open to automatically display images within GuidosToolbox."
+         msg = "Please install xdg-open to automatically display images within GTB."
          result = dialog_message(msg, / information)
          openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
        ENDIF ELSE BEGIN
@@ -22280,11 +22286,11 @@ CASE strlowCase(eventValue) OF
          
      IF res.exists EQ 1b THEN BEGIN
         xdisplayfile, version_file, $
-         title = 'GuidosToolbox: Latest News...', done_button = 'Close', / block, / modal, group = event.top
+         title = 'GTB: Latest News...', done_button = 'Close', / block, / modal, group = event.top
      ENDIF ELSE BEGIN  ;; inform that there was no internet
         str = 'An internet connection is required to check' + $
-          string(10b) + 'for GuidosToolbox News.'
-        res = dialog_message(title = 'GuidosToolbox: Latest News...', / information, str)
+          string(10b) + 'for GTB News.'
+        res = dialog_message(title = 'GTB: Latest News...', / information, str)
      ENDELSE
      GOTO, fin
    END
@@ -22357,7 +22363,7 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    'gt_changelog':  BEGIN  ;; xxxx
-      xdisplayfile, info.dir_guidos + 'changelog.txt', title = 'GuidosToolbox changelog: ', $
+      xdisplayfile, info.dir_guidos + 'changelog.txt', title = 'GTB changelog: ', $
         done_button = 'Close', / block, / modal, group = event.top
       GOTO, fin
    END
@@ -22676,14 +22682,14 @@ CASE strlowCase(eventValue) OF
             fl_curr = float(vbase_curr) & fl_new = float(newv_base) & isnew = (fl_new - fl_curr) gt 0.02
             IF isnew THEN BEGIN
                ;; inform about new Guidos version
-               newGTB = 'GuidosToolbox' + strtrim(newv_base,2)
+               newGTB = 'GTB' + strtrim(newv_base,2)
                IF info.my_os EQ 'windows' THEN BEGIN
                  newGTB = newGTB + '_64windows.exe' 
                ENDIF ELSE BEGIN
                  IF info.my_os eq 'apple' THEN newGTB = newGTB + '_OSX.dmg' ELSE newGTB = newGTB + '_rpm/deb/run'
                ENDELSE
 
-               msg = 'New release: GuidosToolbox ' + strtrim(newv_base,2) + ' available.' + string(10b) + $
+               msg = 'New release: GTB ' + strtrim(newv_base,2) + ' available.' + string(10b) + $
                  'Do you want to download the new release?' + string(10b) + string(10b) + $
                  'Alternative manual installation: ' + string(10b) + $
                  'Download and run the installer: "' + newGTB +'"' 
@@ -22780,14 +22786,14 @@ CASE strlowCase(eventValue) OF
              GOTO, fin
                            
             ENDIF ELSE IF delta eq 0 THEN BEGIN ;; inform that Guidos is uptodate
-               msg = 'You have the latest program version and revision of GuidosToolbox ' + vbase_curr
+               msg = 'You have the latest program version and revision of GTB ' + vbase_curr
                res = dialog_message(title = 'GTB update information', / information, msg)
                openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
                GOTO, fin
             ENDIF ELSE BEGIN   ;; incremental version update available
-               str = 'Revision release available for GuidosToolbox ' + vbase_curr + string(10b) + $
+               str = 'Revision release available for GTB ' + vbase_curr + string(10b) + $
                   'Do you want to download and install the revision release?' + string(10b) + $
-                  '(GuidosToolbox will have to be restarted)'
+                  '(GTB will have to be restarted)'
                res = dialog_message(title = 'GTB update information', / question, str)
                IF res EQ 'No' THEN BEGIN
                 openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': Revision release download declined' + info.bline & free_lun, unit
@@ -22842,9 +22848,9 @@ CASE strlowCase(eventValue) OF
                ENDELSE           
                
                ;; c) inform to restart
-               msg = 'Revision release for GuidosToolbox ' + vbase_curr + ' is now installed.' + string(10b) + $
-                 'We will now exit from GuidosToolbox. Please ' + string(10b) + $
-                 'restart GuidosToolbox to use the updated version.'
+               msg = 'Revision release for GTB ' + vbase_curr + ' is now installed.' + string(10b) + $
+                 'We will now exit from GTB. Please ' + string(10b) + $
+                 'restart GTB to use the updated version.'
                 res = dialog_message(title = 'GTB update information', / information, msg)
                 openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
                popd
@@ -22921,7 +22927,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, May 2025' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, October 2025' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -23371,7 +23377,7 @@ IF mev EQ 0 THEN BEGIN
    v = strtrim(info.gtb_version, 2) & vbase = strmid(v, 0, 3)
    fv = fix(round(float(v)*1000)) & fvb = fix(round(float(vbase)*1000)) & strvrev = strtrim(fv - fvb,2)
    aa = ', Revision '  + strvrev + ' (' + strtrim(!version.memory_bits,2) + ' bit)'  
-   info.title = 'GuidosToolbox ' + vbase + aa + ' - Default data directory: ' + info.dir_data
+   info.title = 'GTB ' + vbase + aa + ' - Default data directory: ' + info.dir_data
    widget_control, info.tlb, tlb_set_title = info.title
    widget_control, info.w_file_save, sensitive = 0
 ENDIF
@@ -23820,6 +23826,8 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
      if res then goto, fin ;; skip directly to statistics output only
   ENDIF ELSE IF info.title EQ 'FOSchange' THEN BEGIN ;; FOSchange
      fname = 'FOSchange' 
+     desc = 'GTB_FOSCHANGE, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
+     desc0 = desc
   ENDIF ELSE BEGIN
      fname = fname + '_result'
   ENDELSE
@@ -23965,6 +23973,10 @@ CASE fileaction OF
            if max(image0) LT 40 then info.disp_colors_id = 7 else info.disp_colors_id = 12 
            info.ctbl = - 1  & info.autostretch_id = 0 
          endif
+         if total(strmatch(log,'*TIFFTAG_IMAGEDESCRIPTION=GTB_FOSCHANGE*')) gt 0 then begin
+           info.disp_colors_id = 18 & info.ctbl = - 1  & info.autostretch_id = 0
+         endif
+         
       ENDIF ELSE BEGIN
          msg = 'Please provide a single-band image.' + string(10b) + 'Returning...'
          res = dialog_message(msg, / information)
@@ -28289,7 +28301,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.306
+gtb_version = 3.308
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -28550,7 +28562,7 @@ ENDIF
 GTBv = strtrim(gtb_version,2)
 GTBrev = strmid(GTBv,3,2) & GTBv = strmid(GTBv,0,3)
 if strmid(GTBrev,0,1) eq '0' then GTBrev=strmid(GTBrev,1,1)
-title = 'GuidosToolbox ' + gtbv + ', Revision ' + gtbrev + ' (' + strtrim(sysarch,2) + ' bit)'
+title = 'GTB ' + gtbv + ', Revision ' + gtbrev + ' (' + strtrim(sysarch,2) + ' bit)'
 start_title = title
 TLB = Widget_Base( TLB_Frame_Attr = 1, Title = title, MBar = w_menubar, / row)
 
@@ -29109,7 +29121,7 @@ CASE my_os OF
     spawn, 'ver', res & res = STRSPLIT(res[1], /EXTRACT, ' ') & res = res[n_elements(res)-1]
     q = strpos(res,'.') & res = float(strmid(res,0,q+2))
     IF res LT 6.3 THEN BEGIN
-      res = dialog_message('GuidosToolbox requires Windows 8.1 or newer' + string(10b) + 'Terminating...', title='GTB startup check:',/ error)
+      res = dialog_message('GTB requires Windows 8.1 or newer' + string(10b) + 'Terminating...', title='GTB startup check:',/ error)
       Exit
     ENDIF
     ;; lt 10.0 to deprecate Win 8 supported until January 2023; end of Win 10 in October 2025
@@ -29120,8 +29132,8 @@ CASE my_os OF
     IF res THEN GTBarch = '64bit' ELSE GTBarch = '32bit'
     IF !version.arch EQ 'x86_64' THEN res4 = '64bit' ELSE res4 = '32bit'
     IF GTBarch NE res4 THEN BEGIN
-      res = dialog_message('Please use the matching GuidosToolbox architecture: ' + string(10b) + $
-        'GuidosToolbox architecture in use: ' + GTBarch  + string(10b) + $
+      res = dialog_message('Please use the matching GTB architecture: ' + string(10b) + $
+        'GTB architecture in use: ' + GTBarch  + string(10b) + $
         'Operating system architecture: ' + res4 + string(10b) + $
         'Terminating...',title='GTB startup check:', / error)
       exit
@@ -29250,7 +29262,7 @@ CASE my_os OF
     spawn, 'sw_vers -productVersion', res & res=res[0] 
     os1 = fix((strsplit(res,'.',/extract))[0]) & os2 = fix((strsplit(res,'.',/extract))[1])   
     IF (os1 EQ 10) AND (os2 LT 10) THEN BEGIN
-      res = dialog_message('GuidosToolbox requires Yosemite (OSX 10.10) or newer' + string(10b) + 'Exiting...', title='GTB startup check:',/ error)
+      res = dialog_message('GTB requires Yosemite (OSX 10.10) or newer' + string(10b) + 'Exiting...', title='GTB startup check:',/ error)
       exit
     ENDIF
     ;; test for gdal installation
@@ -29262,11 +29274,17 @@ CASE my_os OF
         string(10b) + "available at the following URL:" + $
         string(10b) + "https://www.kyngchaos.com/software/archive/gdal-complete/" + $
         string(10b) + "  " + $
-        string(10b) + "GuidosToolbox will now exit."
+        string(10b) + "GTB will now exit."
       res = dialog_message(st, title='GTB startup check:',/ error)
       spawn, 'open https://www.kyngchaos.com/software/archive/gdal-complete/'
       exit
     ENDIF
+    ;; warn on Tahoe
+    IF os1 GE 26 THEN BEGIN
+      res = dialog_message('Attention:' + string(10b) +'GTB is currently not supported under macOS Tahoe.'+ string(10b) + $
+        'You may see severe glitches or crashes. A future version of GTB may provide a fix.' , title='GTB startup check:',/ info)
+    ENDIF
+    
 
     ;; maximum image size for MSPA
     ;; use command "vm_stat" and get amounts for
@@ -29314,7 +29332,7 @@ ENDIF
 ;;  write-permission post startup test
 ;;==============================
 IF file_test('guidos_progs', / write) NE 1 THEN BEGIN
-  msg = 'Please install GuidosToolbox in a directory ' + string(10b) + $
+  msg = 'Please install GTB in a directory ' + string(10b) + $
     'where you have execute-permissions.' + string(10b) + 'Returning...'
   res = dialog_message(msg,title='GTB startup check:', / error)
   exit
@@ -29392,8 +29410,8 @@ CASE my_OS OF
     spawn,'ps -ef|grep -c guidostoolbox.sav',res & ct = fix(res[0])
     if ct gt 4 then begin
       res = dialog_message('Existing IDL runtime process detected.' + string(10b) + $
-        'Running more than 1 instance of GuidosToolbox' + string(10b) + $
-        'from the SAME GuidosToolbox directory' + string(10b) + $
+        'Running more than 1 instance of GTB' + string(10b) + $
+        'from the SAME GTB directory' + string(10b) + $
         'may result in program crashes or incorrect results.', title='GTB startup check:' )
     endif    
   END
@@ -29401,8 +29419,8 @@ CASE my_OS OF
     spawn,'unset LD_LIBRARY_PATH; ps -ef|grep -c guidostoolbox.sav',res & ct = fix(res[0])
     if ct gt 3 then begin
       res = dialog_message('Existing IDL runtime process detected.' + string(10b) + $
-        'Running more than 1 instance of GuidosToolbox' + string(10b) + $
-        'from the SAME GuidosToolbox directory' + string(10b) + $
+        'Running more than 1 instance of GTB' + string(10b) + $
+        'from the SAME GTB directory' + string(10b) + $
         'may result in program crashes or incorrect results.', title='GTB startup check:' )
     endif
   END
@@ -29410,8 +29428,8 @@ CASE my_OS OF
     spawn,'tasklist',res,/hide & res = strmid(res,0,9) & q = where(res eq 'idlrt.exe',ct)
     if ct gt 1 then begin
        res = dialog_message('Existing IDL runtime process detected.' + string(10b) + $
-        'Running more than 1 instance of GuidosToolbox' + string(10b) + $
-        'from the SAME GuidosToolbox directory' + string(10b) + $
+        'Running more than 1 instance of GTB' + string(10b) + $
+        'from the SAME GTB directory' + string(10b) + $
         'may result in program crashes or incorrect results.', title='GTB startup check:' )
     endif
   END
@@ -29750,7 +29768,7 @@ XManager, 'guidostoolbox', TLB,  Event_Handler = 'guidos_TLB_EVENTS',$
  / No_Block, Cleanup = 'guidos_Cleanup', Group_Leader = group
  
 
-END ;; of 'guidostoolbox'
+END ;; of 'GTB'
 ;;=======================================================================
 ;;=======================================================================
 ;;;;        E N D   O F    M A I N   G U I   S E T U P
