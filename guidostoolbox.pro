@@ -41,6 +41,7 @@ compile_opt idl2
 @guidos_progs/get_gsc
 @guidos_progs/get_kernel
 @guidos_progs/get_lineres
+@guidos_progs/get_lm
 @guidos_progs/get_locset
 @guidos_progs/get_marker
 @guidos_progs/get_MSPAparams
@@ -8791,29 +8792,56 @@ CASE strlowCase(eventValue) OF
       ENDIF
   
       ;; assign the full resolution image
-      image0 = * info.fr_image
-     
-      ;; define a pointer to the default kernel, 5 x 5
-      kdim = 5 & def_kernel = replicate(1, kdim, kdim)
+      fname = info.fname_input & image0 = * info.fr_image
+      q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
+      ;; check if we have a geotiff image
+      geotiff_log = '' ;; gdal geotiff-information
+      if info.is_geotiff gt 0 then begin  ;; we have a geotiff image
+        IF info.my_os EQ 'windows' THEN BEGIN
+          cmd = 'cd "' + info.dir_fwtools + '" & setfw.bat & gdalinfo -noct "' + fname + '"'
+        ENDIF ELSE BEGIN
+          if strlen(info.sysgdal) gt 0 then $
+            cmd = 'unset LD_LIBRARY_PATH; gdalinfo -noct "' + fname + '"' else $
+          cmd = info.dir_fwtools + 'gdalinfo -noct "' + fname + '"'
+        ENDELSE
+        IF info.my_os EQ 'windows' THEN spawn, cmd, geotiff_log, / hide ELSE spawn, cmd, geotiff_log
+      endif
+
+      ;; test if pixel-resolution is available from gdal g_ps: gdal pixel size
+      gdal = 'gdalinfo: no details on the pixel resolution.'
+      IF (size(geotiff_log))[0] NE 0 THEN BEGIN
+        gps = geotiff_log[WHERE(STRMATCH(geotiff_log, 'Pixel Size*', /FOLD_CASE) EQ 1)]
+        gps = gps[0] & p =strlen(gps)
+        if p gt 0 then gdal = 'gdalinfo: ' + gps
+      ENDIF
+      
+      ;; define required pointers for LM      
       cancel = ptr_new(1b)
-      selected_kernel = ptr_new(def_kernel)
-      ;; get the kernel settings, make square & binary
-      get_kernel, selected_kernel = selected_kernel, $
-        cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
-        title = 'Select kernel dimension'
+      pres = ptr_new(25) ;; pixel resolution
+      wdim = ptr_new(5) ;; window edge length = kdim
+
+      ;; get the LM settings
+      get_lm, pres = pres, wdim = wdim, gdal = gdal, cancel = cancel, $
+        Group_Leader = event.top, title = 'Please set: PixelResolution [m] x square WindowSize = Observation Scale'
+      
       ;; check if cancel was selected then do nothing else apply the
       ;; default or new kernel
       IF * cancel NE 0b THEN BEGIN
         ptr_free, cancel & cancel = 0b
-        ptr_free, selected_kernel & selected_kernel = 0b
+        ptr_free, pres & pres = 0b
+        ptr_free, wdim & wdim = 0b
         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ',  user cancelled' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
-      kdim = * selected_kernel & kdim = (size(kdim))[1] & kdim_str = strtrim(kdim, 2)
+      pixres = float(* pres) & pixres_str = * pres
+      kdim = fix(* wdim) & kdim_str = * wdim     
+      
       ;; free and delete the temporary pointers
       ptr_free, cancel & cancel = 0b
-      ptr_free, selected_kernel & selected_kernel = 0b                
-      q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
+      ptr_free, pres & pres = 0b
+      ptr_free, wdim & wdim = 0b
+                         
+
       IF kdim ge imgminsize THEN BEGIN
         res = dialog_message('Kernel dimension larger than x or y map dimension. ' + $
           string(10b) + 'Returning...', / information)
@@ -8883,23 +8911,36 @@ CASE strlowCase(eventValue) OF
       ENDIF
       popd
       
-      ;; define a pointer to the default kernel, 5 x 5
-      kdim = 5 & def_kernel = replicate(1, kdim, kdim)
+      
+      gdal = 'gdalinfo: we assume all batch images have the same pixel resolution, correct?'
+      
+      
+      ;; define required pointers for LM      
       cancel = ptr_new(1b)
-      selected_kernel = ptr_new(def_kernel)
-      ;; get the kernel settings, make square & binary
-      get_kernel, selected_kernel = selected_kernel, $
-        cancel = cancel, Group_Leader = event.top, / binary, / square, /noedit, $
-        title = 'Select kernel dimension'
+      pres = ptr_new(25) ;; pixel resolution
+      wdim = ptr_new(5) ;; window edge length = kdim
+
+      ;; get the LM settings
+      get_lm, pres = pres, wdim = wdim, gdal = gdal, cancel = cancel, $
+        Group_Leader = event.top, title = 'Please set: PixelResolution [m] x square WindowSize = Observation Scale'
+      
       ;; check if cancel was selected then do nothing else apply the
       ;; default or new kernel
-
       IF * cancel NE 0b THEN BEGIN
         ptr_free, cancel & cancel = 0b
-        ptr_free, selected_kernel & selected_kernel = 0b
+        ptr_free, pres & pres = 0b
+        ptr_free, wdim & wdim = 0b
+        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ',  user cancelled' + info.bline & free_lun, unit
         GOTO, fin
       ENDIF
-      kdim = * selected_kernel & kdim = (size(kdim))[1] & kdim_str = strtrim(kdim, 2)
+      pixres = float(* pres) & pixres_str = * pres
+      kdim = fix(* wdim) & kdim_str = * wdim     
+      
+      ;; free and delete the temporary pointers
+      ptr_free, cancel & cancel = 0b
+      ptr_free, pres & pres = 0b
+      ptr_free, wdim & wdim = 0b
+ 
       
       ;; test that we can write into the parent directory or if it exists already
       batch_type = 'batch_lm'
@@ -9119,9 +9160,6 @@ CASE strlowCase(eventValue) OF
       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
       popd
 
-      ;; free and delete the temporary pointers
-      ptr_free, cancel & cancel = 0b
-      ptr_free, selected_kernel & selected_kernel = 0b
       GOTO, fin
    END
 
@@ -23058,7 +23096,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, November 2025' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, February 2026' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -28439,7 +28477,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.309
+gtb_version = 3.310
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -29214,8 +29252,7 @@ w_draw = $
  Widget_Draw(w_drawbasebox, XSize = xsize, YSize = ysize, retain = 2)
 
 msg = 'Please load an image via the menu: File -> Read Image'
-w_rdpx = Widget_text(w_drawbasebox, xsize = 70, $
-                     value = msg, / frame) ; ysize = 20
+w_rdpx = Widget_text(w_drawbasebox, xsize = 80, value = msg, /align_left, / frame)
                      
 w_label = widget_base(w_drawbasebox, / row, Event_Pro = 'guidos_processing', sensitive = 0)
 w_do_label_groups = CW_BGROUP(w_label, 'Divide',/ NONEXCLUSIVE, uvalue = 'do_label_groups')
