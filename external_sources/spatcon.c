@@ -2,7 +2,7 @@
 ************************************************************************
     SPATCON.C   spatial convolution routines.
     Kurt Riitters
-	Version 1.3.3 February 2023
+	Version 1.3.4 April 2026
 ************************************************************************ 
 DISCLAIMER:
 The author(s), their employer(s), the archive host(s), nor any part of the United States federal government
@@ -220,12 +220,23 @@ Version and changes
 1.3.3 February 2023
 		Improved precision of percentage calculations for LM19 (R6) and LM103 (R7) in Freq_Filters
 		Bug fix for rule 72, the number of unique byte values was incorrectly calculated, in Freq_Filters and Freq_Filters_Float
+		
+1.3.4 April 2026
+		Latest compiler at JRC treated earlier warnings as errors: add the same initialization of variables in Freq_Filters_Float
+		that was done before in Freq_Filters. (this fix was temporarily called bugfix.c, dated Feb 10, 2026.)
+		To fix LPT errors when comparing p_agr, p_dev, or p_for for equality to 1.0, included float.h
+		and used machine dependent EPSILON from there, as a global variable, to make comaprisons. For example instead of if(p_for == 1,0), 
+		the expressions are now if(fabs(p_for - 1.0) < EPSILON).  Because this same issue potentially affects similar
+		comparisons of floats to either 0.0 or 1.0, made similar changes elsewhere. 21 total changes all labeled as 1.3.4.
+		
+		
 
 ************************************************************************ */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>   // 1.3.4
 #include <math.h>
 #include  <omp.h>
 #if !defined(__APPLE__)
@@ -252,6 +263,7 @@ struct run_helpers
     float number_of_edges_inverse;
 };
 struct run_helpers constants;
+const float EPSILON = FLT_EPSILON; // 1.3.4, EPSILON defined in float.h; can make this a global variable available to all functions
 
 /* the following two must be changed whenever a new mapping rule is added */
 #define NUM_MAP_RULES_DEFINED 21
@@ -1293,7 +1305,9 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         /*modified March 23, 2007, to add 3 codes for the cases of the corners, i.e., 100% cases */
         /* the new codes will be 17,18,19 */
         /* also cleaned up the description of the codes elsewhere in this program */
-        if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+        // 1.3.4
+        // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+        if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
         {
             map_val = 0;
             break;
@@ -1313,7 +1327,9 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         	at the very end of the subroutine because a missing window caused a break above this line */
         if(p_for >= 0.60)      /* it's an F matrix */
         {
-            if(p_for == 1.0)   /* it's all 'forest' */
+            // 1.3.4
+            // if(p_for == 1.0)   /* it's all 'forest' */
+            if(fabs(p_for - 1.0) < EPSILON)
             {
                 map_val = 17; /* F* */
                 break;
@@ -1349,8 +1365,10 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         } /* if p_for > .6 */
         if(p_agr >= 0.60)      /* it's an A matrix */
         {
-            if(p_agr == 1.0)   /*it's all agriculture */
-            {
+            // 1.3.4
+            // if(p_agr == 1.0)   /*it's all agriculture */
+            if(fabs(p_agr - 1.0) < EPSILON)
+           {
                 map_val = 18;  /* A* */
                 break;
             }
@@ -1385,8 +1403,10 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         } /* if p_agr > .6 */
         if(p_dev >= 0.60)      /* it's a D matrix */
         {
-            if(p_dev == 1.0)   /* it's all developed */
-            {
+            // 1.3.4
+            // if(p_dev == 1.0)   /* it's all developed */
+            if(fabs(p_dev - 1.0) < EPSILON)
+           {
                 map_val = 19; /* A* */
                 break;
             }
@@ -1454,8 +1474,10 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         map_val = 0;   /* just in case something slipped thru */
         break;
     case 7: /* 103-class lptmaker here */
-        /* Added July 2 2018. Used skeleton from rule 6 above*/
-        if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+        /* Added case 7 on July 2 2018. Used skeleton from rule 6 above*/
+        // 1.3.4
+        // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+        if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
         {
             map_val = 0;
             break;
@@ -1473,17 +1495,23 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
 		p_dev = (1.0 * (*(freq_ptr + 3)) ) * temp_float;
         /* Note that the output of three float maps is not handled with rule 7, use rule 6 instead */
         /* check the corners first */
-        if(p_for == 1.0)   /* it's all 'forest' */
+        // 1.3.4
+            // if(p_for == 1.0)   /* it's all 'forest' */
+            if(fabs(p_for - 1.0) < EPSILON)
         {
             map_val = 170;
             break;
         }
-        if(p_dev == 1.0)   /* it's all 'dev' */
+        // 1.3.4
+        // if(p_dev == 1.0)   /* it's all 'dev' */
+        	if(fabs(p_dev - 1.0) < EPSILON)
         {
             map_val = 190;
             break;
         }
-        if(p_agr == 1.0)   /* it's all 'agr' */
+        // 1.3.4
+        // if(p_agr == 1.0)   /* it's all 'agr' */
+            if(fabs(p_agr - 1.0) < EPSILON)
         {
             map_val = 180;
             break;
@@ -2051,8 +2079,10 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         break;
     case 21:  /* Return the average of the color codes in freq_ptr, get
                          this by weighted average from the freq distn    */
-        if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
-        {
+        // 1.3.4
+        // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+        if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
+       {
             map_val = 0;
             break;
         }
@@ -2076,7 +2106,9 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         if(handle_missing == 1)     /* missing not included */
         {
             start = 1;
-            if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            // 1.3.4
+            // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
             {
                 map_val = 0;
                 break;
@@ -2134,7 +2166,9 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         if(handle_missing == 1)     /* missing not included */
         {
             start = 1;
-            if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            // 1.3.4
+            // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
             {
                 map_val = 0;
                 break;
@@ -2185,7 +2219,9 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         if(handle_missing == 1)     /* missing not included */
         {
             start = 1;
-            if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            // 1.3.4
+            // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
             {
                 map_val = 0;
                 break;
@@ -2701,7 +2737,9 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         /* the diagonal cell has been counted twice, so subtract one of them */
         temp_int = (parameters.code_1 * (n_colors_in_image + 1)) + parameters.code_1;
         temp_float_2 -= (*(freq_ptr + temp_int));
-        if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        // 1.3.4
+        // if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        if( fabs( temp_float_2) < EPSILON)
         {
             map_val = 0;
             break;
@@ -2737,7 +2775,9 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
         /* the diagonal cell has been counted twice, so subtract one of them */
         temp_int = (parameters.code_1 * (n_colors_in_image + 1)) + parameters.code_1;
         temp_float_2 -= (*(freq_ptr + temp_int));
-        if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        // 1.3.4
+        // if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        if( fabs( temp_float_2) < EPSILON)
         {
             map_val = 0;
             break;
@@ -2825,7 +2865,9 @@ unsigned char Freq_Filters(long int color_freq, long int edge_freq, long int *fr
             map_val = 1 + temp_int;
             break;
         }
-        if(temp_float_2 == 1.0)
+        // 1.3.4
+        // if(temp_float_2 == 1.0)
+        if( fabs( temp_float_2 - 1.0) < EPSILON)
         {
             map_val = 128;
             break;
@@ -2866,6 +2908,15 @@ float Freq_Filters_Float(long int color_freq, long int edge_freq, long int *freq
     long int index, start, temp_int, temp_int2, ind1, ind2, n_colors_in_window;
     float temp_float, temp_float_2, temp_float_3;
     map_val = -0.01;
+	// version 1.3.4; apply the same initialization as done earlier in Freq_Filters to avoid warning/error about un-initialized values
+	// This warning/error is coming from the omp libraries
+	temp_int = 0;
+	temp_int2 = 0;
+   	temp_float = 0.0;
+  	temp_float_2 = 0.0;
+	temp_float_3 = 0.0;
+	// end of fix
+    
     switch(mapping_rule)
     {
     case 1:   /* don't do it */
@@ -2920,7 +2971,9 @@ float Freq_Filters_Float(long int color_freq, long int edge_freq, long int *freq
         break;
     case 21:  /* Return the average of the color codes in freq_ptr, get
                          this by weighted average from the freq distn    */
-        if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+        // 1.3.4
+        // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+        if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
         {
             map_val = -0.01;
             break;
@@ -2944,7 +2997,9 @@ float Freq_Filters_Float(long int color_freq, long int edge_freq, long int *freq
         if(handle_missing == 1)     /* missing not included */
         {
             start = 1;
-            if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            // 1.3.4
+            // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
             {
                 map_val = -0.01;
                 break;
@@ -3000,7 +3055,9 @@ float Freq_Filters_Float(long int color_freq, long int edge_freq, long int *freq
         if(handle_missing == 1)     /* missing not included */
         {
             start = 1;
-            if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            // 1.3.4
+            // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
             {
                 map_val = -0.01;
                 break;
@@ -3050,7 +3107,9 @@ float Freq_Filters_Float(long int color_freq, long int edge_freq, long int *freq
         if(handle_missing == 1)     /* missing not included */
         {
             start = 1;
-            if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            // 1.3.4
+            // if( (*(freq_ptr)) == constants.window_area)   /*they're all missing */
+            if( (fabs( (*(freq_ptr)) - constants.window_area)) < EPSILON)
             {
                 map_val = -0.01;
                 break;
@@ -3555,7 +3614,9 @@ float Freq_Filters_Float(long int color_freq, long int edge_freq, long int *freq
         /* the diagonal cell has been counted twice, so subtract one of them */
         temp_int = (parameters.code_1 * (n_colors_in_image + 1)) + parameters.code_1;
         temp_float_2 -= (*(freq_ptr + temp_int));
-        if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        // 1.3.4
+        // if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        if( fabs( temp_float_2) < EPSILON)
         {
             map_val = -0.01;
             break;
@@ -3590,7 +3651,9 @@ float Freq_Filters_Float(long int color_freq, long int edge_freq, long int *freq
         /* the diagonal cell has been counted twice, so subtract one of them */
         temp_int = (parameters.code_1 * (n_colors_in_image + 1)) + parameters.code_1;
         temp_float_2 -= (*(freq_ptr + temp_int));
-        if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        // 1.3.4
+        // if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        if( fabs( temp_float_2) < EPSILON)
         {
             map_val = -0.01;
             break;
@@ -3655,7 +3718,9 @@ float Freq_Filters_Float(long int color_freq, long int edge_freq, long int *freq
     case 83:  /* return the ratio #code1 / (#code1 + #code2) */
         temp_float_2 = (*(freq_ptr + parameters.code_1)) +
                        (*(freq_ptr + parameters.code_2));
-        if(temp_float_2 == 0)
+	// 1.3.4
+        // if(temp_float_2 == 0.)     /* set to missing if no edges with that color */
+        if( fabs( temp_float_2) < EPSILON)
         {
             map_val = -0.01;
             break;

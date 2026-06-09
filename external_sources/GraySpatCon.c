@@ -3,7 +3,7 @@
 	GraySpatCon.c 
 	Spatial convolution of a gray-scale input map, supporting dichotomous, nominal, and ordinal input data.
 	Kurt Riitters
-	Version 1.2.1, July 2023
+	Version 1.2.2, April 2026
 ************************************************************************ 
 DISCLAIMER:
 The author(s), their employer(s), the archive host(s), nor any part of the United States federal government
@@ -125,6 +125,11 @@ Version and changes:
 		Fixed bug in routine Global_Analysis. The missing adjacencies were not tallied, resulting in incorrect calculation of adjacency
 		metrics in Metric_Calculator (which calculates non-missing adjacencies by subtracting the missing adjacencies). The equivalent
 		code in Moving_Window requires no changes.
+1.2.2 April 2026
+		Added initialization to zero for all variables declared in each subroutine.
+		Fixed bug related to comparison of floats to 0.0, by introducing float.h and using EPSILON to test difference from 0.0 -
+		all affected places are labeled as 1.2.2. This mainly affected landscape mosaic metrics (17 and 18), where it resulted in occasional
+		mislabeling of the corner points of the tri-polar metric space. Also float to byte conversion subroutine.
 ************************************************************************
  */
  /* Programming notes
@@ -316,6 +321,7 @@ Version and changes:
 #include <malloc.h>
 #endif
 #include <math.h>
+#include <float.h>
 #include <omp.h>
 // ***** prototypes *****
 long int Read_Parameter_File(FILE *);
@@ -372,6 +378,7 @@ struct control_parameters { 	// these are set in the code, many depend on the me
 };                    
 struct control_parameters control = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 // ***** global variables *****
+const float EPSILON = FLT_EPSILON; // 1.2.2, EPSILON defined in float.h; can make this a global variable available to all functions
 // input, buffered input, and output data arrays
 unsigned char *mat_in_byte;  	// input byte values
 unsigned char *mat_out_byte;  	// optional output byte values
@@ -380,10 +387,10 @@ float *mat_out; 				// default - metrics are stored as float but may be converte
 // ***** Main *****
 int main(int argc, char **argv)
 {
-	static long int ret_val, nrows_in, ncols_in, buff_b, n_cols_buf, n_rows_buf, temp_int, row, col, index;
+	static long int ret_val=0, nrows_in=0, ncols_in=0, buff_b=0, n_cols_buf=0, n_rows_buf=0, temp_int=0, row=0, col=0, index=0;
 	static FILE *infile, *parfile, *outfile;
 	static char filename_par[20], filename_in[20], filename_out[20];
-	float metric_value, missing;
+	float metric_value=0.0, missing=0.0;
 	unsigned char *datarow;
 	setbuf(stdout, NULL);	
 	printf("\nGraySpatCon: Start.");
@@ -605,7 +612,7 @@ long int Read_Parameter_File(FILE *parfile)
 	//  K x - user-selected k value
 
 	static char ch;
-	static long int value, flag;
+	static long int value=0, flag=0;
 	value = -99;
 	flag = 1;
 	while(flag == 1) {
@@ -675,7 +682,7 @@ long int Read_Parameter_File(FILE *parfile)
 */
 long int Check_Parameters_Set_Controls()
 {
-	long int temp_int;
+	long int temp_int=0;
 	if( (parameters.nrows == 0) || (parameters.ncols == 0) ){
 		printf("\nGraySpatCon: Error -- Parameters _R_ and _C_ must be larger than 0."); return(1);
 	}
@@ -955,7 +962,7 @@ long int Check_Parameters_Set_Controls()
 */
 long int Check_Input_Data()
 {
-	static long int nrows_in, ncols_in, row, col, index, temp_int;
+	static long int nrows_in=0, ncols_in=0, row=0, col=0, index=0, temp_int=0;
 	
 	nrows_in = parameters.nrows; 				// input image dimensions
 	ncols_in = parameters.ncols;
@@ -1003,7 +1010,7 @@ long int Check_Input_Data()
 */
 long int Buffer_Data()
 {
-	static long int buff_b, nrows_in, ncols_in, n_rows, n_cols, row, col, pos_in, index, temp_int;
+	static long int buff_b=0, nrows_in=0, ncols_in=0, n_rows=0, n_cols=0, row=0, col=0, pos_in=0, index=0, temp_int=0;
 
 	nrows_in = parameters.nrows; 				// input image dimensions
 	ncols_in = parameters.ncols;
@@ -1054,7 +1061,7 @@ long int Buffer_Data()
 */
 long int Unbuffer_Data()
 {
-	static long int buff_b, nrows_in, ncols_in, n_cols, row, col, pos_in, index;
+	static long int buff_b=0, nrows_in=0, ncols_in=0, n_cols=0, row=0, col=0, pos_in=0, index=0;
 
 	nrows_in = parameters.nrows; 				// input image dimensions
 	ncols_in = parameters.ncols;
@@ -1079,9 +1086,9 @@ long int Unbuffer_Data()
    *********************************************************************** */
 long int Moving_Window()
 {
-	long int freq_type, numval, nrows_in, ncols_in, buff_b, n_cols_buf, temp_int, index;
-	long int r, c, row, col, c_min, c_max, r_min, r_max, t1, t2, new_c_min, new_c_max;	
-	float metric_value;
+	long int freq_type=0, numval=0, nrows_in=0, ncols_in=0, buff_b=0, n_cols_buf=0, temp_int=0, index=0;
+	long int r=0, c=0, row=0, col=0, c_min=0, c_max=0, r_min=0, r_max=0, t1=0, t2=0, new_c_min=0, new_c_max=0;	
+	float metric_value=0.0;
 	
 	freq_type = control.freq_type;
 	numval = 102;								// max number of byte values in 0,101; hardwired = 102
@@ -1227,8 +1234,8 @@ long int Moving_Window()
 */	
 long int Float2Byte()
 {	
-	long int nrows, ncols, index, OK, row, col;
-	float temp_float, min, max, range, inv_range, target_max;
+	long int nrows=0, ncols=0, index=0, OK=0, row=0, col=0;
+	float temp_float=0.0, min=0.0, max=0.0, range=0.0, inv_range=0.0, target_max=0.0;
 	nrows = parameters.nrows;
 	ncols = parameters.ncols;
 	max = 0.0;
@@ -1302,7 +1309,9 @@ long int Float2Byte()
 		// stretch from [min, max} to [0,254], reserving 255 for missing
 		printf("\nGraySpatCon: Re-scaling from float in [Min, Max] [%f, %f] to byte in [0, 254]; 255 byte represents missing.", min, max);
 		range = max - min;
-		if(range == 0.0) {
+		//1.2.2
+		// if(range == 0.0) {
+		if( fabs(range) < EPSILON) {
 			printf("\nGraySpatCon: Cannot re-scale to [min, max] byte output; min = max.\n"); exit(22);
 		}
 		inv_range = 1.0 / range;
@@ -1348,7 +1357,9 @@ long int Float2Byte()
 		// stretch from [0, max] to [0,254], or to [0, 100], reserving 255 for missing
 		printf("\nGraySpatCon: Re-scaling from float in [0, Max] [0, %f] to byte in [0, 254]; 255 byte represents missing.", max);
 		range = max;
-		if(range == 0.0) {
+		//1.2.2
+		// if(range == 0.0) {
+		if( fabs(range) < EPSILON) {
 			printf("\nGraySpatCon: Cannot convert to [0, max] byte output; max = 0.\n"); exit(22);
 		}
 		inv_range = 1.0 / range;
@@ -1399,8 +1410,8 @@ long int Float2Byte()
 */
 float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 {
-	long int index, max_npix, max_nadj, temp_int, temp_int2, temp_int3, temp_max, temp_index, index1, index2, num_values, num_adjacencies, num_missing, position, numpix, sumx, sumx2, min, max, range, kval, nobs;
-	float numerator, denominator, inv_denominator, metric_value, inv_num_adjacencies, temp_float, temp_float2, temp_float3, p1, p2, p3, mu_x, mu_y, sigma_x, sigma_y, temp_out;
+	long int index=0, max_npix=0, max_nadj=0, temp_int=0, temp_int2=0, temp_int3=0, temp_max=0, temp_index=0, index1=0, index2=0, num_values=0, num_adjacencies=0, num_missing=0, position=0, numpix=0, sumx=0, sumx2=0, min=0, max=0, range=0, kval=0, nobs=0;
+	float numerator=0.0, denominator=0.0, inv_denominator=0.0, metric_value=0.0, inv_num_adjacencies=0.0, temp_float=0.0, temp_float2=0.0, temp_float3=0.0, p1=0.0, p2=0.0, p3=0.0, mu_x=0.0, mu_y=0.0, sigma_x=0.0, sigma_y=0.0, temp_out=0.0;
 	// Must malloc/free the following within some metrics else it will mess with parallel coding elsewhere
 		long int *karray;		// kdif and ksum needed for difference entropy and sum entropy metrics,
 		float *rowp;			//  tables by row and column needed for correlation
@@ -2852,7 +2863,9 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 			p3 = inv_denominator * (1.0 *(*(freqptr1 + 3)));	// p3 is spatcon p_dev
 			// tri-polar classification of p1, p2, p3
 			if(p2 >= 0.60){      
-				if(p2 == 1.0){   
+				//1.2.2
+				//if(p2 == 1.0){  
+				if(fabs(p2 - 1.0) < EPSILON) {
 					metric_value = 17.;
 					break;
 				}
@@ -2880,7 +2893,9 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				break;
 			} // end of if p2 > .6 
 			if(p1 >= 0.60){
-				if(p1 == 1.0){
+				//1.2.2
+				// if(p1 == 1.0){
+				if(fabs(p1 - 1.0) < EPSILON) {
 					metric_value = 18.;
 					break;
 				}
@@ -2908,7 +2923,9 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				break;
 			} // end of if p1 > .6
 			if(p3 >= 0.60){
-				if(p3 == 1.0){
+				//1.2.2
+				// if(p3 == 1.0){
+				if(fabs(p3 - 1.0) < EPSILON) {
 					metric_value = 19.;
 					break;
 				}
@@ -2979,15 +2996,21 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 			p2 = inv_denominator * (1.0 *(*(freqptr1 + 2)));	// p2 is spatcon p_for
 			p3 = inv_denominator * (1.0 *(*(freqptr1 + 3)));	// p3 is spatcon p_dev
 			// check the corners first 
-			if(p2 == 1.0){
+			//1.2.2
+			//if(p2 == 1.0){
+			if(fabs(p2 - 1.0) < EPSILON) {
 				metric_value = 170.;
 				break;
 			}
-			if(p3 == 1.0){
+			//1.2.2
+			//if(p3 == 1.0){
+			if(fabs(p3 - 1.0) < EPSILON) {
 				metric_value = 190.;
 				break;
 			}
-			if(p1 == 1.0){
+			//1.2.2
+			//if(p1 == 1.0){
+			if(fabs(p1 - 1.0) < EPSILON) {
 				metric_value = 180.;
 				break;
 			}
@@ -3810,8 +3833,10 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 					sumx += (*(freqptr1 + index)) * index;
 				}
 				mu_x = inv_denominator * (1.0 * sumx);
-				mu_x = roundf(mu_x * 100000) / 100000; // round to 5 digits for comparision to zero
-				if(mu_x == 0.0){
+				//1.2.2
+				//mu_x = roundf(mu_x * 100000) / 100000; // round to 5 digits for comparision to zero
+				// if(mu_x == 0.0){
+				if(fabs(mu_x) < EPSILON) {
 					metric_value = -0.01;
 					break;
 				}
@@ -3843,8 +3868,10 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 					sumx += (*(freqptr1 + index)) * index;
 				}
 				mu_x = inv_denominator * (1.0 * sumx);
-				mu_x = roundf(mu_x * 100000) / 100000; // round to 5 digits for comparision to zero
-				if(mu_x == 0.0){
+				//1.2.2
+				//mu_x = roundf(mu_x * 100000) / 100000; // round to 5 digits for comparision to zero
+				//if(mu_x == 0.0){
+				if(fabs(mu_x) < EPSILON) {
 					metric_value = -0.01;
 					break;
 				}
@@ -5458,8 +5485,8 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				}
 				// 1.1.1
 				sigma_x = sqrt(sigma_x);
-				sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
-				//
+				//1.2.2
+				//sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
 				// calc col variables
 				mu_y = 0.0;
 				sigma_y = 0.0; 	// calc as sigma squared, then take sqrt
@@ -5476,9 +5503,12 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				}
 				// 1.1.1
 				sigma_y = sqrt(sigma_y);
-				sigma_y = roundf(sigma_y * 100000) / 100000; // round to 5 digits for comparision to zero
+				//1.2.2
+				//sigma_y = roundf(sigma_y * 100000) / 100000; // round to 5 digits for comparision to zero
 				// avoid potential divide by zero
-				if( (sigma_x == 0.0) || (sigma_y == 0.0) ){
+				//1.2.2
+				//if( (sigma_x == 0.0) || (sigma_y == 0.0) ){
+				if( (fabs(sigma_x) < EPSILON) || (fabs(sigma_y) < EPSILON) ){
 					break; 	// returns missing
 				}
 				// accumulate the entire metric as 'numerator'
@@ -5549,7 +5579,8 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				}
 				// 1.1.1
 				sigma_x = sqrt(sigma_x);
-				sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
+				//1.2.2
+				//sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
 				//
 				// calc col variables
 				mu_y = 0.0;
@@ -5567,9 +5598,13 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				}
 				// 1.1.1
 				sigma_y = sqrt(sigma_y);
-				sigma_y = roundf(sigma_y * 100000) / 100000; // round to 5 digits for comparision to zero
+				//1.2.2
+				//sigma_y = roundf(sigma_y * 100000) / 100000; // round to 5 digits for comparision to zero
 				// avoid potential divide by zero
-				if( (sigma_x == 0.0) || (sigma_y == 0.0) ){
+				//1.2.2
+				//if( (sigma_x == 0.0) || (sigma_y == 0.0) ){
+				if( (fabs(sigma_x) < EPSILON) || (fabs(sigma_y) < EPSILON) ){
+				
 					break; 	// returns missing
 				}
 				// accumulate the entire metric as 'numerator'
@@ -6090,8 +6125,10 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				// calc std dev
 				temp_float = inv_denominator * temp_float2;
 				sigma_x = sqrt(temp_float);
-				sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
-				if(sigma_x == 0.0){
+				//1.2.2
+				//sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
+				//if(sigma_x == 0.0){
+				if(fabs(sigma_x) < EPSILON) {
 					metric_value = -9000000.0;
 					break;
 				}
@@ -6127,8 +6164,10 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				// calc std dev
 				temp_float = inv_denominator * temp_float2;
 				sigma_x = sqrt(temp_float);
-				sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
-				if(sigma_x == 0.0){
+				//1.2.2
+				//sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
+				//if(sigma_x == 0.0){
+				if(fabs(sigma_x) < EPSILON) {
 					metric_value = -9000000.0;
 					break;
 				}
@@ -6167,8 +6206,10 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				// calc std dev
 				temp_float = inv_denominator * temp_float2;
 				sigma_x = sqrt(temp_float);
-				sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
-				if(sigma_x == 0.0){
+				//1.2.2
+				//sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
+				// if(sigma_x == 0.0){
+				if(fabs(sigma_x) < EPSILON) {
 					metric_value = -0.01;
 					break;
 				}
@@ -6204,8 +6245,10 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 				// calc std dev
 				temp_float = inv_denominator * temp_float2;
 				sigma_x = sqrt(temp_float);
-				sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
-				if(sigma_x == 0.0){
+				//1.2.2
+				//sigma_x = roundf(sigma_x * 100000) / 100000; // round to 5 digits for comparision to zero
+				//if(sigma_x == 0.0){
+				if(fabs(sigma_x) < EPSILON) {
 					metric_value = -0.01;
 					break;
 				}
@@ -6312,8 +6355,8 @@ float Metric_Calculator(long int *freqptr1, long int * freqptr2)
 */
 float Global_Analysis()
 {
-	long int index, temp2, t1, t2, nrows, ncols, r, c, freq_type, numval, temp_int;   
-	float metric_value;
+	long int index=0, temp2=0, t1=0, t2=0, nrows=0, ncols=0, r=0, c=0, freq_type=0, numval=0, temp_int=0;   
+	float metric_value=0.0;
 	long int *freqptr1; // pixel frequencies
 	long int *freqptr2; // adjacency frequencies
 	
@@ -6397,7 +6440,7 @@ float Global_Analysis()
 */
 long int Global_Range(long int flag)
 {	
-	long int range, r, c, index, nrows, ncols, temp_int, min, max, start;
+	long int range=0, r=0, c=0, index=0, nrows=0, ncols=0, temp_int=0, min=0, max=0, start=0;
 	long int *freqptr;	// count of pixel values
 	if( (freqptr = (long int *)calloc(102, sizeof(long int) ) ) == NULL ) {
 		printf("\nGraySpatCon: Error -- Cannot allocate memory for accumulator in Global_Range.\n"); exit(25);

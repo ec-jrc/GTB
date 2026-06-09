@@ -1315,7 +1315,6 @@ case strlowCase(metric) of ;; Mapping rules, see spatcon 483ff
  'pff': mstr='77' ;; Pff-Kurt
  'fac': mstr = '76'  ;; FAC or foreground area clustering
  'lm': mstr='7' ;; landscape mosaic 103class
- 'lmms': mstr='7'  ; landscape mosaic, normally would be 6 but we fake a LM-run
 endcase
 
 
@@ -1341,7 +1340,6 @@ endif else begin
 endelse
 printf,1,'m 0'
 if resfloat eq 1 then printf,1,'f 1' else printf,1,'f 0'
-if metric eq 'lmms' then printf,1,'p 1'
 ;;;PV if metric eq 'lm' then printf,1,'p 0'
 close,1
 
@@ -1350,7 +1348,8 @@ openw, 1, 'scinput' & writeu,1, scinput & close,1
 ;; setup spatcon; note: we are in dir_tmp right now
 ;; if LMMS, we need to use the old spatcon (placed in the subdirectory 'orig'),
 ;; which outputs the three PF_x.bsq files that are needed by combinelpt
-if metric eq 'lmms' then extra = 'orig' + path_sep() else extra = ''
+;;if metric eq 'lmms' then extra = 'orig' + path_sep() else extra = ''
+extra = ''
 IF my_os EQ 'windows' THEN BEGIN
   spatcon='..\spatcon\' + extra + 'spatcon64.exe' & file_copy, spatcon, 'spatcon.exe', /overwrite
 ENDIF ELSE IF my_os EQ 'apple' THEN BEGIN
@@ -1363,10 +1362,9 @@ ENDELSE
 ;; run spatcon in tmp
 IF my_os EQ 'windows' THEN spawn, 'spatcon.exe', log, / hide ELSE spawn, './spatcon', log
 
-;; if NOT LM or LMMS then get the result and clean up
-;; when doing LM or LMMS (dominance) the intermediate files are processed further
+;; if NOT LM then get the result and clean up
+;; when doing LM the intermediate files are processed further
 if mstr ne '7' then begin
-;;if metric ne 'LMMS' then begin
   ;; get result
   scoutput = bytarr(sz(0),sz(1)) & scinput=0
   if resfloat eq 1 then scoutput=float(scoutput)
@@ -1412,7 +1410,6 @@ PRO guidos_Processing, event
 ;; 'batch_cont':         Batch Contagion (Map);; legacy PFF contagion
 ;; 'batch_fos':          Batch FOS
 ;; 'batch_fadms':        Batch FAD-Multiscale
-;; 'batch_lmms':         Batch Dominance
 ;;                Distance
 ;; 'batch_eucldist':     Batch Euclidean Distance
 ;;                RP
@@ -1513,7 +1510,6 @@ PRO guidos_Processing, event
 ;; 'frag_hmc' -> 'distance_morph'
 ;; 'frag_fos':             FOS user-selected fragmentation scale
 ;; 'frag_fad':             FAD multiscale
-;; 'lmms':                 Dominance = Multiscale LM
 ;;                 Distance
 ;; 'distance_morph':       Euclidean Distance map + HMC
 ;; 'distance_influence':   Influence zones, proximity and reconnect (also 'distance_proximity')
@@ -9163,459 +9159,6 @@ CASE strlowCase(eventValue) OF
       GOTO, fin
    END
 
-
-   ;;*****************************************************************************************************
-
-   'lmms':  BEGIN  ;; xxxx
-     ;; check for input compliance:
-     ;; 1) if already a mspa image then quit
-     IF info.is_mspa EQ 1 OR info.is_fragm GT 0 OR info.is_contort GT 0 OR info.is_nw EQ 1 OR info.is_cost EQ 1 OR (info.datatype NE 'byte') THEN BEGIN
-       res = dialog_message(info.wronginput, / information)
-       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: wronginput' + info.bline & free_lun, unit
-       GOTO, fin
-     ENDIF
-
-     ;; 2) if in zoom mode, quit zoom mode
-     IF info.selsubregion_id EQ 1 THEN BEGIN ;; quit the zoom mode
-       info.selsubregion_id = 0
-       ;; deactivate zoomfactor selector
-       widget_control, info.w_zoomfac, sensitive = 1
-       widget_control, info.w_selsubregion, $
-         set_value = 'Zoom Mode'
-       ;; restore the prezoomed process image
-       * info.process = * info.prezoomprocess
-       ;; disable button and enable motion events in w_draw
-       widget_control, info.w_draw, Draw_Motion_Events = 1
-       widget_control, info.w_draw, Draw_Button_Events = 0
-       info.set_zoom = 0 & info.scroll_x = 0 & info.scroll_y = 0
-     ENDIF
-
-     ;; 3) check input compliance
-     ;; assign the full resolution image
-     image0 = * info.fr_image
-     
-     q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
-     IF imgminsize LT 500 THEN BEGIN
-       res = dialog_message('Dominance requires a minimum map dimension of 500 pixels in x and y map dimension.' + $
-         string(10b) + 'Returning...', / information)
-         openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: not 500 in x/y' + info.bline & free_lun, unit
-       GOTO, fin
-     ENDIF
-     lm_Compliance, info.fname_input, image0, 'lm', info.immaxsizeg, 1, result
-     IF result EQ 0 THEN BEGIN
-       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ERROR: not compliant' + info.bline & free_lun, unit
-       GOTO, fin  ;; invalid input
-     ENDIF
-
-     ;; loop over 5 observation scales
-     kdim = [7, 13, 27, 81, 243] 
-     qmiss=where(image0 eq 0b,ctmiss, /l64)
-
-     ;;widget_control, / hourglass
-     ;; calculate LMMS for each of the 5 observation scales
-     pushd, info.dir_tmp
-       list = file_search() & nl = n_elements(list)
-       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
-       ;; save missing data
-       if ctmiss gt 0 then save, qmiss, filename = 'missing.sav'
-     popd
-
-     for idx = 0,4 do begin
-     ;;  image0 = * info.fr_image
-       ;; run spatcon LMMS: instead of LMMS we run a fake LM 5 times and then do the rest with combinelpt
-       spatcon, image0, kdim[idx], 'lmms', info.dir_tmp, info.my_os, 0, im
-       ;; rename images for later when doing combinelpt
-       file_move, info.dir_tmp + 'p2_1.bsq',info.dir_tmp + 'obs' + strtrim(idx,2) + '_1.bsq',/overwrite
-       file_move, info.dir_tmp + 'p2_2.bsq',info.dir_tmp + 'obs' + strtrim(idx,2) + '_2.bsq',/overwrite
-       file_move, info.dir_tmp + 'p2_3.bsq',info.dir_tmp + 'obs' + strtrim(idx,2) + '_3.bsq',/overwrite
-       ;; do the heatmap at that scale
-       restore, info.dir_guidossub + 'lmcolors.sav' & tvlct, r, g, b
-       ;; recode and get heatmap: store resulting files heatmap.png and heatmap.csv in dir_tmp for later
-       kdim_str = strtrim(kdim[idx],2)
-       heatmap, info.dir_tmp, info.dir_guidossub, info.my_os, kdim_str, ctmiss, im
-       ;; rename stuff for later: the 19 class LM-image and heatmap stats at scale idx        
-       file_move, info.dir_tmp + 'recoutput', info.dir_tmp + 'obs' + strtrim(idx,2) + '_lm',/overwrite  ;; 19 class LM-image
-       file_move, info.dir_tmp + 'heatmap.csv', info.dir_tmp + 'obs' + strtrim(idx,2) + '_heatmap.csv',/overwrite 
-       file_move, info.dir_tmp + 'heatmap.png', info.dir_tmp + 'obs' + strtrim(idx,2) + '_heatmap.png',/overwrite
-       file_move, info.dir_tmp + 'heatmap.sav', info.dir_tmp + 'obs' + strtrim(idx,2) + '_heatmap.sav',/overwrite
-     endfor
-     
-     pushd, info.dir_tmp
-     
-     ;; combine LPTs
-     ;; the parameter file for combinelpt: first row = number of scales, second row: 1 - read 19class LM  or  2 - read103 class LM
-     openw, 1, 'parfile.txt' & printf,1,'5' & printf,1,'2' & close,1
-     file_copy, 'recsize.txt', 'scsize.txt',/overwrite
-     cmd = ' parfile.txt scsize.txt scoutput obs0_1.bsq obs0_2.bsq obs0_3.bsq obs1_1.bsq obs1_2.bsq obs1_3.bsq obs2_1.bsq obs2_2.bsq obs2_3.bsq ' 
-     cmd = cmd + 'obs3_1.bsq obs3_2.bsq obs3_3.bsq obs4_1.bsq obs4_2.bsq obs4_3.bsq'
-     
-     IF info.my_os EQ 'windows' THEN BEGIN
-       IF (!version.memory_bits EQ 64) THEN combinelpt='..\spatcon\combinelpt64.exe' ELSE $
-         combinelpt='..\spatcon\combinelpt32.exe'
-       file_copy, combinelpt, 'combinelpt.exe', /overwrite
-     ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
-       combinelpt='../spatcon/combinelpt_mac' & file_copy, combinelpt, 'combinelpt', /overwrite
-     ENDIF ELSE BEGIN
-       combinelpt='../spatcon/combinelpt_lin64' & file_copy, combinelpt, 'combinelpt', /overwrite
-     ENDELSE
-
-     ;; run combinelpt in tmp
-     IF info.my_os EQ 'windows' THEN spawn, 'combinelpt.exe' + cmd, log, / hide ELSE spawn, './combinelpt' + cmd, log
-          
-     ;; the result of combinelpt is the 103-class across-scale LPT
-     ;; recode and get heatmap: store resulting files heatmap.png and heatmap.csv in dir_tmp for later
-     kdim_str = 'multiscale'
-     heatmap, info.dir_tmp, info.dir_guidossub, info.my_os, kdim_str, ctmiss, im ;; the output here is the 19-class across-scale LM
-     if ctmiss gt 0 then im[qmiss] = 0b
-         
-     popd
-
-     * info.process = temporary(im)
-     restore, info.dir_guidossub + 'lmcolors.sav' & tvlct, r, g, b
-     info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 7 ;; LM
-
-     ;; free and delete the temporary pointers
-     * info.fr_image = * info.process
-     info.add_title = ' (Dominance: MultiScale summary)'
-     info.is_orig = 0
-
-     ;; open heatmap image
-     IF info.my_os EQ 'apple' THEN BEGIN
-       spawn, 'open ' + info.dir_tmp + 'heatmap.png'
-     ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
-       pushd, info.dir_tmp
-       spawn, 'start heatmap.png', / nowait
-       popd
-     ENDIF ELSE BEGIN ;; Linux
-       IF strlen(info.xdgop) EQ 0 THEN BEGIN
-         st = "Please install xdg-open to automatically" + $
-           "display images within GTB."
-         result = dialog_message(st, / information)
-       ENDIF ELSE BEGIN
-         spawn, info.xdgop + ' "' + info.dir_tmp + 'heatmap.png' + '"'
-       ENDELSE
-     ENDELSE
-     
-   END
-
-   ;;*****************************************************************************************************
-
-   'batch_lmms':  BEGIN ;; xxxx
-     tit = 'Select (Geo-)Tif-files'
-     im_file = $
-       dialog_pickfile(Title = tit, get_path = path2file, $
-       path = info.dir_data, default_extension = 'tif', / fix_filter, $
-       / must_exist, / multiple_files, filter = ['*.tif', '*.tiff'])
-     IF im_file[0] EQ '' THEN GOTO, fin ;; 'cancel' selected
-     
-     ;; test that the directory of the selected files has no sub-directories
-     pushd, path2file
-     list = file_search() & nl = n_elements(list) & nr_dir = 0
-     for idx = 0, nl-1 do begin
-       q = file_test(list[idx],/directory) & nr_dir = nr_dir + q
-     endfor
-     IF nr_dir GT 0 THEN BEGIN
-       msg = 'The directory of your Batch Dominance input files contains sub-directories.'  +  string(10b) +  string(10b) + $
-         'Please set up a new directory having Batch Dominance input files ONLY and no other sub-directories.' + string(10b) + string(10b) + 'Returning...'
-       res = dialog_message(msg, / information)
-       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', '+ msg + info.bline & free_lun, unit
-       GOTO, fin
-     ENDIF
-     popd 
-     
-     ;; test that we can write into the parent directory or if it exists already
-     batch_type = 'batch_Dominance'
-     dd = file_dirname(im_file[0], / mark_directory)
-     dir_batch = file_dirname(dd, / mark_directory) + batch_type + info.os_sep
-     ;; test if directory is not named like dir_batch
-     if file_basename(path2file) eq file_basename(dir_batch) then begin
-       msg = "The directory name '" + file_basename(dir_batch) + "' is reserved for the output files." + string(10b) + string(10b) + $
-         "Please rename the directory to any other name."
-       res = dialog_message(msg, / information)
-       openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', '+ msg + info.bline & free_lun, unit
-       GOTO, fin
-     endif
-
-     res = file_test(dir_batch, /directory, /write)
-     if res eq 1 then begin ;; dir_batch already exists
-       msg = 'The directory' + string(10b) + dir_batch + string(10b) + $
-         'already exists. All previous content will be erased before we continue.'+ string(10b) + $
-         "Please click 'Yes' to confirm or 'No' to exit"
-       res = dialog_message(msg,/question)
-       If res eq 'No' then goto, fin
-       ;; empty it
-       pushd, dir_batch
-       list = file_search() & nl = n_elements(list)
-       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
-       popd
-     endif else begin ;; does not exist yet, create it
-       file_mkdir, dir_batch
-     endelse
-
-
-     ;; do the loop processing now
-     ;; files are now selected, reset the GUI
-     ;;========================================================================
-     ;; reset the front image and block any events
-     ;;========================================================================
-     kdim = [7, 13, 27, 81, 243] & kstr = ['7', '13', '27', '81', '243']
-     title = 'Dominance Batch Processing'
-     goto, resetfront
-
-     backto_batch_lmms:
-     
-     desc = 'GTB_LM, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
-     ;; validate and process the images in a loop
-     fn_logfile = dir_batch + batch_type + '.log'
-     nr_im_files = n_elements(im_file) & time00 = systime( / sec) & okfile = 0l
-     openw, 9, fn_logfile
-     printf, 9, 'Dominance batch processing logfile: ', systime()
-     printf, 9, 'Number of files to be processed: ', nr_im_files
-     printf, 9, '==============================================='
-     close, 9
-     msg = 'Processing selected images for Dominance, please wait...'
-     progressBar = Obj_New("SHOWPROGRESS", message = msg, xsize=300, title=title, /cancel)
-     progressBar -> Start
-     
-     FOR fidx = 0, nr_im_files - 1 DO BEGIN
-       counter = strtrim(fidx + 1, 2) + '/' + strtrim(nr_im_files, 2)
-       ;; validate the input, if not skip it without message
-       IF progressBar -> CheckCancel() THEN BEGIN
-         res = Dialog_Message('Batch-processing cancelled by user.')
-         openw, 9, fn_logfile, /append
-         printf, 9, 'Batch-processing cancelled by user.'
-         close, 9
-         progressBar -> Destroy
-         Obj_Destroy, progressBar
-         tvlct, rini, gini, bini
-         GOTO, fin
-       ENDIF
-
-       input = im_file(fidx)
-       res = strpos(input,' ') ge 0
-       IF res EQ 1 THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Dominance input (empty space in directory path or input filename): '
-         printf, 9, input
-         close, 9
-         GOTO, skip_batch_lmms  ;; invalid input
-       ENDIF
-
-       res = query_tiff(input, qtres, geotiff = geotiffinfo)
-       IF qtres.type NE 'TIFF' THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Dominance input (not a TIFF image): '
-         printf, 9, input
-         close, 9
-         GOTO, skip_batch_lmms  ;; invalid input
-       ENDIF              
-       res = (res eq 0) + (qtres.channels NE 1) + (qtres.num_images NE 1) + (qtres.pixel_type GT 1 )
-       IF res NE 0 THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Dominance input file: '
-         printf, 9, input
-         close, 9
-         GOTO, skip_batch_lmms  ;; invalid input
-       ENDIF
-
-       image0 = read_tiff(input) & sz = size(image0,/dim)   
-       ;; check for single channel image
-       ;;===========================
-       IF n_elements(sz) NE 2 THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Dominance input (more than 1 band in the TIF image): '
-         printf, 9, input
-         close, 9
-         GOTO, skip_batch_lmms  ;; invalid input
-       ENDIF       
-             
-       LM_Compliance, input, image0, 'lm', info.immaxsizeg * 10, 0, result
-       q = size(image0,/dim) & xdim=q[0] & ydim=q[1] & imgminsize=(xdim<ydim)
-       IF result EQ 0 OR imgminsize LT 500 THEN BEGIN
-         openw, 9, fn_logfile, /append
-         printf, 9, ' '
-         printf, 9, '==============   ' + counter + '   =============='
-         printf, 9, 'Skipping invalid Dominance input file: ', input
-         close, 9
-         GOTO, skip_batch_lmms  ;; invalid input
-       ENDIF
-
-       ;; now all is ok for processing
-       time0 = systime( / sec)
-       widget_control, / hourglass
-       qmiss=where(image0 eq 0b,ctmiss, /l64)
-       
-       ;; ===========================================================
-       ;; calculate LMMS for each of the 5 observation scales
-       ;; first ensure dir_tmp is empty
-       pushd, info.dir_tmp
-         list = file_search() & nl = n_elements(list)
-         if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive    
-         ;; save missing data
-         if ctmiss gt 0 then save, qmiss, filename = 'missing.sav'   
-       popd
-
-       for idx = 0,4 do begin
-         ;; run spatcon LMMS: instead of LMMS we run a fake LM 5 times and then do the rest with combinelpt
-         spatcon, image0, kdim[idx], 'lmms', info.dir_tmp, info.my_os, 0, im
-         ;; rename images for later when doing combinelpt
-         file_move, info.dir_tmp + 'p2_1.bsq',info.dir_tmp + 'obs' + strtrim(idx,2) + '_1.bsq',/overwrite
-         file_move, info.dir_tmp + 'p2_2.bsq',info.dir_tmp + 'obs' + strtrim(idx,2) + '_2.bsq',/overwrite
-         file_move, info.dir_tmp + 'p2_3.bsq',info.dir_tmp + 'obs' + strtrim(idx,2) + '_3.bsq',/overwrite
-         ;; do the heatmap at that scale
-         restore, info.dir_guidossub + 'lmcolors.sav' & tvlct, r, g, b
-         ;; recode and get heatmap: store resulting files heatmap.png and heatmap.csv in dir_tmp for later
-         kdim_str = strtrim(kdim[idx],2)
-         heatmap, info.dir_tmp, info.dir_guidossub, info.my_os, kdim_str, ctmiss, im
-         ;; rename stuff for later: the 19 class LM-image and heatmap stats at scale idx
-         file_move, info.dir_tmp + 'recoutput', info.dir_tmp + 'obs' + strtrim(idx,2) + '_lm',/overwrite  ;; 19 class LM-image
-         file_move, info.dir_tmp + 'heatmap.csv', info.dir_tmp + 'obs' + strtrim(idx,2) + '_heatmap.csv',/overwrite
-         file_move, info.dir_tmp + 'heatmap.png', info.dir_tmp + 'obs' + strtrim(idx,2) + '_heatmap.png',/overwrite
-         file_move, info.dir_tmp + 'heatmap.sav', info.dir_tmp + 'obs' + strtrim(idx,2) + '_heatmap.sav',/overwrite
-       endfor
-      
-       pushd, info.dir_tmp
-       
-       ;; combine LPTs
-       ;; the parameter file for combinelpt: first row = number of scales, second row: 1 - read 19class LM  or  2 - read103 class LM
-       openw, 1, 'parfile.txt' & printf,1,'5' & printf,1,'2' & close,1
-       file_copy, 'recsize.txt', 'scsize.txt',/overwrite
-       cmd = ' parfile.txt scsize.txt scoutput obs0_1.bsq obs0_2.bsq obs0_3.bsq obs1_1.bsq obs1_2.bsq obs1_3.bsq obs2_1.bsq obs2_2.bsq obs2_3.bsq ' 
-       cmd = cmd + 'obs3_1.bsq obs3_2.bsq obs3_3.bsq obs4_1.bsq obs4_2.bsq obs4_3.bsq'
-       
-       IF info.my_os EQ 'windows' THEN BEGIN
-         IF (!version.memory_bits EQ 64) THEN combinelpt='..\spatcon\combinelpt64.exe' ELSE $
-           combinelpt='..\spatcon\combinelpt32.exe'
-         file_copy, combinelpt, 'combinelpt.exe', /overwrite
-       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
-         combinelpt='../spatcon/combinelpt_mac' & file_copy, combinelpt, 'combinelpt', /overwrite
-       ENDIF ELSE BEGIN
-         combinelpt='../spatcon/combinelpt_lin64' & file_copy, combinelpt, 'combinelpt', /overwrite
-       ENDELSE
-  
-       ;; run combinelpt in tmp
-       IF info.my_os EQ 'windows' THEN spawn, 'combinelpt.exe' + cmd, log, / hide ELSE spawn, './combinelpt' + cmd, log
-
-       ;; the result of combinelpt is the 103-class across-scale LPT
-       ;; recode and get heatmap: store resulting files heatmap.png and heatmap.csv in dir_tmp for later
-       kdim_str = 'multiscale'
-       heatmap, info.dir_tmp, info.dir_guidossub, info.my_os, kdim_str, ctmiss, im ;; the output here is the 19-class across-scale LM
-       if ctmiss gt 0 then im[qmiss] = 0b
-
-       popd
-       ;; ===========================================================
-
-       ;; write the final result 
-       res = file_basename(input, '.tif')
-       outdir = dir_batch + res + '_dominance'
-
-       ;; setup the output directory for the current image file
-       file_mkdir, outdir
-       pushd, outdir
-       restore, info.dir_guidossub + 'lmcolors.sav' & tvlct, r, g, b
-       
-       ;; first save the visual summary result
-       fn_out = res + '_lm_mscale.tif'
-       ;; add the geotiff info if available
-       IF (size(geotiffinfo))[0] gt 0 THEN $
-         write_tiff, fn_out, im, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1 ELSE $
-         write_tiff, fn_out, im, red = r, green = g, blue = b, description = desc, compression = 1
-       im = 0
-       gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
-       IF info.my_os EQ 'windows' THEN spawn, gedit + fn_out, log, / hide ELSE spawn, gedit + fn_out, log
-       z = res + '_lm_mscale_heatmap.csv'
-       file_copy, info.dir_tmp + 'heatmap.csv', z, /overwrite
-       z = res + '_lm_mscale_heatmap.png'
-       file_copy, info.dir_tmp + 'heatmap.png', z, /overwrite
-       z = res + '_lm_mscale_heatmap.sav'
-       file_copy, info.dir_tmp + 'heatmap.sav', z, /overwrite
-       z = 'heatmap_legend.png'
-       file_copy, info.dir_guidossub + 'heatmap_legend.png', z, /overwrite
-
-       ;; the 5 observation scales
-       for isc = 0, 4 do begin
-         ;; the actual data
-         z = res + '_lm_' + strtrim(kstr[isc],2) + '.tif'                  
-         openr, 1, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_lm' & readu,1, image0 & close,1
-         if ctmiss gt 0 then image0[qmiss]=0b
-         IF (size(geotiffinfo))[0] gt 0 THEN $
-           write_tiff, z, image0, red = r, green = g, blue = b, geotiff = geotiffinfo, description = desc, compression = 1 ELSE $
-           write_tiff, z, image0, red = r, green = g, blue = b, description = desc, compression = 1     
-         gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
-         IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log      
-         ;; the heatmap stuff
-         z = res + '_lm_' + strtrim(kstr[isc],2)  + '_heatmap.csv'
-         file_copy, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_heatmap.csv', z, /overwrite
-         z = res + '_lm_' + strtrim(kstr[isc],2)  + '_heatmap.png'
-         file_copy, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_heatmap.png', z, /overwrite
-         z = res + '_lm_' + strtrim(kstr[isc],2)  + '_heatmap.sav'
-         file_copy, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_heatmap.sav', z, /overwrite          
-       endfor
-       popd
-       
-       ;; empty tmp for the next calculation
-       pushd, info.dir_tmp
-       list = file_search() & nl = n_elements(list)
-       if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
-       popd
-      
-       okfile = okfile + 1
-       openw, 9, fn_logfile, /append
-       printf, 9, ' '
-       printf, 9, '==============   ' + counter + '   =============='
-       printf, 9, 'File: ' + input
-       printf, 9, 'Dominance comp.time [sec]: ', systime( / sec) - time0
-       close, 9
-
-       skip_batch_lmms:
-       stepn = (fidx + 1.0)/nr_im_files * 100.0
-       progressBar -> Update, stepn
-     ENDFOR
-     progressBar -> Destroy
-     Obj_Destroy, progressBar
-
-     ;; inform that batch is done
-     proct = systime( / sec) - time00
-     IF proct GT 3600.0 THEN BEGIN
-       proct2 = proct - ulong(proct/3600)*3600
-       proctstr = strtrim(ulong(proct/3600.),2) + ' hrs, ' + strtrim(ulong(proct2/60.),2) + $
-         ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
-     ENDIF ELSE BEGIN
-       proctstr = strtrim(ulong(proct/60.),2) + $
-         ' mins, ' + strtrim(ulong(proct mod 60),2) + ' secs'
-     ENDELSE
-     IF proct LT 60.0 THEN proctstr = strtrim(ulong(proct),2) + ' secs'
-     openw, 9, fn_logfile, /append
-     printf, 9, ''
-     printf, 9, '==============================================='
-     printf, 9, 'Dominance Batch Processing total comp.time: ', proctstr
-     printf, 9, 'Successfully processed files: ',strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2)
-     printf, 9, '==============================================='
-     close, 9
-
-     msg = 'Dominance Batch Processing finished.' + string(10b) + $
-       'Total computation time: ' + proctstr + string(10b) + $
-       'Successfully processed files: '+strtrim(okfile,2)+'/'+ strtrim(nr_im_files,2) + string(10b) + string(10b) + $
-       'More information can be found in the logfile: ' + string(10b) + fn_logfile
-     res = dialog_message(msg, / information)
-     ;; reset the colortable to the settings before the batch processing
-     tvlct, rini, gini, bini
-     ;; clean up tmp
-     pushd, info.dir_tmp
-     list = file_search() & nl = n_elements(list)
-     if list[0] ne '' then for i = 0, nl -1 do file_delete, list[i] ,/ allow_nonexistent, / quiet, / recursive
-     popd
-
-     GOTO, fin
-   END
 
    ;;*****************************************************************************************************
 
@@ -20686,7 +20229,7 @@ CASE strlowCase(eventValue) OF
             ;;=================================================================================================
             ;; 5) FOSchange.csv: save the tables as a csv-file
             ;;=================================================================================================
-            z=strtrim(change,2) & zp=strtrim(perc,2)
+            z=strtrim(change,2) & areacom = total(change,/double)
             f_out = outdir + 'FOSchange.csv'
             
             ;; test if forcom is defined, else calculate it
@@ -20694,6 +20237,7 @@ CASE strlowCase(eventValue) OF
               forcom = total((im1 lE 100b)*(im2 LE 100b),/double)
             ENDIF
             close,12 & openw,12, f_out
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             printf, 12, '1) General info:'
             printf,12, 'Change typ: ' + ch_pref + ': change from A -> B'
             ;; try to write out more user-friendly
@@ -20707,6 +20251,7 @@ CASE strlowCase(eventValue) OF
             printf,12, 'Map area [pixels]:,' + strtrim(marea,2)
             printf,12, ' '
 
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             printf,12, '2) Land cover status of A and B'
             printf,12, 'Land cover,Pixel value,A-Pixels,B-Pixels,A-%,B-%,Net change-Pixels'
             printf,12, 'Foreground,[0 - 100],' + strtrim(farea_a,2) + ',' + strtrim(farea_b,2) + ',' + $
@@ -20718,14 +20263,19 @@ CASE strlowCase(eventValue) OF
               strtrim(miss_a*100.0/marea_a,2) + ',' + strtrim(miss_b*100.0/marea_b,2) + ',' + strtrim(miss_b - miss_a,2)
             printf,12, ' '
 
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             printf,12, '3) Land cover change matrix'
             printf,12, 'A->B [pixels],B-Foreground,B-Background,B-Missing'
             printf,12, 'A-Foreground,' + strtrim(lccmat[0,0],2) + ',' + strtrim(lccmat[1,0],2) + ',' + strtrim(lccmat[2,0],2)
             printf,12, 'A-Background,' + strtrim(lccmat[0,1],2) + ',' + strtrim(lccmat[1,1],2) + ',' + strtrim(lccmat[2,1],2)
             printf,12, 'A-Missing,'  + strtrim(lccmat[0,2],2) + ',' + strtrim(lccmat[1,2],2) + ',' + strtrim(lccmat[2,2],2)
+            printf,12, 'AREACOM - common FG+BG at both times:,' + strtrim(total(lccmat[0:1,0:1]),2)
+            printf,12, 'FORCOM - common FG at both times:,' + strtrim(lccmat[0,0],2)
+            printf,12, 'FG gain:,' + strtrim(lccmat[0,1],2)
+            printf,12, 'FG loss:,' + strtrim(lccmat[1,0],2)
             printf,12, ' '
 
-
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             printf, 12, '4) ' + method + ' status: ' + strmid(fostype,3) + ' classes'
             printf, 12, method + ',Foreground cover,Connectivity,Fragmentation,A-pixels,B-pixels,A-%,B-%'
             printf, 12, '[0 9],Rare,Very low,Very high,' + strtrim(rare_a,2) + ',' + strtrim(rare_b,2) + ',' + strtrim(rare_a/farea_a*100.0,2) + ',' + strtrim(rare_b/farea_b*100.0,2)
@@ -20744,8 +20294,9 @@ CASE strlowCase(eventValue) OF
               strtrim(b_fadru_av - a_fadru_av,2) + ',' + strtrim(100.0/a_fadru_av*b_fadru_av-100,2)
             printf, 12, method + '_AV [%],'+ strtrim(a_fad_av,2) + ',' + strtrim(b_fad_av,2) + ',' + $
               strtrim(b_fad_av - a_fad_av,2)+ ',' + strtrim(100.0/a_fad_av*b_fad_av-100,2)
-
             printf,12, ' '
+
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             printf, 12, '5) ' + method + ' change histogram: 7 classes listing the degree in Delta' + method + ' (= ' + method + ' change)'
             printf, 12, 'Delta' + method + ',Connectivity,Color,Pixels,%'
             printf, 12, '[-100 -21],High decrease,RED,' + strtrim(inc3,2) + ',' + strtrim(inc3n,2)
@@ -20756,10 +20307,10 @@ CASE strlowCase(eventValue) OF
             printf, 12, '[+11 +20],Medium increase,MEDIUM GREEN,' + strtrim(dec2,2) + ',' + strtrim(dec2n,2)
             printf, 12, '[+21 +100],High increase,DARK GREEN,' + strtrim(dec3,2) + ',' + strtrim(dec3n,2)
             printf, 12, 'Note: Change histogram is constrained to FORCOM [pixels]:,' + strtrim(forcom,2)
-
-
             printf,12, ' '
-            printf,12, '6) ' + method + ' change matrix: ' + strmid(fostype,3) + ' classes listing ' + method + ' status change from A->B'
+
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            printf,12, '6a) AREACOM ' + method + ' change matrix: ' + strmid(fostype,3) + ' classes listing ' + method + ' status change from A->B'
             if fostype eq 'FOS6' then begin
               printf,12, 'A->B [pixels], B0-Background, B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
               printf,12, 'A0-Background,  '+z[0,0]+','+z[1,0]+','+z[2,0]+','+z[3,0]+','+z[4,0]+','+z[5,0]+','+z[6,0]
@@ -20782,14 +20333,47 @@ CASE strlowCase(eventValue) OF
               sum_ab = total(change[1:*,0],/double)+total(change[2:*,1],/double)+total(change[3:*,2],/double)+total(change[4:*,3],/double)+change[5,4]
               sum_be = change[0,1]+total(change[0:1,2],/double)+total(change[0:2,3],/double)+total(change[0:3,4],/double)+total(change[0:4,5],/double)
             endelse
-            printf,12, 'Note: Change matrix is constrained to FORCOM [pixels]:,' + strtrim(forcom,2)
+            printf,12, 'AREACOM change matrix [pixels]:,' + strtrim(areacom,2)
+            printf,12, 'Same status class - matrix diagonal [pixels]:,' + strtrim(diag+change[0,0],2)
+            chsum = sum_ab + sum_be
+            printf,12, 'Different status classes [pixels]:,' + strtrim(chsum,2)
+            printf,12, 'Above the matrix diagonal [pixels]:,' + strtrim(sum_ab,2)
+            printf,12, 'Below the matrix diagonal [pixels]:,' + strtrim(sum_be,2)
+            printf, 12, ''
+            
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            printf,12, '6b) FORCOM ' +method + ' change matrix:'
+            if fostype eq 'FOS6' then begin
+              printf,12, 'A->B [pixels], B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior, B6-Intact'
+              printf,12, 'A1-Rare,        '+z[1,1]+','+z[2,1]+','+z[3,1]+','+z[4,1]+','+z[5,1]+','+z[6,1]
+              printf,12, 'A2-Patchy,      '+z[1,2]+','+z[2,2]+','+z[3,2]+','+z[4,2]+','+z[5,2]+','+z[6,2]
+              printf,12, 'A3-Transitional,'+z[1,3]+','+z[2,3]+','+z[3,3]+','+z[4,3]+','+z[5,3]+','+z[6,3]
+              printf,12, 'A4-Dominant,    '+z[1,4]+','+z[2,4]+','+z[3,4]+','+z[4,4]+','+z[5,4]+','+z[6,4]
+              printf,12, 'A5-Interior,    '+z[1,5]+','+z[2,5]+','+z[3,5]+','+z[4,5]+','+z[5,5]+','+z[6,5]
+              printf,12, 'A6-Intact,      '+z[1,6]+','+z[2,6]+','+z[3,6]+','+z[4,6]+','+z[5,6]+','+z[6,6]
+              sum_ab = total(mch[1:*,0])+total(mch[2:*,1])+total(mch[3:*,2])+total(mch[4:*,3])+ mch[5,4]
+              sum_be = mch[0,1]+total(mch[0:1,2])+total(mch[0:2,3])+total(mch[0:3,4])+total(mch[0:4,5])
+            endif else begin
+              printf,12, 'A->B [pixels], B1-Rare, B2-Patchy, B3-Transitional, B4-Dominant, B5-Interior'
+              printf,12, 'A1-Rare,        '+z[1,1]+','+z[2,1]+','+z[3,1]+','+z[4,1]+','+z[5,1]
+              printf,12, 'A2-Patchy,      '+z[1,2]+','+z[2,2]+','+z[3,2]+','+z[4,2]+','+z[5,2]
+              printf,12, 'A3-Transitional,'+z[1,3]+','+z[2,3]+','+z[3,3]+','+z[4,3]+','+z[5,3]
+              printf,12, 'A4-Dominant,    '+z[1,4]+','+z[2,4]+','+z[3,4]+','+z[4,4]+','+z[5,4]
+              printf,12, 'A5-Interior,    '+z[1,5]+','+z[2,5]+','+z[3,5]+','+z[4,5]+','+z[5,5]
+              sum_ab = total(mch[1:*,0])+total(mch[2:*,1])+total(mch[3:*,2])+ mch[4,3]
+              sum_be = mch[0,1]+total(mch[0:1,2])+total(mch[0:2,3])+total(mch[0:3,4])
+            endelse
+            printf,12, 'FORCOM change matrix [pixels]:,' + strtrim(forcom,2)
             printf,12, 'Same status class - matrix diagonal [pixels]:,' + strtrim(diag,2)
-            printf,12, 'Different status classes [pixels]:,' + strtrim(chpix,2)
+            chsum = sum_ab + sum_be
+            printf,12, 'Different status classes [pixels]:,' + strtrim(chsum,2)
             printf,12, 'Connectivity increase (=fragmentation decrease) - above the matrix diagonal [pixels]:,' + strtrim(sum_ab,2)
             printf,12, 'Connectivity decrease (=fragmentation increase) - below the matrix diagonal [pixels]:,' + strtrim(sum_be,2)
-
             printf, 12, ''
-            printf,12, method + ' change matrix reduced to and normalized by the ' + strtrim(chpix,2) + ' pixels in different ' + method + ' status classes [%]: '
+
+            ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            printf,12, '6c) FORCOM ' +method + ' change matrix normalized by the ' + strtrim(chsum,2) + ' pixels in different ' + method + ' status classes [%]: '
+            perc = mch/chsum*100 & zp=strtrim(perc,2)
             if fostype eq 'FOS6' then begin
               printf,12, 'A->B [%],B1-Rare,B2-Patchy,B3-Transitional,B4-Dominant,B5-Interior,B6-Intact'
               printf,12, 'A1-Rare      ,'+zp[0,0]+','+zp[1,0]+','+zp[2,0]+','+zp[3,0]+','+zp[4,0]+','+zp[5,0]
@@ -20798,6 +20382,8 @@ CASE strlowCase(eventValue) OF
               printf,12, 'A4-Dominant  ,'+zp[0,3]+','+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]+','+zp[5,3]
               printf,12, 'A5-Interior  ,'+zp[0,4]+','+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]+','+zp[5,4]
               printf,12, 'A6-Intact    ,'+zp[0,5]+','+zp[1,5]+','+zp[2,5]+','+zp[3,5]+','+zp[4,5]+','+zp[5,5]
+              sum_ab = total(perc[1:*,0])+total(perc[2:*,1])+total(perc[3:*,2])+total(perc[4:*,3])+ mch[5,4]
+              sum_be = perc[0,1]+total(perc[0:1,2])+total(perc[0:2,3])+total(perc[0:3,4])+total(perc[0:4,5])
             endif else begin
               printf,12, 'A->B [%],B1-Rare,B2-Patchy,B3-Transitional,B4-Dominant,B5-Interior'
               printf,12, 'A1-Rare      ,'+zp[0,0]+','+zp[1,0]+','+zp[2,0]+','+zp[3,0]+','+zp[4,0]
@@ -20805,10 +20391,13 @@ CASE strlowCase(eventValue) OF
               printf,12, 'A3-Transitional,'+zp[0,2]+','+zp[1,2]+','+zp[2,2]+','+zp[3,2]+','+zp[4,2]
               printf,12, 'A4-Dominant  ,'+zp[0,3]+','+zp[1,3]+','+zp[2,3]+','+zp[3,3]+','+zp[4,3]
               printf,12, 'A5-Interior  ,'+zp[0,4]+','+zp[1,4]+','+zp[2,4]+','+zp[3,4]+','+zp[4,4]
+              sum_ab = total(perc[1:*,0])+total(perc[2:*,1])+total(perc[3:*,2])+total(perc[4:*,3])
+              sum_be = perc[0,1]+total(perc[0:1,2])+total(perc[0:2,3])+total(perc[0:3,4])
             endelse
-            printf,12, 'Connectivity increase (=fragmentation decrease) - above the matrix diagonal [%]:,' + strtrim(sum_above,2)
-            printf,12, 'Connectivity decrease (=fragmentation increase) - below the matrix diagonal [%]:,' + strtrim(sum_below,2)
-            close,12
+            chsum = sum_ab + sum_be
+            printf,12, 'Connectivity increase (=fragmentation decrease) - above the matrix diagonal [%]:,' + strtrim(sum_ab,2)
+            printf,12, 'Connectivity decrease (=fragmentation increase) - below the matrix diagonal [%]:,' + strtrim(sum_be,2)
+            close,12  
                
           ENDIF ELSE BEGIN ;; no map output for _APP, set viewport to welcome startup
             outdir = file_dirname(file_dirname(im1_file)) + info.os_sep
@@ -22426,7 +22015,7 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
-   'news':  BEGIN    ;; xxxx
+   'news':  BEGIN
      ;; the local resulting file
      version_file = info.dir_tmp + 'news'
      ;; delete the file if any was present
@@ -22493,6 +22082,7 @@ CASE strlowCase(eventValue) OF
       case eventvalue2 OF
         'homepage_gtb': webl = ' https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
         'homepage_gwb': webl = ' https://forest.jrc.ec.europa.eu/activities/lpa/gwb/'
+        'homepage_pyg': webl = ' https://code.europa.eu/jrc-forest/guidos/pyguidos'
         'homepage_itb': webl = ' https://forobs.jrc.ec.europa.eu/products/software/impact.php'
         'homepage_gis': webl = ' https://docs.qgis.org/latest/en/docs/gentle_gis_introduction/'
         'homepage_crs': webl = ' https://www.nrcan.gc.ca/node/9309'
@@ -23096,7 +22686,7 @@ CASE strlowCase(eventValue) OF
       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, February 2026' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, June 2026' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -23430,7 +23020,6 @@ case eventvalue of
   'batch_pff': goto, backto_batch_pff ;; moving window PFF contagion
   'batch_fac': goto, backto_batch_fac
   'batch_lm': goto, backto_batch_lm
-  'batch_lmms': goto, backto_batch_lmms
   'batch_recode': goto, backto_batch_recode
   'batch_fadms': goto, backto_batch_fadms
   'batch_fos': goto, backto_batch_fos
@@ -23818,7 +23407,7 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
   c_trans = strtrim(info.mspa_param3_id - 0, 2)
   c_intext = strtrim(info.mspa_param4_id - 0, 2)
   mspaext = '_' + c_FGconn + '_' + c_size + '_' + c_trans + '_' + c_intext
-  prefix='' & is_lmms = 0 & is_lm = 0 & is_fos = 0 & is_fad = 0 & is_spa = 0 & is_eucldist = 0 & is_acc = 0 & is_restore=0 & is_gsc = 0
+  prefix='' & is_lm = 0 & is_fos = 0 & is_fad = 0 & is_spa = 0 & is_eucldist = 0 & is_acc = 0 & is_restore=0 & is_gsc = 0
   rss_exists = (file_info(info.dir_tmp + 'rss.csv')).exists
 
 
@@ -23914,10 +23503,6 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
     kdim_str = (strsplit(q,')',/extract))[0] & is_lm = 1
     fdir = fname + '_lm_' + kdim_str
     fname = fname + '_lm_' + kdim_str
-    desc = 'GTB_LM, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
-  ENDIF ELSE IF strpos(info.add_title,'ominance: MultiScale summary') GT 0 THEN BEGIN
-    fn_lmms = fname + '_lm_'
-    fname = fname + '_dominance_mscale' & is_lmms = 1
     desc = 'GTB_LM, https://forest.jrc.ec.europa.eu/activities/lpa/gtb/'
   ENDIF ELSE IF strpos(info.add_title,'(Contagion') GT 0 THEN BEGIN
     q = strpos(info.add_title,'kdim=') & q = strmid(info.add_title, q+5)
@@ -24536,8 +24121,8 @@ CASE fileaction OF
 
    'save_geotiff':BEGIN
       szoom = 0b
-      ;;;if (info.is_fragm eq 3 and is_fos eq 0) or lmms eq 1 then goto, fadskipper  ;; skip saving zoomed image
-      if (info.is_fragm eq 3) or (is_lmms eq 1) or (is_lm eq 1) or (is_acc eq 1) or (is_eucldist eq 1) then goto, fadskipper  ;; skip saving zoomed image
+      ;;;if (info.is_fragm eq 3 and is_fos eq 0) then goto, fadskipper  ;; skip saving zoomed image
+      if (info.is_fragm eq 3) or (is_lm eq 1) or (is_acc eq 1) or (is_eucldist eq 1) then goto, fadskipper  ;; skip saving zoomed image
       
       ;; if in zoom mode offer to save the zoomed part of the image
       IF info.selsubregion_id EQ 1 THEN BEGIN
@@ -24616,7 +24201,7 @@ CASE fileaction OF
       endif
            
       ;; ensure stuff is written out appropriately when saving in different formats
-      if (info.is_fragm eq 3) or (is_lmms eq 1) or (is_lm eq 1) then begin  ;; write out FAD/FOS/LM/LMMS result
+      if (info.is_fragm eq 3) or (is_lm eq 1) then begin  ;; write out FAD/FOS/LM result
         fadskipper:        
         tit = 'Select the directory where your results will be saved'
         ;; pre-select the directory of the input file
@@ -24629,8 +24214,6 @@ CASE fileaction OF
         IF (strlen(dir_fad) - strlen(path2file) EQ 4) OR $
           (dir_fad EQ '') THEN GOTO, finall  ;; no name or 'cancel' selected
 
-        ;; correct directory name if dominance_mscale
-        if strmid(fname, 16,/rev) eq '_dominance_mscale' then fname = strmid(fname, 0, strlen(fname)-7)
         dir_test = dir_fad + fname + info.os_sep
         if is_fos ge 1 then dir_test = dir_fad + fdir + info.os_sep
         ;; check if the selected directory already exist
@@ -24647,7 +24230,7 @@ CASE fileaction OF
           ENDIF
         ENDIF
 
-        ;; ok, now save all FAD/FOS/LM/LMMS stuff
+        ;; ok, now save all FAD/FOS/LM stuff
         ;;==================================================
         widget_control, / hourglass   
         file_mkdir, dir_test & pushd, dir_test
@@ -24655,7 +24238,6 @@ CASE fileaction OF
         ;; a) the fullres classified summary image
         ;; first save the visual summary result
           if (is_fos eq 0 and is_lm eq 0) then z = dir_test + fname + '_mscale.tif' else z = dir_test + fname + '.tif' 
-          if is_lmms eq 1 then z = dir_test + fn_lmms + 'mscale.tif'
           if is_eucldist eq 1 then z = dir_test + fname + '_viewport.tif'
           if is_acc eq 1 then z = dir_test + fname + '.tif'
           image0 = rotate( * info.fr_image, 7)
@@ -24697,67 +24279,6 @@ CASE fileaction OF
               
                     
         ;;  b) the fullres classified and data images by scales
-        ;; for LMMS
-        ;;================
-        if is_lmms eq 1 then begin
-          has_miss=0
-          res = file_info(info.dir_tmp + 'missing.sav')
-          if res.exists eq 1 then begin
-            restore,info.dir_tmp + 'missing.sav' & has_miss=1
-          endif
-          
-          kstr = ['7', '13', '27', '81', '243']
-          for isc = 0, 4 do begin
-            ;; the actual data
-            z = dir_test + fn_lmms + strtrim(kstr[isc],2)  + '.tif'
-            openr, 1, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_lm' & readu,1, image0 & close,1
-            if has_miss eq 1 then image0[qmiss]=0b
-            image0 = rotate(image0, 7)
-            if eventvalue eq 'save_generic' then begin ;; output tif
-              if eventvalue2 eq 'save_generic_tif' then begin
-                write_tiff, z, image0, red = r, green = g, blue = b, description = desc, compression = 1
-                gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
-                IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
-              endif else begin
-                z = dir_test + fn_lmms + strtrim(kstr[isc],2)  + '.png'
-                write_png, z, image0, r, g, b, /order
-              endelse
-            endif else begin ;; geotiff
-              write_tiff, z, image0, red = r, green = g, blue = b, $
-                geotiff = * info.geotiffinfo, description = desc, compression = 1
-              gedit = gedit + '-mo TIFFTAG_IMAGEDESCRIPTION="'+desc + '" '
-              IF info.my_os EQ 'windows' THEN spawn, gedit + z, log, / hide ELSE spawn, gedit + z, log
-            endelse
-            ;; the heatmap stuff
-            z = dir_test + fn_lmms + strtrim(kstr[isc],2)  + '_heatmap.csv'
-            file_copy, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_heatmap.csv', z, /overwrite 
-            z = dir_test + fn_lmms + strtrim(kstr[isc],2)  + '_heatmap.png'
-            file_copy, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_heatmap.png', z, /overwrite
-            z = dir_test + fn_lmms + strtrim(kstr[isc],2)  + '_heatmap.sav'
-            file_copy, info.dir_tmp + 'obs'+ strtrim(isc,2)+'_heatmap.sav', z, /overwrite
-          endfor 
-          
-          if strmid(z,3,/reverse_offset) eq '.png' then $
-            z = dir_test + fn_lmms + '[7,13,27,81,243].png' else z = dir_test + fn_lmms + '[7,13,27,81,243].tif'
-          fnsaves = fnsaves + z + string(10b)
-          z = 'including respective heatmap information'
-          fnsaves = fnsaves + z + string(10b)
-          
-          ;; only now add the heatmap mscale stuff to not confuse the file extension above
-          z = dir_test + fn_lmms + 'mscale_heatmap.csv' 
-          file_copy, info.dir_tmp + 'heatmap.csv', z, /overwrite                      
-          z = dir_test + fn_lmms + 'mscale_heatmap.png'
-          file_copy, info.dir_tmp + 'heatmap.png', z, /overwrite
-          z = dir_test + fn_lmms + 'mscale_heatmap.sav'
-          file_copy, info.dir_tmp + 'heatmap.sav', z, /overwrite
-          z = dir_test + 'heatmap_legend.png'
-          file_copy, info.dir_guidossub + 'heatmap_legend.png', z, /overwrite
-                   
-          popd
-          res = dialog_message(fnsaves, / information)
-          goto, finall          
-        endif      
-
         ;; for LM
         ;;================
         if is_lm eq 1 then begin
@@ -25078,8 +24599,8 @@ CASE fileaction OF
 
    'save_generic':BEGIN
       szoom = 0b
-      ;; skip saving zoomed image for FAD, LMMS, FOS, dist
-      if (info.is_fragm eq 3 and is_fos eq 0) or (is_lmms eq 1) or (is_lm eq 1) or (is_eucldist eq 1) then goto, fadskipper  
+      ;; skip saving zoomed image for FAD, FOS, dist
+      if (info.is_fragm eq 3 and is_fos eq 0) or (is_lm eq 1) or (is_eucldist eq 1) then goto, fadskipper  
       if is_fos ge 1 then begin
         savecost = 0
         image0 = rotate( * info.fr_image, 7)
@@ -26438,7 +25959,7 @@ widget_control, event.top, get_uvalue = info, / no_copy
 ;; and NOT in the phase of defining a sub-region
 ;;===============================================
 ;; Note: do NOT search for a string starting with an empty space, it won't work properly!
-IF (strpos(info.add_title,'LM, kdim=') GT 0) OR (strpos(info.add_title,'Dominance') GT 0) THEN is_lm=1 else is_lm=0
+IF (strpos(info.add_title,'LM, kdim=') GT 0) THEN is_lm=1 else is_lm=0
 
 is_fos = 0
 IF (strpos(info.add_title,'(FOS-FAD_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC_5class: ') GT 0) THEN is_fos=2
@@ -26880,7 +26401,7 @@ IF event.type EQ 2 AND info.set_zoom EQ 0 THEN BEGIN
            (zm EQ 253): cmd2 = '  Water at one/both time(s)' 
            (zm EQ 254): cmd2 = '  Missing at one/both time(s)' 
            (zm EQ 255): cmd2 = '  Outside at one/both time(s)'
-          else: cmd2 = '  invalid setting: ' + strtrim(zm, 2)
+           else: cmd2 = '  invalid setting: ' + strtrim(zm, 2)
          endcase
 
        ENDIF ELSE IF is_mcd EQ 1 THEN BEGIN
@@ -27322,7 +26843,7 @@ IF event.type EQ 2 AND info.set_zoom EQ 0 THEN BEGIN
            (zm GE 120) AND (zm LE 200): cmd2 = '  High connectivity decrease: ' + strtrim(zm2, 2) + ' percentage points'
            (zm EQ 250): cmd2 = '  Foreground gain (BG->FG)'
            (zm EQ 251): cmd2 = '  Foreground loss (FG->BG)'
-           (zm EQ 252): cmd2 = ' BG stable (BG->BG)'
+           (zm EQ 252): cmd2 = '  BG stable (BG->BG)'
            (zm EQ 253): cmd2 = '  Water at one/both time(s)'
            (zm EQ 254): cmd2 = '  Missing at one/both time(s)'
            (zm EQ 255): cmd2 = '  Outside at one/both time(s)'
@@ -28477,7 +27998,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.310
+gtb_version = 3.400
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -28740,7 +28261,7 @@ GTBrev = strmid(GTBv,3,2) & GTBv = strmid(GTBv,0,3)
 if strmid(GTBrev,0,1) eq '0' then GTBrev=strmid(GTBrev,1,1)
 title = 'GTB ' + gtbv + ', Revision ' + gtbrev + ' (' + strtrim(sysarch,2) + ' bit)'
 start_title = title
-TLB = Widget_Base( TLB_Frame_Attr = 1, Title = title, MBar = w_menubar, / row)
+TLB = Widget_Base(TLB_Frame_Attr = 1, Title = title, MBar = w_menubar, / row)
 
 ;; 2) left vertical: pre-processing options
 w_ToolbarBase = WIDGET_BASE(TLB, / column, / TOOLBAR, $
@@ -28818,7 +28339,6 @@ w_batchf = Widget_Button(w_batch, Value = 'Fragmentation', / Menu)
 button = Widget_button(w_batchf, Value = 'Fixed Observation Scale (FOS)', Event_Pro = 'guidos_processing', uvalue = 'batch_fos')
 w_batchf3 = Widget_Button(w_batchf, Value = 'Multiple Observation Scale', / Menu)
 button = Widget_button(w_batchf3, Value = 'FAD-MS', Event_Pro = 'guidos_processing', uvalue = 'batch_fadms')
-button = Widget_button(w_batchf3, Value = 'Dominance', Event_Pro = 'guidos_processing', uvalue = 'batch_lmms')
 w_batchf_leg = Widget_Button(w_batchf, Value = 'Legacy', /menu)
 w_batchf1 = Widget_Button(w_batchf_leg, Value = 'Index', / Menu)
 button = Widget_button(w_batchf1, Value = 'Entropy', Event_Pro = 'guidos_processing', uvalue = 'batch_ent_img')
@@ -29021,7 +28541,6 @@ button = Widget_Button(w_pa_frag, Value = 'Overview', uvalue = 'overview_fragmen
 button = Widget_Button(w_pa_frag, Value = 'Fixed Observation Scale (FOS)', uvalue = 'frag_fos', /Separator)
 w_pa_frag3 = Widget_Button(w_pa_frag, Value = 'Multiple Observation Scale', /menu)
 button = Widget_Button(w_pa_frag3, Value = 'FAD-MS',uvalue = 'frag_fad')
-button = Widget_Button(w_pa_frag3, Value = 'Dominance',uvalue = 'lmms')
 w_pa_frag0 = Widget_Button(w_pa_frag, Value = 'Legacy', /menu)
 w_pa_frag1 = Widget_Button(w_pa_frag0, Value = 'Index', /menu)
 button = Widget_Button(w_pa_frag1, Value = 'Entropy', uvalue = 'frag_entropy_im')
@@ -29109,6 +28628,7 @@ button = widget_button(w_help_online, value = 'GTB Homepage', uvalue = 'homepage
 button = widget_button(w_help_online, value = 'Check for Updates', uvalue = 'check4updates')
 button = widget_button(w_help_online, value = 'GTB Product Sheets', uvalue = 'productsheets')
 button = widget_button(w_help_online, value = 'GWB (GTB Workbench)', uvalue = 'homepage_gwb')
+button = widget_button(w_help_online, value = 'pyGuidos', uvalue = 'homepage_pyg')
 
 w_help_online2 = widget_button(w_help, value = 'Related Resources', /menu)
 button = widget_button(w_help_online2, value = 'GIS Introduction', uvalue = 'homepage_gis')
@@ -29292,11 +28812,11 @@ CASE my_os OF
     dir_fwtools = dir_guidossub + 'GTBtools\'
     windrive = strmid(dir_fwtools,0,2)
 
-    ;; check to have at least Win 8.1
+    ;; check to have at least Win 10
     spawn, 'ver', res & res = STRSPLIT(res[1], /EXTRACT, ' ') & res = res[n_elements(res)-1]
     q = strpos(res,'.') & res = float(strmid(res,0,q+2))
-    IF res LT 6.3 THEN BEGIN
-      res = dialog_message('GTB requires Windows 8.1 or newer' + string(10b) + 'Terminating...', title='GTB startup check:',/ error)
+    IF res LT 10.0 THEN BEGIN
+      res = dialog_message('GTB requires Windows 10 or newer' + string(10b) + 'Terminating...', title='GTB startup check:',/ error)
       Exit
     ENDIF
     ;; lt 10.0 to deprecate Win 8 supported until January 2023; end of Win 10 in October 2025
@@ -29453,13 +28973,7 @@ CASE my_os OF
       res = dialog_message(st, title='GTB startup check:',/ error)
       spawn, 'open https://www.kyngchaos.com/software/archive/gdal-complete/'
       exit
-    ENDIF
-    ;; warn on Tahoe
-    IF os1 GE 26 THEN BEGIN
-      res = dialog_message('Attention:' + string(10b) +'GTB is currently not supported under macOS Tahoe.'+ string(10b) + $
-        'You may see severe glitches or crashes. A future version of GTB may provide a fix.' , title='GTB startup check:',/ info)
-    ENDIF
-    
+    ENDIF    
 
     ;; maximum image size for MSPA
     ;; use command "vm_stat" and get amounts for
@@ -29591,7 +29105,8 @@ CASE my_OS OF
     endif    
   END
   'linux': BEGIN
-    spawn,'unset LD_LIBRARY_PATH; ps -ef|grep -c guidostoolbox.sav',res & ct = fix(res[0])
+    curruser = getenv('USER')
+    spawn,'unset LD_LIBRARY_PATH; ps u -U '+ curruser + '|grep -c guidostoolbox.sav',res & ct = fix(res[0])
     if ct gt 3 then begin
       res = dialog_message('Existing IDL runtime process detected.' + string(10b) + $
         'Running more than 1 instance of GTB' + string(10b) + $
