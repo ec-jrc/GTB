@@ -23,7 +23,6 @@ C-source code of GTB-external programs:
 -   recode: recode.c
 -   grayspatcon: grayspatcon.c
 -   spatcon: spatcon.c
--   orig/spatcon: spatcon.c; older version of spatcon, needed for the GTB-Dominance module
 
 d) directory: guidos_progs
 ------
