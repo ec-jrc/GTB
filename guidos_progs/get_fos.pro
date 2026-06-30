@@ -59,7 +59,7 @@ CASE strlowCase(eventValue) OF
       widget_control, info.w_fos20, set_combobox_select = 0 & info.ms20 = info.reportarr[0]
       widget_control, info.w_fos21, set_combobox_select = 0 & info.ms21 = info.fos21arr[0]
       widget_control, info.w_fos1, set_combobox_select = 4 & info.ms1 = info.fos1arr[4]
-      widget_control, info.w_fos2, set_combobox_select = 3 & info.ms2 = info.fos2arr[3]
+      widget_control, info.w_fos2, set_combobox_select = 7 & info.ms2 = info.fos2arr[7]
       pixres = float(info.ms1) & kdim = float(info.ms2)
       hec = ((pixres * kdim)^2) / 10000.0
       acr = hec * 2.47105
@@ -208,7 +208,8 @@ w_fos20a = Widget_combobox(llparttop20a, Value = methodarr, UValue = 'method')
 ;; FOS reporting style
 llparttop20 = widget_base(llparttop, / column, / frame)
 button = widget_label(llparttop20, value = 'Reporting', / sunken_frame, / align_center)
-reportarr = ['5class', '6class', 'APP_2class', 'APP_5class']
+;reportarr = ['5class', '6class', 'APP_2class', 'APP_5class']
+reportarr = ['5class', '6class']
 w_fos20 = Widget_combobox(llparttop20, Value = reportarr, UValue = 'reporting')
 
 ;; FG-conn
@@ -237,7 +238,7 @@ w_fos3 = Widget_text(llparttop31, xsize=20, Value = fos3arr, /frame)
 fos4arr = 'acres'
 w_fos4 = Widget_text(llparttop31, xsize=20, Value = fos4arr, /frame)
 
-w_gdal = widget_text(llpart, value = gdalstr)
+w_gdal = widget_text(llpart, xsize = 90, value = gdalstr, alignment=1)
 
 lrpart = widget_base(lowerpart, / column, / frame)
 dummy = widget_label(lrpart, value = 'Options')
@@ -264,7 +265,7 @@ widget_control, w_fos20a, set_combobox_select = 0 & ms20a = methodarr[0]
 widget_control, w_fos20, set_combobox_select = 0 & ms20 = reportarr[0]
 widget_control, w_fos21, set_combobox_select = 0 & ms21 = fos21arr[0]
 widget_control, w_fos1, set_combobox_select = 4 & ms1 = fos1arr[4]
-widget_control, w_fos2, set_combobox_select = 3 & ms2 = fos2arr[3]
+widget_control, w_fos2, set_combobox_select = 7 & ms2 = fos2arr[7]
 pixres = float(ms1) & kdim = float(ms2)
 hec = ((pixres * kdim)^2) / 10000.0
 acr = hec * 2.47105

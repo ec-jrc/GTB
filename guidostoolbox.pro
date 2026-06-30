@@ -24,6 +24,7 @@
 ;; GitHub: https://github.com/ec-jrc/GTB
 ;;=======================================================================
 compile_opt idl2
+
 ;;=======================================================================
 ;; include required subroutines
 @guidos_progs/canny
@@ -866,8 +867,10 @@ file_copy, dir_guidossub + 'recodelm103.sav', 'recode.txt', /overwrite
 ;; setup recode; we are in dir_tmp
 IF my_os EQ 'windows' THEN BEGIN
   recode='..\spatcon\recode64.exe' & file_copy, recode, 'recode.exe', /overwrite
-ENDIF ELSE IF my_os EQ 'apple' THEN BEGIN
+ENDIF ELSE IF my_os EQ 'darwin' THEN BEGIN
   recode='../spatcon/recode_mac' & file_copy, recode, 'recode', /overwrite
+ENDIF ELSE IF my_os EQ 'apple' THEN BEGIN
+  recode='../spatcon/recodeARM_mac' & file_copy, recode, 'recode', /overwrite
 ENDIF ELSE BEGIN
   recode='../spatcon/recode_lin64' & file_copy, recode, 'recode', /overwrite
 ENDELSE
@@ -1346,16 +1349,14 @@ close,1
 openw, 1, 'scinput' & writeu,1, scinput & close,1
 
 ;; setup spatcon; note: we are in dir_tmp right now
-;; if LMMS, we need to use the old spatcon (placed in the subdirectory 'orig'),
-;; which outputs the three PF_x.bsq files that are needed by combinelpt
-;;if metric eq 'lmms' then extra = 'orig' + path_sep() else extra = ''
-extra = ''
 IF my_os EQ 'windows' THEN BEGIN
-  spatcon='..\spatcon\' + extra + 'spatcon64.exe' & file_copy, spatcon, 'spatcon.exe', /overwrite
+  spatcon='..\spatcon\spatcon64.exe' & file_copy, spatcon, 'spatcon.exe', /overwrite
+ENDIF ELSE IF my_os EQ 'darwin' THEN BEGIN
+  spatcon='../spatcon/spatcon_mac' & file_copy, spatcon, 'spatcon', /overwrite
 ENDIF ELSE IF my_os EQ 'apple' THEN BEGIN
-  spatcon='../spatcon/' + extra + 'spatcon_mac' & file_copy, spatcon, 'spatcon', /overwrite
+  spatcon='../spatcon/spatconARM_mac' & file_copy, spatcon, 'spatcon', /overwrite
 ENDIF ELSE BEGIN
-  spatcon='../spatcon/' + extra + 'spatcon_lin64' & file_copy, spatcon, 'spatcon', /overwrite
+  spatcon='../spatcon/spatcon_lin64' & file_copy, spatcon, 'spatcon', /overwrite
 ENDELSE
 
 
@@ -1578,8 +1579,10 @@ ENDIF ELSE IF info.my_os EQ 'linux' THEN BEGIN
   if strlen(info.sysgdal) gt 0 then $
     gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
   gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
-ENDIF ELSE BEGIN ;; apple
+ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
   gedit = '/Library/Frameworks/Python.framework/Versions/3.9/bin/gdal_edit.py -mo ' + tagsw
+ENDIF ELSE BEGIN ;; apple
+  gedit = '/opt/homebrew/bin/gdal_edit.py -mo ' + tagsw
 ENDELSE
 
 
@@ -1902,69 +1905,55 @@ CASE strlowCase(eventValue) OF
          8:BEGIN ;; FAD_6class
            restore, info.dir_guidossub + 'fadcolors.sav'
            tvlct, r, g, b
-           info.ctbl = - 1 & info.autostretch_id = 0
-           ;; change add-title if needed
-           pos = strpos(info.add_title,'(FOS-APP_2class: ')
-           IF pos EQ 1 THEN info.add_title = ' (FOS-APP_5class: ' + strmid(info.add_title, 12)
-           pos = strpos(info.add_title,'(FAD-APP_2class: MultiScale summary)')
-           IF pos EQ 1 THEN info.add_title = ' (FAD-APP_5class: MultiScale summary)'           
+           info.ctbl = - 1 & info.autostretch_id = 0     
          END       
          9:BEGIN ;; FAD_5class
            restore, info.dir_guidossub + 'fadcolors5.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         10:BEGIN ;; FAD_2class
-           restore, info.dir_guidossub + 'fe47colors.sav'
-           tvlct, r, g, b
-           info.ctbl = - 1 & info.autostretch_id = 0
-           pos = strpos(info.add_title,'(FOS-APP_5class: ')
-           IF pos EQ 1 THEN info.add_title = ' (FOS-APP_2class: ' + strmid(info.add_title, 12)
-           pos = strpos(info.add_title,'(FAD-APP_5class: MultiScale summary)')
-           IF pos EQ 1 THEN info.add_title = ' (FAD-APP_2class: MultiScale summary)'
-         END
-         11:BEGIN ;; Resistance
+         10:BEGIN ;; Resistance
            restore, info.dir_guidossub + 'resistcolors.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0                
          END
-         12:BEGIN ;; LM_AGR
+         11:BEGIN ;; LM_AGR
            restore, info.dir_guidossub + 'lmcolors_AGR.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         13:BEGIN ;; LM_NAT
+         12:BEGIN ;; LM_NAT
            restore, info.dir_guidossub + 'lmcolors_NAT.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         14:BEGIN ;; LM_DEV
+         13:BEGIN ;; LM_DEV
            restore, info.dir_guidossub + 'lmcolors_DEV.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         15:BEGIN ;; LM_BGR
+         14:BEGIN ;; LM_BGR
            restore, info.dir_guidossub + 'lmcolors_BGR.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         16:BEGIN ;; LM_DIV
+         15:BEGIN ;; LM_DIV
            restore, info.dir_guidossub + 'lmcolors_DIV.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         17:BEGIN ;; LM_ANT
+         16:BEGIN ;; LM_ANT
            restore, info.dir_guidossub + 'lmcolors_ANT.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
-         18:BEGIN ;; FOSchange
+         17:BEGIN ;; FOSchange
            restore, info.dir_guidossub + 'foschangecolors.sav'
            tvlct, r, g, b
            info.ctbl = - 1 & info.autostretch_id = 0
          END
 
-         19:BEGIN ;; user-defined
+         18:BEGIN ;; user-defined
             ;; minimize Tlb and switch off interfering motion events
             widget_control, info.w_draw, Draw_Motion_Events = 0
             Widget_Control, Info.tlb, Iconify = 1
@@ -1989,7 +1978,7 @@ CASE strlowCase(eventValue) OF
             Widget_Control, Info.tlb, Iconify = 0
             widget_control, info.w_draw, Draw_Motion_Events = 1
          END
-         20:BEGIN ;; Save/Restore option
+         19:BEGIN ;; Save/Restore option
            msg = ['Please select:', '', 'Yes: save the current colortable (Note: the prefix ', $
             "       'GTBcolors_' will be added automatically)", '',$
             'No: load a GTB-generated colortable (GTBcolors_*.sav)','',$
@@ -2147,8 +2136,11 @@ CASE strlowCase(eventValue) OF
               IF info.my_os EQ 'windows' THEN BEGIN
                 ggeo='..\spatcon\ggeo64.exe'
                 file_copy, ggeo, info.dir_tmp + 'ggeo.exe', /overwrite
-              ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+              ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
                 ggeo='../spatcon/ggeo_mac'
+                file_copy, ggeo, info.dir_tmp + 'ggeo', /overwrite
+              ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+                ggeo='../spatcon/ggeoARM_mac'
                 file_copy, ggeo, info.dir_tmp + 'ggeo', /overwrite
               ENDIF ELSE BEGIN
                 ggeo='../spatcon/ggeo_lin64'
@@ -2539,11 +2531,6 @@ CASE strlowCase(eventValue) OF
          info.ctbl = - 1 & info.disp_colors_id = 3
       ENDIF
 
-      ;; reset the statistics because they change with transition
-;      widget_control, info.w_mspa_stats, set_value = transpose(replicate('n/a', 14, 2))
-;      info.do_mspa_stats_id = 0b
-;      widget_control, info.w_do_mspa_stats, set_value = info.do_mspa_stats_id
-
       ;; update the title line if necessary
       IF info.is_mspa EQ 1 THEN BEGIN
          tmp4conn = ['8', '4']
@@ -2616,37 +2603,25 @@ CASE strlowCase(eventValue) OF
             restore, testfile
             IF info.is_influ GT 0 THEN BEGIN
               ;; maximum proximity range to show is either xmax or the selected max range (yellow) 
-              if proxmax eq 0 then dmax = xmax*1.1 else dmax = proxmax+2 
-              
+              if proxmax eq 0 then dmax = xmax*1.1 else dmax = proxmax+2
+
               a = barplot(duniq,yarr1,bottom_values=yarr0, fill_color='green', ytitle='CAG (min/max)', /buffer, $
                 xtitle='connector length [pixels]',window_title='Proximity: CAG range/distance',$
                 yrange=[ymin,ymax*1.1], xrange=[0, dmax], title=tit,histogram=0,width=0.5)
-                
+
               ;; overplot the median in yellow
               a = plot(duniq[1:*],yarr2[1:*],symbol='*',color='Yellow', linestyle='none',/overplot)
-                         
-              ;; overplot the maximum with a red star symbol so we can see also the distance values 
-              ;; which are encountered only once along the watershed (if they are encountered only 
-              ;; once then the barplot is not visible at this location because max and min are the same              
+
+              ;; overplot the maximum with a red star symbol so we can see also the distance values
+              ;; which are encountered only once along the watershed (if they are encountered only
+              ;; once then the barplot is not visible at this location because max and min are the same
               a = plot(duniq[1:*],yarr1[1:*],symbol='+',color='Red', linestyle='none',/overplot)
-;              a = text(xmax*0.7,ymax*0.9,'*: Median',/data,/current,color='gold')
+              ;a = text(xmax*0.7,ymax*0.9,'*: Median',/data,/current,color='gold')
               a = text(1,ymax*0.85,'*: Median',/data,/current,color='gold')
               a = text(1,ymax*0.95,maxstr,/data,/current,color='red')
-              fx11 = info.dir_tmp2 + 'prox11h.png' & file_delete,fx11,/allow_nonexistent,/quiet
-              a.save, fx11, resolution=300
-              a.close
-                      
-              ;; make a new plot showing how often each distance value exists
-              b = plot(duniq[1:*],yarr3[1:*],xrange=[0, dmax],ytitle='Frequency', /buffer,$
-                xtitle='connector length [pixels]',window_title='Proximity: Frequency/distance',$
-                symbol='*',color='Blue',linestyle='none', $
-                title='Number of times a given connector length exists on the watershed')     
-              fx12 = info.dir_tmp2 + 'prox12h.png' & file_delete,fx12,/allow_nonexistent,/quiet
-              b.save, fx12, resolution=300
-              b.close
-              
+             
               ;; show them
-              IF info.my_os EQ 'apple' THEN BEGIN
+              IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
                 spawn, 'open ' + fx11
                 spawn, 'open ' + fx12
               ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
@@ -2691,7 +2666,7 @@ CASE strlowCase(eventValue) OF
           
           IF info.is_dist GT 0 THEN BEGIN
             ;; open barplot images, already done in the EUCLdist section
-            IF info.my_os EQ 'apple' THEN BEGIN
+            IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
               spawn, 'open ' + info.dir_tmp + 'barplot_dist.png'
               spawn, 'open ' + info.dir_tmp + 'barplot_hmc.png'
             ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
@@ -3649,8 +3624,10 @@ CASE strlowCase(eventValue) OF
       ;; setup recode; we are in dir_tmp
       IF info.my_os EQ 'windows' THEN BEGIN
         recode='..\spatcon\recode64.exe' & file_copy, recode, 'recode.exe', /overwrite
-      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+      ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
         recode='../spatcon/recode_mac' & file_copy, recode, 'recode', /overwrite
+      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+        recode='../spatcon/recodeARM_mac' & file_copy, recode, 'recode', /overwrite
       ENDIF ELSE BEGIN
         recode='../spatcon/recode_lin64' & file_copy, recode, 'recode', /overwrite
       ENDELSE
@@ -4498,9 +4475,13 @@ CASE strlowCase(eventValue) OF
               popd
             end          
          endcase
-        
+      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN    
+      ;;===================================================
+        pushd, info.dir_data
+        spawn, info.dir_guidossub + 'startGTBterminal_macARM.sh &'
+        popd
 
-      ENDIF ELSE BEGIN ;; apple
+      ENDIF ELSE BEGIN ;; darwin
       ;;===================================================
          pushd, info.dir_data
          spawn, info.dir_guidossub + 'startGTBterminal_mac.sh &'         
@@ -4522,13 +4503,29 @@ CASE strlowCase(eventValue) OF
 
    ;;*****************************************************************************************************
 
+   ;; Conefor
+   'conefor':  BEGIN  ;; xxxx
+     pushd, info.dir_data
+     res = file_info('Conefor26')
+     IF res.exists EQ 1b THEN BEGIN
+       spawn, 'start Conefor26'
+     ENDIF ELSE BEGIN
+       msg = "The directory Conefor26 was not found. "  + string(10b) + 'Returning...'
+       res = dialog_message(msg, / error)
+     ENDELSE     
+     popd
+     GOTO, fin
+   END
+
+   ;;*****************************************************************************************************
+
    ;; QGIS
    'qgis':  BEGIN  ;; xxxx
       IF info.my_os EQ 'windows' THEN BEGIN
         pushd, file_dirname(info.qgis_exe)
         spawn, 'qgis.bat'
         popd
-      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+      ENDIF ELSE IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
         pushd, info.dir_data
         spawn, 'open '+info.qgis_exe
         popd
@@ -4692,7 +4689,7 @@ CASE strlowCase(eventValue) OF
             info.disp_colors_id = 7 
             restore, info.dir_guidossub + 'lmcolors.sav' 
           endif else begin
-            info.disp_colors_id = 12
+            info.disp_colors_id = 11
             restore, info.dir_guidossub + 'lmcolors_AGR.sav'
           endelse
            tvlct, r, g, b & info.ctbl = - 1          
@@ -4895,28 +4892,30 @@ CASE strlowCase(eventValue) OF
       zz = (im GE 60b) AND (im LT 90b) & dominant(5) = total(zz)/fgarea*100.0
       zz = (im GE 40b) AND (im LT 60b) & transitional(5) = total(zz)/fgarea*100.0
       zz = (im GE 10b) AND (im LT 40b) & patchy(5) = total(zz)/fgarea*100.0
-      zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0 & zz = 0        
-      
-      ;; the barplot popup window    
-      scales = indgen(6)+1  
+      zz = (im LT 10b) & rare(5) = total(zz)/fgarea*100.0 & zz = 0
+
+      ;; the barplot popup window
+      scales = indgen(6)+1
+
+
       ;; normal barplot
       ;;==============================================================
       b1 = BARPLOT(scales, intact, Fill_Color=[0,120,0], yrange=[-4,104], xrange=[0.2, 9.5], /buffer, $
         ytitle='Foreground proportion [%]', xtitle='         Observation scale | MultiScale | Legend', $
-        xticklen=0.02,yticklen=0.02,xminor=1, xtickv=[1,2,3,4,5]) 
+        xticklen=0.02,yticklen=0.02,xminor=1, xtickv=[1,2,3,4,5])
       y2 = interior+intact & y1 = intact
       b2 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[0,175,0],/overplot) & y1=y2 & y2 = dominant+y2
       b3 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[140,200,100],/overplot) & y1=y2 & y2 = transitional+y2
       b4 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[255,200,0],/overplot) & y1=y2 & y2 = patchy+y2
       b5 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[250,140,90],/overplot) & y1=y2 & y2 = rare+y2
       b6 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[215,50,40],/overplot)
-      
+
       ;; separator lines
       a = plot([5.5, 5.5],[-4, 104], /data, color='Black',/overplot, thick=3)
       a = plot([6.5, 6.5],[-4, 104], /data, color='Black',/overplot, thick=3)
       a = text(6.7,95, fadtype, /data,/current)
       a = text(6.7,90,'Fragmentation class: ',/data,/current)
-      
+
       ;; legend
       c = symbol(6.9,85,'square',/data, /sym_filled, sym_color=[215,50,40],sym_size=2,LABEL_STRING='Rare')
       c = symbol(6.9,78,'square',/data, /sym_filled, sym_color=[250,140,90],sym_size=2,LABEL_STRING='Patchy')
@@ -4929,7 +4928,7 @@ CASE strlowCase(eventValue) OF
       IF (ct4b GT 0) THEN BEGIN
         a = text(6.7,40, 'Non-fragmenting',/data,/current)
         a = text(6.7,35, 'BG pixels present',/data,/current)
-      ENDIF     
+      ENDIF
       str = '8-conn FG [pixels]:'
       a = text(6.7,20,str,/data,/current)
       z = strtrim(fgarea,2) & q = strmid(z,0,1,/reverse)
@@ -4937,10 +4936,11 @@ CASE strlowCase(eventValue) OF
       if q eq '.' then z = strmid(z,0,strlen(z)-1)
       a = text(6.7,15,'Area: '+z,/data,/current)
       a = text(6.7,10,z20,/data,/current)
-      a = text(6.7,5,z22,/data,/current)     
-      b1.save,info.dir_tmp + 'barplot.png', resolution=300      
+      a = text(6.7,5,z22,/data,/current)
+      b1.save,info.dir_tmp + 'barplot.png', resolution=300
+
       ;; open barplot image
-      IF info.my_os EQ 'apple' THEN BEGIN
+      IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
         spawn, 'open ' + info.dir_tmp + 'barplot.png'
       ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
         pushd, info.dir_tmp
@@ -5318,7 +5318,8 @@ CASE strlowCase(eventValue) OF
        ;; here in batch mode add the buffer keyword to not open a graphic window on the screen
        ;; this is important because if the screensave kicks in then the graphic content can no lonnger be saved to a file
        scales = indgen(6)+1
-       ;; normal barplot
+
+
        ;;==============================================================
        b1 = BARPLOT(scales, intact, Fill_Color=[0,120,0], yrange=[-4,104], xrange=[0.2, 9.5], /buffer, $
          ytitle='Foreground proportion [%]', xtitle='         Observation scale | MultiScale | Legend', $
@@ -5329,7 +5330,7 @@ CASE strlowCase(eventValue) OF
        b4 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[255,200,0],/overplot) & y1=y2 & y2 = patchy+y2
        b5 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[250,140,90],/overplot) & y1=y2 & y2 = rare+y2
        b6 = BARPLOT(scales,y2, BOTTOM_values=y1, Fill_Color=[215,50,40],/overplot)
-       
+
 
        ;; separator lines
        a = plot([5.5, 5.5],[-4, 104], /data, color='Black',/overplot, thick=3)
@@ -5344,7 +5345,7 @@ CASE strlowCase(eventValue) OF
        c = symbol(6.9,64,'square',/data, /sym_filled, sym_color=[140,200,100],sym_size=2,LABEL_STRING='Dominant')
        c = symbol(6.9,57,'square',/data, /sym_filled, sym_color=[0,175,0],sym_size=2,LABEL_STRING='Interior')
        c = symbol(6.9,50,'square',/data, /sym_filled, sym_color=[0,120,0],sym_size=2,LABEL_STRING='Intact')
-       
+
 
        ;; info on special pixels
        IF (ct4b GT 0) THEN BEGIN
@@ -5361,7 +5362,7 @@ CASE strlowCase(eventValue) OF
        a = text(6.7,5,z22,/data,/current)
        fn_out = outdir + '/' + fbn + '_' + strlowcase(fadtype) + '_barplot.png'
        b1.save,fn_out, resolution=300
-       b1.close
+       b1.close        
        
        ;; write out the statistics table
        fn_out = outdir + '/' + fbn + '_' + strlowcase(fadtype) + '_mscale.txt'
@@ -5562,14 +5563,12 @@ CASE strlowCase(eventValue) OF
      kdim = fix(* wdim) & kdim_str = * wdim
      fgconn_str = * conn
      tt1 = * fmethod & tt2 = * frep
-     IF strmid(tt2,0,3) EQ 'APP' THEN fosclass = tt1 + '-' + tt2 ELSE fosclass = tt1 + '_' + tt2
+     fosclass = tt1 + '_' + tt2
      TT = ['Binary', 'Grayscale'] & fosinp = TT[* inpgray]
      grayt = byte(fix(*graythresh)) & grayt_str = *graythresh
           
      if fosclass eq 'FAD_5class' or fosclass eq 'FED_5class' or fosclass eq 'FAC_5class' then fostype = 'FOS5'
      if fosclass eq 'FAD_6class' or fosclass eq 'FED_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
-     if fosclass eq 'FAD-APP_2class' or fosclass eq 'FED-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
-     if fosclass eq 'FAD-APP_5class' or fosclass eq 'FED-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
 
      ;; free and delete the temporary pointers
      ptr_free, cancel & cancel = 0b
@@ -5611,7 +5610,7 @@ CASE strlowCase(eventValue) OF
        IF info.mspa_param1_id EQ 1b THEN conn8 = 1 ELSE conn8 = 0
        ;; label FG only
        ext1 = label_region(temporary(ext1), all_neighbors=conn8, / ulong)
-       if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
+       obj_area = histogram(ext1, /l64)
        obj_last=max(ext1) & z80 = strtrim(obj_last,2)
        farea = total(obj_area[1:*]) & fareaperc=100.0/n_ruarea*farea
        aps = farea / obj_last & z81 = strtrim(aps,2) & obj_area = 0
@@ -5648,7 +5647,7 @@ CASE strlowCase(eventValue) OF
        ;; label FG only
        ext1 = label_region(temporary(ext1), all_neighbors=conn8, / ulong)
        obj_area = histogram(ext1, /l64)
-       if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
+       obj_area = histogram(ext1, /l64)
        obj_last=max(ext1) 
        farea = total(obj_area[1:*]) & fareaperc=100.0/n_ruarea*farea
        aps = farea / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
@@ -5732,8 +5731,10 @@ CASE strlowCase(eventValue) OF
        ;; setup GraySpatCon
        IF info.my_os EQ 'windows' THEN BEGIN
          spatcon=info.dir_guidossub +'spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
-       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+       ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
          spatcon=info.dir_guidossub +'spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+         spatcon=info.dir_guidossub +'spatcon/grayspatconARM_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
        ENDIF ELSE BEGIN
          spatcon=info.dir_guidossub +'spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
        ENDELSE
@@ -5761,18 +5762,7 @@ CASE strlowCase(eventValue) OF
      
      ;; calculate pixel-based fad_av BEFORE doing APP so they are consistent with non-APP
      fad_av = mean(im[qFG]) & fadru_av = fad_av * fgarea / n_ruarea
-               
-     ;; do we want APP?
-     if strmid(fostype,0,7) eq 'FOS-APP' then begin
-       extim = bytarr(sz[0] + 2, sz[1] + 2)
-       extim[1:sz[0], 1:sz[1]] = im
-       FOR i = 1l, obj_last DO BEGIN
-         av = byte(round(mean(extim[rev[rev[i]:rev[i + 1] - 1]])))
-         extim[rev[rev[i]:rev[i + 1] - 1]] = av
-       ENDFOR
-       im = extim[1:sz[0], 1:sz[1]] & extim=0
-     endif
-         
+                        
      ;; add specialBG (105b), specialBG-Nf (106b), Missing (102b), background (101b)
      if ct3b gt 0 then im[q3b] = 105b & q3b = 0
      if ct4b gt 0 then im[q4b] = 106b & q4b = 0
@@ -5793,34 +5783,30 @@ CASE strlowCase(eventValue) OF
      ;; plot as percentage by FG-area
      hist2 = float(hist)/n_elements(qfg)*100.0 & bmax = max(hist2) * 1.05       
      
-     IF rep EQ '5class' THEN BEGIN
-       bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $ 
+     IF rep EQ '5class' THEN BEGIN       
+       bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $
          ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0, bmax],histogram=1, font_size=12) ;; very low
        bp = barplot(bins[10:39], hist2[10:39], fill_color = [250,140,90],thick=0,histogram=1, /overplot) ;; low
        bp = barplot(bins[40:59], hist2[40:59], fill_color = [255,200,0],thick=0,histogram=1, /overplot) ;; intermediate
        bp = barplot(bins[60:89], hist2[60:89], fill_color = [140,200,100],thick=0,histogram=1, /overplot) ;; high
-       bp = barplot(bins[90:100], hist2[90:100], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high
-     ENDIF ELSE IF rep EQ '6class' THEN BEGIN
+       bp = barplot(bins[90:100], hist2[90:100], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high        
+
+     ENDIF ELSE IF rep EQ '6class' THEN BEGIN       
        bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $ 
          ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0,bmax],histogram=1, font_size=12)
        bp = barplot(bins[10:39], hist2[10:39], fill_color = [250,140,90],thick=0,histogram=1, /overplot) ;; low
        bp = barplot(bins[40:59], hist2[40:59], fill_color = [255,200,0],thick=0,histogram=1, /overplot) ;; intermediate
        bp = barplot(bins[60:89], hist2[60:89], fill_color = [140,200,100],thick=0,histogram=1, /overplot) ;; high
        bp = barplot(bins[90:99], hist2[90:99], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high
-       bp = barplot(bins[100:100], hist2[100:100], fill_color = [0,120,0],thick=0,histogram=1, /overplot) ;; intact
-     ENDIF ELSE IF rep EQ '2class' THEN BEGIN
-       bp = barplot(bins[0:39], hist2[0:39], fill_color=[0,120,0], xtitle=xtit, /buffer, thick=0, $
-         ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0,bmax],histogram=1, font_size=12)
-       bp = barplot(bins[40:100], hist2[40:100], fill_color = [140,200, 101],thick=0,histogram=1, /overplot) ;; low    
+       bp = barplot(bins[100:100], hist2[100:100], fill_color = [0,120,0],thick=0,histogram=1, /overplot) ;; intact 
      ENDIF
      
-     qFG = 0
-     fx = info.dir_tmp + 'fos.png' & file_delete,fx,/allow_nonexistent,/quiet
+     qFG = 0 & fx = info.dir_tmp + 'fos.png' & file_delete,fx,/allow_nonexistent,/quiet
      bp.save, fx, resolution=300 
-     bp.close
+     bp.close      
      
      ;; open barplot image
-     IF info.my_os EQ 'apple' THEN BEGIN
+     IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple'THEN BEGIN
        spawn, 'open ' + info.dir_tmp + 'fos.png'
      ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
        pushd, info.dir_tmp
@@ -5852,16 +5838,7 @@ CASE strlowCase(eventValue) OF
        zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
        zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
        zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
-     endif else begin
-       ;; 5 class or 2class Forest Europe 4.7
-       zz = (im GE 90b) AND (im LE 100b) & interior = total(zz)/fgarea*100.0
-       zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
-       zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
-       zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
-       zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
-       zz = (im GE 40b) AND (im LE 100b) & continuous = total(zz)/fgarea*100.0
-       zz = (im LT 40b) & separated = total(zz)/fgarea*100.0 & zz = 0
-     endelse
+     endif 
 
      ;; write statistics out to disk in tmp to be copied later if files are saved
      z = strtrim(ulong64(fgarea),2)
@@ -5869,10 +5846,6 @@ CASE strlowCase(eventValue) OF
      method = strmid(fosclass,0,3)   
      q = stregex(fosclass,'_') & q1 = strmid(fosclass, q+1,1) 
      repstyle = method + ' at pixel level' & repstyle2 = method
-     IF (strpos(fosclass,'APP') GT 0) then begin
-       repstyle = method + ' at patch level (APP: average per patch)'  
-       repstyle2 = strmid(fosclass,0,7) 
-     ENDIF
      IF info.mspa_param1_id EQ 1b THEN conn_str = '8-connectivity' ELSE conn_str = '4-connectivity'
    
      openw,12,fx
@@ -5907,19 +5880,7 @@ CASE strlowCase(eventValue) OF
          printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 99]): ', interior
          printf, 12, format='(a55,f11.4)', 'Intact (' + method + '-pixel value: 100): ', intact    
        endif 
-     endif else begin ;; FOS-APP
-       printf, 12, ''
-       printf, 12, 'FOS-APP_5class:'
-       printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare
-       printf, 12, format='(a55,f11.4)', 'Patchy (' + method + '-pixel value within: [10 - 39]): ', patchy
-       printf, 12, format='(a55,f11.4)', 'Transitional (' + method + '-pixel value within: [10 - 39]): ', transitional
-       printf, 12, format='(a55,f11.4)', 'Dominant (' + method + '-pixel value within: [60 - 89]): ', dominant
-       printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 100]): ', interior
-       printf, 12, ''
-       printf, 12, 'FOS-APP_2class:'
-       printf, 12, format='(a55,f11.4)', 'Separated  (' + method + '-pixel value within: [0 - 39]): ', separated
-       printf, 12, format='(a55,f11.4)', 'Continuous (' + method + '-pixel value within: [40 - 100]): ', continuous
-     endelse
+     endif
      printf, 12, '================================================================================'
      printf, 12, '================================================================================'
      printf, 12, 'A) Image summary:'
@@ -5932,17 +5893,15 @@ CASE strlowCase(eventValue) OF
      printf, 12, '================================================================================'
      printf, 12, 'B) Reporting levels'
      printf, 12, '================================================================================'
-     printf, 12, 'Foreground (FG) connectivity is available at 4 reporting levels, B1 - B4:'
+     printf, 12, 'Foreground (FG) connectivity is available at 3 reporting levels, B1 - B3:'
      printf, 12, 'B1) Pixel-level: method FAD/FED/FAC: check the FG pixel value on the map, or aggregated at'
-     printf, 12, 'B2) Patch-level: method _APP (Average-Per-Patch): check the FG pixel value on the map'
-     printf, 12, 'B3) Foreground-level: reference area = all foreground pixels'
+     printf, 12, 'B2) Foreground-level: reference area = all foreground pixels'
      sss = strmid(method,0,3)
      sstr = '- Average ' + sss + ' at WS'+ kdim_str + ' [%]: ' 
-     IF strmid(fosclass,4,3) EQ 'APP' THEN sstr = '- Average ' + sss + ' (before APP) at WS' + kdim_str + ' [%]: ' 
      printf, 12, sstr + strtrim(fad_av,2)
      printf, 12, '- ECA (Equivalent Connected Area) [pixels]: ', strtrim(ECA,2)  
      printf, 12, '- COH (Coherence = ECA/ECA_max*100) [%]: ', strtrim(COH,2)
-     printf, 12, 'B4) Reporting unit-level: reference area = entire reporting unit'
+     printf, 12, 'B3) Reporting unit-level: reference area = entire reporting unit'
      printf, 12, '- AVCON (average connectivity) at WS'+ kdim_str + ' [%]: ', strtrim(fadru_av,2)
      printf, 12, '- COH_ru (ECA/Reporting unit area*100) [%]: ', strtrim(COH_ru,2)
      printf, 12, '================================================================================'
@@ -5968,17 +5927,7 @@ CASE strlowCase(eventValue) OF
        printf,12, 'Dominant:, ' + strtrim(dominant,2)
        printf,12, 'Interior:, ' + strtrim(interior,2)
        if fostype eq 'FOS6' then printf,12, 'Intact:, ' + strtrim(intact,2)
-     endif else begin
-       printf,12, 'FOS-APP_5class: '
-       printf,12, 'Rare:, ' + strtrim(rare,2)
-       printf,12, 'Patchy:, ' + strtrim(patchy,2)
-       printf,12, 'Transitional:, ' + strtrim(transitional,2)
-       printf,12, 'Dominant:, ' + strtrim(dominant,2)
-       printf,12, 'Interior:, ' + strtrim(interior,2)
-       printf,12, 'FOS-APP_2class:'
-       printf,12, 'Separated:, ' + strtrim(separated,2)
-       printf,12, 'Continuous:, ' + strtrim(continuous,2)
-     endelse
+     endif 
      printf, 12, ''
      printf, 12, 'A) Image summary:'     
      printf, 12, 'Reporting unit area [pixels]:, ' + strtrim(n_ruarea,2)
@@ -5988,14 +5937,14 @@ CASE strlowCase(eventValue) OF
      printf, 12, 'Average foreground patch size [pixels]:, ' + z81
      printf, 12, ' '
      printf, 12, 'B) Reporting levels'
-     printf, 12, 'B3) Foreground-level:'  
+     printf, 12, 'B1) Pixel-level: method FAD/FED/FAC: check the FG pixel value on the map'  
+     printf, 12, 'B2) Foreground-level:'
      sss = strmid(method,0,3)
      sstr = '- Average ' + sss + ' at WS'+ kdim_str + ' [%]:, '
-     IF strmid(fosclass,4,3) EQ 'APP' THEN sstr = '- Average ' + sss + ' (before APP) at WS'+ kdim_str + ' [%]:, '
      printf, 12, sstr + strtrim(fad_av,2)
      printf, 12, '- ECA [pixels]: ,' + strtrim(ECA,2)
      printf, 12, '- COH [%]:, ' + strtrim(COH,2)
-     printf, 12, 'B4) Reporting unit-level: '
+     printf, 12, 'B3) Reporting unit-level: '
      printf, 12, '- AVCON (average connectivity) at WS'+ kdim_str + ' [%]:, ' + strtrim(fadru_av,2)
      printf, 12, '- COH_ru [%]: ,' + strtrim(COH_ru,2)
      printf, 12, ' '
@@ -6017,13 +5966,11 @@ CASE strlowCase(eventValue) OF
      * info.fr_image = * info.process
      
      ;; get the appropriate colortable
-     if fostype eq 'FOS6' or fostype eq 'FOS-APP5' then begin
+     if fostype eq 'FOS6' then begin
        restore, info.dir_guidossub + 'fadcolors.sav' & info.disp_colors_id = 8 ;; FAD colors
      endif else if fostype eq 'FOS5' then begin
        restore, info.dir_guidossub + 'fadcolors5.sav' & info.disp_colors_id = 9 ;; FAD colors
-     endif else if fostype eq 'FOS-APP2' then begin
-       restore, info.dir_guidossub + 'fe47colors.sav' & info.disp_colors_id = 10 ;; FAD_2class colors (Forest Europe 4.7)
-     endif
+     endif 
      tvlct, r, g, b
      info.ctbl = - 1 & info.autostretch_id = 0 
      info.add_title = ' (FOS-' + fosclass + ': ' + kdim_str + 'x' + kdim_str + ', AVCON: ' + strtrim(fadru_av,2) + '%)'
@@ -6113,14 +6060,12 @@ CASE strlowCase(eventValue) OF
      kdim = fix(* wdim) & kdim_str = * wdim
      fgconn_str = * conn
      tt1 = * fmethod & tt2 = * frep
-     IF strmid(tt2,0,3) EQ 'APP' THEN fosclass = tt1 + '-' + tt2 ELSE fosclass = tt1 + '_' + tt2
+     fosclass = tt1 + '_' + tt2
      TT = ['Binary', 'Grayscale'] & fosinp = TT[* inpgray]
      grayt = byte(fix(*graythresh)) & grayt_str = *graythresh
 
      if fosclass eq 'FAD_5class' or fosclass eq 'FED_5class' or fosclass eq 'FAC_5class' then fostype = 'FOS5'
      if fosclass eq 'FAD_6class' or fosclass eq 'FED_6class' or fosclass eq 'FAC_6class' then fostype = 'FOS6'
-     if fosclass eq 'FAD-APP_2class' or fosclass eq 'FED-APP_2class' or fosclass eq 'FAC-APP_2class' then fostype = 'FOS-APP2'
-     if fosclass eq 'FAD-APP_5class' or fosclass eq 'FED-APP_5class' or fosclass eq 'FAC-APP_5class'then fostype = 'FOS-APP5'
      hec = ((pixres * kdim)^2) / 10000.0
      acr = hec * 2.47105
      hec = strtrim(hec,2)
@@ -6293,7 +6238,8 @@ CASE strlowCase(eventValue) OF
          conn8 = fgconn_str eq '8'
          ;; label FG only
          ext1 = label_region(temporary(ext1), all_neighbors=conn8, / ulong)
-         if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
+;         if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, / l64)
+         obj_area = histogram(ext1, / l64)
          obj_last=max(ext1) & z80 = strtrim(obj_last,2) 
          farea = total(obj_area[1:*],/double) & fareaperc=100.0/n_ruarea*farea
          aps = farea / obj_last & z81 = strtrim(aps,2) & obj_area = 0 
@@ -6337,7 +6283,7 @@ CASE strlowCase(eventValue) OF
          ;; label FG only
          ext1 = label_region(ext1, all_neighbors=conn8, / ulong)
          obj_area = histogram(ext1, /l64)
-         if strmid(fostype,0,7) eq 'FOS-APP' then obj_area = histogram(ext1, reverse_indices = rev, /l64) else obj_area = histogram(ext1, /l64)
+         obj_area = histogram(ext1, /l64)
          obj_last=max(ext1) 
          farea = total(obj_area[1:*]) & fareaperc=100.0/n_ruarea*farea
          aps = farea / obj_last & z81 = strtrim(aps,2) & obj_area = 0 & z80 = strtrim(obj_last,2)
@@ -6421,8 +6367,10 @@ CASE strlowCase(eventValue) OF
          ;; setup GraySpatCon
          IF info.my_os EQ 'windows' THEN BEGIN
            spatcon=info.dir_guidossub +'spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
-         ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+         ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
            spatcon=info.dir_guidossub +'spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+         ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+           spatcon=info.dir_guidossub +'spatcon/grayspatconARM_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
          ENDIF ELSE BEGIN
            spatcon=info.dir_guidossub +'spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
          ENDELSE
@@ -6449,17 +6397,6 @@ CASE strlowCase(eventValue) OF
        ;; calculate pixel-based fad_av BEFORE doing APP so they are consistent with non-APP
        fad_av = mean(im[qFG]) & fadru_av = fad_av * fgarea / n_ruarea  
        
-       ;; do we want APP?
-       if strmid(fostype,0,7) eq 'FOS-APP' then begin
-         extim = bytarr(sz[0] + 2, sz[1] + 2)
-         extim[1:sz[0], 1:sz[1]] = im
-         FOR i = 1l, obj_last DO BEGIN
-           av = byte(round(mean(extim[rev[rev[i]:rev[i + 1] - 1]])))
-           extim[rev[rev[i]:rev[i + 1] - 1]] = av
-         ENDFOR
-         im = extim[1:sz[0], 1:sz[1]] & extim=0
-       endif
-       
        ;; add specialBG (105b), specialBG-Nf (106b), Missing (102b), background (101b)
        if ct3b gt 0 then im[q3b] = 105b & q3b = 0
        if ct4b gt 0 then im[q4b] = 106b & q4b = 0
@@ -6480,11 +6417,12 @@ CASE strlowCase(eventValue) OF
        
        IF rep EQ '5class' THEN BEGIN
          bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $
-           ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0, bmax],histogram=1, font_size=12) ;; very low
+          ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0, bmax],histogram=1, font_size=12) ;; very low
          bp = barplot(bins[10:39], hist2[10:39], fill_color = [250,140,90],thick=0,histogram=1, /overplot) ;; low
          bp = barplot(bins[40:59], hist2[40:59], fill_color = [255,200,0],thick=0,histogram=1, /overplot) ;; intermediate
          bp = barplot(bins[60:89], hist2[60:89], fill_color = [140,200,100],thick=0,histogram=1, /overplot) ;; high
          bp = barplot(bins[90:100], hist2[90:100], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high
+           
        ENDIF ELSE IF rep EQ '6class' THEN BEGIN
          bp = barplot(bins[0:9], hist2[0:9], fill_color=[215,50,40], xtitle=xtit, /buffer, thick=0, $
            ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0,bmax],histogram=1, font_size=12)
@@ -6493,42 +6431,30 @@ CASE strlowCase(eventValue) OF
          bp = barplot(bins[60:89], hist2[60:89], fill_color = [140,200,100],thick=0,histogram=1, /overplot) ;; high
          bp = barplot(bins[90:99], hist2[90:99], fill_color = [0,175,0],thick=0,histogram=1, /overplot) ;; very high
          bp = barplot(bins[100:100], hist2[100:100], fill_color = [0,120,0],thick=0,histogram=1, /overplot) ;; intact
-       ENDIF ELSE IF rep EQ '2class' THEN BEGIN
-         bp = barplot(bins[0:39], hist2[0:39], fill_color=[0,120,0], xtitle=xtit, /buffer, thick=0, $
-           ytitle = 'Frequency [%]', title = tit, xrange = [0,105], yrange = [0,bmax],histogram=1, font_size=12)
-         bp = barplot(bins[40:100], hist2[40:100], fill_color = [140,200, 101],thick=0,histogram=1, /overplot) ;; low
        ENDIF
 
        qFG = 0 
        fx = info.dir_tmp + 'fos.png' & file_delete,fx,/allow_nonexistent,/quiet
        bp.save, fx, resolution=300
-       bp.close          
+       bp.close      
+        
        
        ;; the statistics, first initialize
        intact = -1 & interior = -1 & dominant = -1 & transitional = -1
        patchy = -1 & rare = -1 & separated = -1 & continuous = -1
-        if strlen(fostype) eq 4 then begin
-       ;; get the 6 fragmentation proportions 
-       if (fosclass eq 'FAD_6class') OR (fosclass eq 'FED_6class') OR (fosclass eq 'FAC_6class') then begin
-         zz = (im EQ 100b) & intact = total(zz)/fgarea*100.0
-         zz = (im GE 90b) AND (im LT 100b) & interior = total(zz)/fgarea*100.0
-       endif else begin
-         zz = (im GE 90b) AND (im LE 100b) & interior = total(zz)/fgarea*100.0
-       endelse     
-       zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
-       zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
-       zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
-       zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
-     endif else begin
-       ;; 5 class or 2class Forest Europe 4.7
-       zz = (im GE 90b) AND (im LE 100b) & interior = total(zz)/fgarea*100.0
-       zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
-       zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
-       zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
-       zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
-       zz = (im GE 40b) AND (im LE 100b) & continuous = total(zz)/fgarea*100.0
-       zz = (im LT 40b) & separated = total(zz)/fgarea*100.0 & zz = 0
-     endelse
+       if strlen(fostype) eq 4 then begin
+         ;; get the 6 fragmentation proportions 
+         if (fosclass eq 'FAD_6class') OR (fosclass eq 'FED_6class') OR (fosclass eq 'FAC_6class') then begin
+           zz = (im EQ 100b) & intact = total(zz)/fgarea*100.0
+           zz = (im GE 90b) AND (im LT 100b) & interior = total(zz)/fgarea*100.0
+         endif else begin
+           zz = (im GE 90b) AND (im LE 100b) & interior = total(zz)/fgarea*100.0
+         endelse     
+         zz = (im GE 60b) AND (im LT 90b) & dominant = total(zz)/fgarea*100.0
+         zz = (im GE 40b) AND (im LT 60b) & transitional = total(zz)/fgarea*100.0
+         zz = (im GE 10b) AND (im LT 40b) & patchy = total(zz)/fgarea*100.0 & z = 0
+         zz = (im LT 10b) & rare = total(zz)/fgarea*100.0 & zz = 0
+       endif 
        
        ;; write the final result to the initial input dir
        fbn = file_basename(input, '.tif')
@@ -6537,13 +6463,12 @@ CASE strlowCase(eventValue) OF
        ;; setup the output directory for the current image file
        file_mkdir, outdir
        pushd, outdir
-       if fostype eq 'FOS6' or fostype eq 'FOS-APP5' then begin
+       ;;if fostype eq 'FOS6' or fostype eq 'FOS-APP5' then begin
+       if fostype eq 'FOS6' then begin
          restore, info.dir_guidossub + 'fadcolors.sav' & info.disp_colors_id = 8 ;; FAD colors
        endif else if fostype eq 'FOS5' then begin
          restore, info.dir_guidossub + 'fadcolors5.sav' & info.disp_colors_id = 9 ;; FAD colors
-       endif else if fostype eq 'FOS-APP2' then begin
-         restore, info.dir_guidossub + 'fe47colors.sav' & info.disp_colors_id = 10 ;; FAD_2class colors (Forest Europe 4.7)
-       endif
+       endif 
        tvlct, r, g, b
 
        ;; a) the fullres classified summary image
@@ -6566,10 +6491,6 @@ CASE strlowCase(eventValue) OF
        method = strmid(fosclass,0,3)   
        q = stregex(fosclass,'_') & q1 = strmid(fosclass, q+1,1)
        repstyle = method + ' at pixel level' & repstyle2 = method
-       IF (strpos(fosclass,'APP') GT 0) THEN BEGIN
-         repstyle = method + ' at patch level (APP: average per patch)'
-         repstyle2 = strmid(fosclass,0,7)
-       ENDIF
 
        openw,12,fn_out
        printf, 12, 'Fragmentation analysis using Fixed Observation Scale (FOS)'
@@ -6603,19 +6524,7 @@ CASE strlowCase(eventValue) OF
            printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 99]): ', interior
            printf, 12, format='(a55,f11.4)', 'Intact (' + method + '-pixel value: 100): ', intact
          endif
-       endif else begin ;; FOS-APP
-         printf, 12, ''
-         printf, 12, 'FOS-APP_5class:'
-         printf, 12, format='(a55,f11.4)', 'Rare (' + method + '-pixel value within: [0 - 9]): ', rare
-         printf, 12, format='(a55,f11.4)', 'Patchy (' + method + '-pixel value within: [10 - 39]): ', patchy
-         printf, 12, format='(a55,f11.4)', 'Transitional (' + method + '-pixel value within: [10 - 39]): ', transitional
-         printf, 12, format='(a55,f11.4)', 'Dominant (' + method + '-pixel value within: [60 - 89]): ', dominant
-         printf, 12, format='(a55,f11.4)', 'Interior (' + method + '-pixel value within: [90 - 100]): ', interior
-         printf, 12, ''
-         printf, 12, 'FOS-APP_2class:'
-         printf, 12, format='(a55,f11.4)', 'Separated  (' + method + '-pixel value within: [0 - 39]): ', separated
-         printf, 12, format='(a55,f11.4)', 'Continuous (' + method + '-pixel value within: [40 - 100]): ', continuous
-       endelse
+       endif 
        printf, 12, '================================================================================'
        printf, 12, '================================================================================'
        printf, 12, 'A) Image summary:'
@@ -6628,16 +6537,14 @@ CASE strlowCase(eventValue) OF
        printf, 12, '================================================================================'
        printf, 12, 'B) Reporting levels'
        printf, 12, '================================================================================'
-       printf, 12, 'Foreground (FG) connectivity is available at 4 reporting levels, B1 - B4:'
+       printf, 12, 'Foreground (FG) connectivity is available at 3 reporting levels, B1 - B3:'
        printf, 12, 'B1) Pixel-level: method FAD/FED/FAC: check the FG pixel value on the map, or aggregated at'
-       printf, 12, 'B2) Patch-level: method _APP (Average-Per-Patch): check the FG pixel value on the map'
-       printf, 12, 'B3) Foreground-level: reference area = all foreground pixels'      
+       printf, 12, 'B2) Foreground-level: reference area = all foreground pixels'      
        sss = strmid(method,0,3) & sstr = '- Average ' + sss + ' at WS'+ kdim_str + ' [%]: ' 
-       IF strmid(fosclass,4,3) EQ 'APP' THEN sstr = '- Average ' + sss + ' (before APP) at WS'+ kdim_str + ' [%]: '
        printf, 12, sstr + strtrim(fad_av,2)
        printf, 12, '- ECA (Equivalent Connected Area) [pixels]: ', strtrim(ECA,2)
        printf, 12, '- COH (Coherence = ECA/ECA_max*100) [%]: ', strtrim(COH,2)
-       printf, 12, 'B4) Reporting unit-level: reference area = entire reporting unit'
+       printf, 12, 'B3) Reporting unit-level: reference area = entire reporting unit'
        printf, 12, '- AVCON (average connectivity) at WS'+ kdim_str + ' [%]: ', strtrim(fadru_av,2)
        printf, 12, '- COH_ru (ECA/Reporting unit area*100) [%]: ', strtrim(COH_ru,2)
        printf, 12, '================================================================================'      
@@ -6681,17 +6588,7 @@ CASE strlowCase(eventValue) OF
          printf,12, 'Dominant:, ' + strtrim(dominant,2)
          printf,12, 'Interior:, ' + strtrim(interior,2)
          if fostype eq 'FOS6' then printf,12, 'Intact:, ' + strtrim(intact,2)
-       endif else begin
-         printf,12, 'FOS-APP_5class: '
-         printf,12, 'Rare:, ' + strtrim(rare,2)
-         printf,12, 'Patchy:, ' + strtrim(patchy,2)
-         printf,12, 'Transitional:, ' + strtrim(transitional,2)
-         printf,12, 'Dominant:, ' + strtrim(dominant,2)
-         printf,12, 'Interior:, ' + strtrim(interior,2)
-         printf,12, 'FOS-APP_2class:'
-         printf,12, 'Separated:, ' + strtrim(separated,2)
-         printf,12, 'Continuous:, ' + strtrim(continuous,2)
-       endelse
+       endif
        printf, 12, ''
        printf, 12, 'A) Image summary:'
        printf, 12, 'Reporting unit area [pixels]:, ' + strtrim(n_ruarea,2)
@@ -6701,13 +6598,13 @@ CASE strlowCase(eventValue) OF
        printf, 12, 'Average foreground patch size [pixels]:, ' + z81
        printf, 12, ' '
        printf, 12, 'B) Reporting levels'
-       printf, 12, 'B3) Foreground-level:'
+       printf, 12, 'B1) Pixel-level: method FAD/FED/FAC: check the FG pixel value on the map'      
+       printf, 12, 'B2) Foreground-level:'
        sss = strmid(method,0,3) & sstr = '- Average ' + sss + ' at WS'+ kdim_str + ' [%]:, '
-       IF strmid(fosclass,4,3) EQ 'APP' THEN sstr = '- Average ' + sss + ' (before APP) at WS'+ kdim_str + ' [%]:, '
        printf, 12, sstr + strtrim(fad_av,2)
        printf, 12, '- ECA [pixels]: ,' + strtrim(ECA,2)
        printf, 12, '- COH [%]:, ' + strtrim(COH,2)
-       printf, 12, 'B4) Reporting unit-level: '
+       printf, 12, 'B3) Reporting unit-level: '
        printf, 12, '- AVCON (average connectivity) at WS'+ kdim_str + ' [%]:, ' + strtrim(fadru_av,2)
        printf, 12, '- COH_ru [%]: ,' + strtrim(COH_ru,2)
        printf, 12, ' '
@@ -7975,7 +7872,7 @@ CASE strlowCase(eventValue) OF
        openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', user cancelled' + info.bline & free_lun, unit
        GOTO, fin
      ENDIF
-     ;; all returned settinsg are strings, assign, frre and delete the temporary pointers
+     ;; all returned settings are strings, assign, free and delete the temporary pointers
      gsc_f = strmid(*sc_f,0,1) & ptr_free, sc_f & sc_f = 0b
      gsc_m = (strsplit(*sc_m,':',/extract))[0] & ptr_free, sc_m & sc_m = 0b
      gsc_g = strmid(*sc_g,0,1) & ptr_free, sc_g & sc_g = 0b
@@ -8020,8 +7917,10 @@ CASE strlowCase(eventValue) OF
      ;; run GraySpatCon
      IF info.my_os EQ 'windows' THEN BEGIN
        spatcon=info.dir_guidossub +'spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
-     ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+     ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
        spatcon=info.dir_guidossub +'spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+     ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+       spatcon=info.dir_guidossub +'spatcon/grayspatconARM_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
      ENDIF ELSE BEGIN
        spatcon=info.dir_guidossub +'spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
      ENDELSE
@@ -8348,8 +8247,10 @@ CASE strlowCase(eventValue) OF
        ;; run GraySpatCon
        IF info.my_os EQ 'windows' THEN BEGIN
          spatcon=info.dir_guidossub +'spatcon\grayspatcon64.exe' & file_copy, spatcon, 'grayspatcon.exe', /overwrite
-       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+       ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
          spatcon=info.dir_guidossub +'spatcon/grayspatcon_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
+       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+         spatcon=info.dir_guidossub +'spatcon/grayspatconARM_mac' & file_copy, spatcon, 'grayspatcon', /overwrite
        ENDIF ELSE BEGIN
          spatcon=info.dir_guidossub +'spatcon/grayspatcon_lin64' & file_copy, spatcon, 'grayspatcon', /overwrite
        ENDELSE
@@ -8675,8 +8576,10 @@ CASE strlowCase(eventValue) OF
          IF (!version.memory_bits EQ 64) THEN recode=info.dir_guidossub +'spatcon\recode64.exe' ELSE $
            recode=info.dir_guidossub +'spatcon\recode32.exe'
          file_copy, recode, 'recode.exe', /overwrite
-       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+       ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
          recode=info.dir_guidossub +'spatcon/recode_mac' & file_copy, recode, 'recode', /overwrite
+       ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+         recode=info.dir_guidossub +'spatcon/recodeARM_mac' & file_copy, recode, 'recode', /overwrite
        ENDIF ELSE BEGIN
          recode=info.dir_guidossub +'spatcon/recode_lin64' & file_copy, recode, 'recode', /overwrite
        ENDELSE
@@ -8864,7 +8767,7 @@ CASE strlowCase(eventValue) OF
       info.is_orig = 0
           
       ;; open heatmap image
-      IF info.my_os EQ 'apple' THEN BEGIN
+      IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
         spawn, 'open ' + info.dir_tmp + 'heatmap.png'
       ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
         pushd, info.dir_tmp
@@ -10132,13 +10035,16 @@ CASE strlowCase(eventValue) OF
          popd
       ENDIF ELSE BEGIN
          pushd, info.dir_tmp
-         IF info.my_os EQ 'linux' THEN mspa_os = 'mspa_lin' ELSE mspa_os = 'mspa_mac'
+         IF info.my_os EQ 'linux' THEN mspa_os = 'mspa_lin'
+         IF info.my_os EQ 'darwin' THEN mspa_os = 'mspa_mac'
+         IF info.my_os EQ 'apple' THEN mspa_os = 'mspa_mac'                
          cmd = info.dir_guidossub + mspa_os + ' -graphfg ' + c_FGconn + $
                ' -eew ' + c_size + ' -internal ' + c_intext + ' -disk -transition ' + c_trans + $
                ' -i inputmorph.tif -o outputmorph.tif -odir ./'
          time0 = systime( / sec)
          widget_control, / hourglass
          spawn, cmd, log
+         openw, 1, 'log.txt' & printf, 1, log & close, 1
          popd
       ENDELSE
 
@@ -10149,9 +10055,11 @@ CASE strlowCase(eventValue) OF
 
       ;;get the result, update the GTB info, clean dir_tmp
       pushd, info.dir_tmp
-      ;; Fedora-fix, for whatever reason they rename the output.tif to something else
-      fedora=(file_search('*outputmorph.tif'))[0]
-      file_move, fedora, 'outputmorph.tif',/overwrite,/allow_same
+      IF info.my_os EQ 'linux' THEN BEGIN
+        ;; Fedora-fix, for whatever reason they rename the output.tif to something else
+        fedora=(file_search('*outputmorph.tif'))[0]
+        file_move, fedora, 'outputmorph.tif',/overwrite,/allow_same
+      ENDIF
       image0 = read_tiff('outputmorph.tif')
       file_delete, 'inputmorph.tif', 'outputmorph.tif', / quiet
       ;;
@@ -11530,8 +11438,9 @@ CASE strlowCase(eventValue) OF
             popd
          ENDIF ELSE BEGIN
             pushd, info.dir_tmp
-            IF info.my_os EQ 'linux' THEN $
-             mspa_os = 'mspa_lin' ELSE mspa_os = 'mspa_mac'
+            IF info.my_os EQ 'linux' THEN mspa_os = 'mspa_lin' 
+            IF info.my_os EQ 'darwin' THEN mspa_os = 'mspa_mac'
+            IF info.my_os EQ 'apple' THEN mspa_os = 'mspa_mac'
             cmd = info.dir_guidossub + mspa_os + ' -graphfg ' + c_FGconn + $
                   ' -eew ' + c_size + ' -internal ' + c_intext + $
                   ' -disk -transition ' + c_trans + $
@@ -11916,7 +11825,7 @@ CASE strlowCase(eventValue) OF
       ;; settings for the olts and the final tiles to merge back
       stepx = 6500 ;; for MS-Windows
       IF info.my_os EQ 'linux' THEN stepx = 9500
-      IF info.my_os EQ 'apple' THEN stepx = 8500
+      IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN stepx = 8500
       stepy = stepx
       dx = stepx - overlay & dy = dx ;; actual stepsize of olts
       ;; border to remove from overlays
@@ -12072,8 +11981,9 @@ CASE strlowCase(eventValue) OF
             popd
          ENDIF ELSE BEGIN
             pushd, info.dir_tmp
-            IF info.my_os EQ 'linux' THEN $
-             mspa_os = 'mspa_lin' ELSE mspa_os = 'mspa_mac'
+            IF info.my_os EQ 'linux' THEN mspa_os = 'mspa_lin' 
+            IF info.my_os EQ 'darwin' THEN mspa_os = 'mspa_mac'
+            IF info.my_os EQ 'apple' THEN mspa_os = 'mspa_mac'
             cmd = info.dir_guidossub + mspa_os + ' -graphfg ' + c_FGconn + $
                   ' -eew ' + c_size + ' -internal ' + c_intext + $
                   ' -disk -transition ' + c_trans + $
@@ -13072,7 +12982,7 @@ CASE strlowCase(eventValue) OF
 
    'overview':  BEGIN ;; xxxx
      doc = 'GTB_ov_' + strmid(eventValue2,9) + '.pdf'    
-     IF info.my_os EQ 'apple' THEN BEGIN
+     IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open ' + info.dir_guidossub + doc
        GOTO, fin
      ENDIF
@@ -14149,12 +14059,11 @@ CASE strlowCase(eventValue) OF
       ;; will be switched back on at the end of this section
       mev = 0
       if eventValue2 ne 'frag_hmc' then begin  ;; distance histogram
+        
         dhist = fltarr(n_elements(bins))
         dhist[0:bgmax-1] = -reverse(bghist[1:*]) & dhist[bgmax+1:*]=fghist[1:*]
         bptit = 'Distance histogram (' + info.title + ')'
-        a = barplot(bins, dhist, fill_color='blue', xtitle=xtit, /buffer, $
-          ytitle = 'Frequency', title = bptit, xrange = [-x1,x2], histogram=1)
-          
+
         ;; print out stats to a file which can then be saved later on
         openw,1,info.dir_tmp+'eucldist.txt' 
         printf, 1, 'Euclidean distance result using file: ', info.fname_input
@@ -14165,8 +14074,10 @@ CASE strlowCase(eventValue) OF
         printf, 1, 'Distance histogram (rounded to nearest integer, negative values for background)
         printf, 1, '       bin ID     frequency'
         for idx=0l, n_elements(bins)-1 do printf,1, bins(idx),long64(dhist(idx))
-        close, 1     
-        
+        close, 1
+
+        a = barplot(bins, dhist, fill_color='blue', xtitle=xtit, /buffer, $
+          ytitle = 'Frequency', title = bptit, xrange = [-x1,x2], histogram=1)
         ;; overplot the foreground histogram
         z = dhist & z[0:bgmax-1]=0
         a = barplot(bins,z,fill_color='green',/overplot,histogram=1)
@@ -14185,7 +14096,7 @@ CASE strlowCase(eventValue) OF
         a = barplot(bins,z2,fill_color='gold',/overplot,histogram=1)
         a.save,info.dir_tmp + 'barplot_dist.png', resolution=300
         a.close
-        
+      
         ;; calculate hypsometric curve
         ;;===========================================================
         fghmc=total(fghist[1:*],/cum) & bghmc=total(bghist[1:*],/cum)
@@ -14195,6 +14106,7 @@ CASE strlowCase(eventValue) OF
         hmc = fltarr(n_elements(bins))
         hmc[0:bgmax-1] = -reverse(bghmcx) & hmc[bgmax+1:*]=fghmcx
         bptit = 'Hypsometric curve (' + info.title + ')'
+
         a = barplot(bins,hmc,fill_color='blue',xtitle = xtit, /buffer,$
           ytitle='Normalized cumulative frequency',title=bptit,yrange=[-1.1,1.1],xrange=[-x1,x2],histogram=1)
         z = hmc & z[0:bgmax-1]=0
@@ -14251,9 +14163,9 @@ CASE strlowCase(eventValue) OF
         a = text(-x1*0.9,0.4,'bg_obj = -' + strtrim(bgo, 2),/data,/current,color='blue')
         a = text(-x1*0.9,0.3,'bg_area = ' + strtrim(pbg*100, 2)+'%',/data,/current,color='blue')
         a = text(-x1*0.9,0.2,'bg_Arep = ' + strtrim(bg_arep, 2),/data,/current,color='red')
-        a.save,info.dir_tmp + 'barplot_hmc.png', resolution=300   
+        a.save,info.dir_tmp + 'barplot_hmc.png', resolution=300
         a.close
-        
+
         ;; print out HMC stats to a txt-file
         fn_out = info.dir_tmp + 'dist_hmc.txt'
         openw,1,fn_out
@@ -14264,7 +14176,7 @@ CASE strlowCase(eventValue) OF
         printf, 1, strtrim(abs(hi_bg),2),'  ',strtrim(abs(ha_bg),2), '  ',strtrim(adb,2),'  ', strtrim(abs(adbmax),2),$
           '  ', strtrim(bgo,2), '  ', strtrim(pbg*100, 2), '  ', strtrim(abs(bg_arep),2)
         printf, 1, strtrim(hi_fg,2), '  ', strtrim(ha_fg,2), '  ', strtrim(adf,2), '  ', strtrim(adfmax,2),'  ',$
-          strtrim(fgo,2), '  ', strtrim(pfg*100, 2), '  ', strtrim(fg_arep,2)
+        strtrim(fgo,2), '  ', strtrim(pfg*100, 2), '  ', strtrim(fg_arep,2)
         close, 1
 
         ;; print out HMC stats to a csv-file
@@ -14325,6 +14237,7 @@ CASE strlowCase(eventValue) OF
         ;;;===================
         bptit = 'Normalized hypsometric curve (' + info.title + ')'
         xtit = 'Background               normalized distance               Foreground'
+
         a = barplot([0,1],[1,1],fill_color='Red',xtitle = xtit, transparency=90, /buffer,$
           ytitle='Normalized cumulative frequency',title=bptit,yrange=[-1.1,1.1],xrange=[-1,1],histogram=1)
         a = barplot([-2,-1],[-1,-1],fill_color='Red',transparency=90,/overplot,histogram=1)
@@ -14351,7 +14264,7 @@ CASE strlowCase(eventValue) OF
         endelse
         a = barplot(x,y,fill_color='Green', transparency=30,/overplot,histogram=1)
 
-        ;; next oplot hmc of the reference area 
+        ;; next oplot hmc of the reference area
         ;;=======================================
         y = rhmc[0:rbgmax-1] & x = rbins[0:rbgmax-1] & xm = float(min(x))
         rbgarea = total(y)/n_elements(y) & x = -x/xm
@@ -14362,7 +14275,7 @@ CASE strlowCase(eventValue) OF
         a = barplot(x,y,fill_color='Black',/overplot,histogram=1)
 
         ;; define fragmentation in complementary area of area covered
-        ;; by the reference hmc 
+        ;; by the reference hmc
         ;; a) background
         ; d_bg = abs(bgarea) - abs(rbgarea)
         d_bg = abs(abs(bgarea) - abs(rbgarea))
@@ -14389,10 +14302,11 @@ CASE strlowCase(eventValue) OF
         ttf = strtrim(frag,2) & ttf = strmid(ttf, 0,strpos(ttf,'.')+3)
         frag_str = 'frag = ' + ttf + '%'
         a = text(-0.9,0.6,'$\bf'+frag_str+'$',/data,/current,color='Orange')
-        
         a.save,info.dir_tmp + 'barplot2.png', resolution=300
+
+
         ;; open barplot image
-        IF info.my_os EQ 'apple' THEN BEGIN
+        IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
           spawn, 'open ' + info.dir_tmp + 'barplot2.png'
         ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
           pushd, info.dir_tmp
@@ -14679,10 +14593,9 @@ CASE strlowCase(eventValue) OF
        printf, 1, '       bin ID     frequency'
        for idx=0l, n_elements(bins)-1 do printf,1, bins(idx),long64(dhist(idx))
        close, 1
-       
+
        a = barplot(bins, dhist, fill_color='blue', xtitle=xtit, /buffer, $
          ytitle = 'Frequency', title = bptit, xrange = [-x1,x2], histogram=1)
-         
        ;; overplot the foreground histogram
        z = dhist & z[0:bgmax-1]=0
        a = barplot(bins,z,fill_color='green',/overplot,histogram=1)
@@ -14701,7 +14614,8 @@ CASE strlowCase(eventValue) OF
        a = barplot(bins,z2,fill_color='gold',/overplot,histogram=1)
        a.save,dir_batch + dir_res + res + '_dist_hist.png', resolution=300
        a.close
-       
+
+    
        ;; calculate hypsometric curve
        ;;===========================================================
        fghmc=total(fghist[1:*],/cum) & bghmc=total(bghist[1:*],/cum)
@@ -14711,6 +14625,7 @@ CASE strlowCase(eventValue) OF
        hmc = fltarr(n_elements(bins))
        hmc[0:bgmax-1] = -reverse(bghmcx) & hmc[bgmax+1:*]=fghmcx
        bptit = 'Hypsometric curve (' + res + ')'
+
        a = barplot(bins,hmc,fill_color='blue',xtitle = xtit, /buffer,$
          ytitle='Normalized cumulative frequency',title=bptit,yrange=[-1.1,1.1],xrange=[-x1,x2],histogram=1)
        z = hmc & z[0:bgmax-1]=0
@@ -14769,13 +14684,14 @@ CASE strlowCase(eventValue) OF
        a = text(-x1*0.9,0.2,'bg_Arep = ' + strtrim(bg_arep, 2),/data,/current,color='red')
        a.save, dir_batch + dir_res + res + '_dist_hmc.png', resolution=300
 
+
        ;; print out HMC stats to a txt-file
        fn_out = dir_batch + dir_res + res + '_dist_hmc.txt'
        openw,1,fn_out
        printf, 1, 'HI, HA, adb, bg_dmax, bg_obj, bg_area, bg_Arep (background indices)'
        printf, 1, 'HI, HA, adf, fg_dmax, fg_obj, fg_area, fg_Arep (foreground indices)'
        printf, 1, ' '
-       printf, 1, 'File: ' + input
+     printf, 1, 'File: ' + input
        printf, 1, strtrim(abs(hi_bg),2),'  ',strtrim(abs(ha_bg),2), '  ',strtrim(adb,2),'  ', strtrim(abs(adbmax),2),$
          '  ', strtrim(bgo,2), '  ', strtrim(pbg*100, 2), '  ', strtrim(abs(bg_arep),2)
        printf, 1, strtrim(hi_fg,2), '  ', strtrim(ha_fg,2), '  ', strtrim(adf,2), '  ', strtrim(adfmax,2),'  ',$
@@ -14842,7 +14758,7 @@ CASE strlowCase(eventValue) OF
      goto,fin
    END
    
-  
+
    ;;*****************************************************************************************************
 
    'batch_hmc':  BEGIN  ;; xxxx
@@ -15082,75 +14998,6 @@ CASE strlowCase(eventValue) OF
 
             ;; show reference hmc
             ;;;===================
-            bptit = 'Normalized hypsometric curve (' + info.title + ')'
-            xtit = 'Background               normalized distance               Foreground'
-            a = barplot([0,1],[1,1],fill_color='Red',xtitle = xtit, transparency=90, /buffer,$
-              ytitle='Normalized cumulative frequency',title=bptit,yrange=[-1.1,1.1],xrange=[-1,1],histogram=1)
-            a = barplot([-2,-1],[-1,-1],fill_color='Red',transparency=90,/overplot,histogram=1)
-            ;; add boundary info
-            a = text(-0.9,0.9,'Minimum fragmentation',/data,/current,color='Black')
-            a = text(-0.9,0.75,'Maximum fragmentation',/data,/current,color='Red')
-            a = plot([-1,0],[-1,-1],thick=3,/data,/current,/overplot,color='Red')
-            a = plot([0,1],[1,1],thick=3,/data,/current,/overplot,color='Red')
-            a = plot([0,0],[1,-1],thick=3,/data,/current,/overplot,color='Red')
-
-            ;; first oplot hmc of actual image
-            ;;=================================
-            ;; a) background
-            y = hmc[0:bgmax-1] & x = bins[0:bgmax-1] & xm = float(min(x))
-            bgarea = total(y)/n_elements(y) & x = -x/xm
-            a = barplot(x,y,fill_color='Blue', transparency=0,/overplot,histogram=1)
-            ;; b) foreground, here we shift the foreground range to the zero center line (x=x-1)
-            y = hmc[bgmax+1:*] & x = bins[bgmax+1:*] & x=x-1 & xm = float(max(x))
-            ;; test if only one element to avoid division by zero
-            if xm lt 1.0 then begin
-              fgarea = total(y) & x[0] = 0
-            endif else begin
-              fgarea = total(y)/n_elements(y) & x = x/xm
-            endelse
-            a = barplot(x,y,fill_color='Green', transparency=30,/overplot,histogram=1)
-
-            ;; next oplot hmc of the reference area
-            ;;=======================================
-            y = rhmc[0:rbgmax-1] & x = rbins[0:rbgmax-1] & xm = float(min(x))
-            rbgarea = total(y)/n_elements(y) & x = -x/xm
-            a = barplot(x,y,fill_color='Black',/overplot,histogram=1)
-            ;; now oplot the normalized FG
-            y = rhmc[rbgmax:*] & x = rbins[rbgmax:*] &  xm = float(max(x))
-            rfgarea = total(y)/n_elements(y) & x = x/xm
-            a = barplot(x,y,fill_color='Black',/overplot,histogram=1)
-
-            ;; define fragmentation in complementary area of area covered
-            ;; by the reference hmc
-            ;; a) background
-            ; d_bg = abs(bgarea) - abs(rbgarea)
-            d_bg = abs(abs(bgarea) - abs(rbgarea))
-            frag_bg = 100.0 / (1.0 - abs(rbgarea)) * d_bg
-            ;; round off to 1%
-            frag_bg = round(frag_bg*100)/100.0
-            ttbg = strtrim(frag_bg,2) & ttbg = strmid(ttbg, 0,strpos(ttbg,'.')+3)
-            frag_bg_str = 'bg_frag = ' + ttbg + '%'
-            a = text(-0.9,0.2,frag_bg_str,/data,/current,color='Blue')
-            ;; b) foreground
-            ;; potential fragmentation area limits
-            ;; 1.0 - rfgarea = 100  ;; green area
-            ;; rfgarea = 0  ;; black area
-            ;; d_fg = fgarea - rfgarea = area occupied by image := x% fragmentation
-            d_fg = fgarea - rfgarea
-            ;; due to the bining and calculation inprecision frag_fg might be slighly negative, reset to 0
-            frag_fg = 100.0 / (1.0 - rfgarea) * d_fg > 0.0
-            frag_fg = round(frag_fg*100)/100.0
-            ttfg = strtrim(frag_fg,2) & ttfg = strmid(ttfg, 0,strpos(ttfg,'.')+3)
-            frag_fg_str = 'fg_frag = ' + ttfg + '%'
-            a = text(0.1,-0.2,frag_fg_str,/data,/current,color='Green')
-            frag = pbg * frag_bg + pfg * frag_fg
-            frag = round(frag*100)/100.0
-            ttf = strtrim(frag,2) & ttf = strmid(ttf, 0,strpos(ttf,'.')+3)
-            frag_str = 'frag = ' + ttf + '%'
-            a = text(-0.9,0.6,'$\bf'+frag_str+'$',/data,/current,color='Orange')
-            a.save,info.dir_tmp + 'barplot2.png', resolution=300
-           
-            ;; write the final result to the initial input dir
             res = file_basename(input, '.tif')
             outdir = dir_batch + res + '_HMC'
 
@@ -15381,15 +15228,14 @@ CASE strlowCase(eventValue) OF
       ;; watershed will use or if necessary CONVERT input to byte!
       ;; we need to do this here ourselves to avoid byte-flipping
       ;; hist_equal could be better when dealing with large distance else use: ws = bytscl(ws)
-        ws = hist_equal(ws)  
-        ws = watershed(ws, connectivity=8, /long, nregions=nregions) & qws = where(ws eq 0, /l64) 
-        ext(qws)=4b
-;;;      endif
+      ws = hist_equal(ws)  
+      ws = watershed(ws, connectivity=8, /long, nregions=nregions) & qws = where(ws eq 0, /l64) 
+      ext(qws)=4b
+
       
       cl = byte([59, 5, 9, 17, 33, 65, 18, 56, 55, 57, 58, 101]) ;; colors to be used for the objects
       nw_ids = label_region(ext eq 2b, all=conn8, / ulong) ;; nw_ids of FILLED components
       z = nw_ids & z[fg_holes]=0 
-      ;;;nw_hnw = histogram(nw_ids, reverse_indices = r, / l64) ;; area of FILLED components
       nw_hnw = histogram(z, reverse_indices = r, /l64) & z=0 ;; area of non-FILLED components
       max_nw_ids=max(nw_ids)
 
@@ -17001,8 +16847,11 @@ CASE strlowCase(eventValue) OF
       IF info.my_os EQ 'windows' THEN BEGIN
         ggeo='..\spatcon\ggeo64.exe'
         file_copy, ggeo, info.dir_tmp + 'ggeo.exe', /overwrite
-      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+      ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
         ggeo='../spatcon/ggeo_mac'
+        file_copy, ggeo, info.dir_tmp + 'ggeo', /overwrite
+      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+        ggeo='../spatcon/ggeoARM_mac'
         file_copy, ggeo, info.dir_tmp + 'ggeo', /overwrite
       ENDIF ELSE BEGIN
         ggeo='../spatcon/ggeo_lin64'
@@ -17544,8 +17393,10 @@ CASE strlowCase(eventValue) OF
         IF (!version.memory_bits EQ 64) THEN ggeo='..\spatcon\ggeo64.exe' ELSE $
           ggeo='..\spatcon\ggeo32.exe'
         file_copy, ggeo, 'ggeo.exe', /overwrite
-      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+      ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
         ggeo='../spatcon/ggeo_mac' & file_copy, ggeo, 'ggeo', /overwrite
+      ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+        ggeo='../spatcon/ggeoARM_mac' & file_copy, ggeo, 'ggeo', /overwrite
       ENDIF ELSE BEGIN
         ggeo='../spatcon/ggeo_lin64' & file_copy, ggeo, 'ggeo', /overwrite
       ENDELSE
@@ -17644,7 +17495,9 @@ CASE strlowCase(eventValue) OF
           ;; get markers and least cost path
           marker=rotate(marker,7)
           qmarker = where(marker eq 1b, /l64)
-          lcp = read_tiff('lcp.tif') 
+          
+          ;; get the lcp, on apple we need to convert it from the pgm workaround
+          lcp = read_tiff('lcp.tif')                 
           lcp = lcp[eew:eew + sz[1] - 1, eew:eew + sz[2] - 1]
           lcp = where(lcp gt 0b, ct_lcp, /l64)
 
@@ -19137,11 +18990,12 @@ CASE strlowCase(eventValue) OF
       IF eventValue2 eq 'change_fad' THEN BEGIN
         ;;; test for original FAD image        
         qq1a = strmid(im1_file,14,/reverse_offset) eq '_fad_mscale.tif'
-        qq2a = strmid(im1_file,19,/reverse_offset) eq '_fad-app5_mscale.tif' or strmid(im1_file,19,/reverse_offset) eq '_fad-app2_mscale.tif'
-        qq = qq1a + qq2a
+;        qq2a = strmid(im1_file,19,/reverse_offset) eq '_fad-app5_mscale.tif' or strmid(im1_file,19,/reverse_offset) eq '_fad-app2_mscale.tif'
+        qq = qq1a ;+ qq2a
         
         IF qq ne 1 THEN BEGIN
-          msg = 'Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...'
+ ;         msg = 'Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...'
+          msg = 'Please select a GTB-generated *_fad_mscale.tif image.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
@@ -19266,22 +19120,21 @@ CASE strlowCase(eventValue) OF
       ;; --------  FAD ---------------
       IF eventValue2 eq 'change_fad' THEN BEGIN
         qq1b = strmid(im1_file,14,/reverse_offset) eq '_fad_mscale.tif'
-        qq2b = strmid(im1_file,19,/reverse_offset) eq '_fad-app5_mscale.tif' or strmid(im1_file,19,/reverse_offset) eq '_fad-app2_mscale.tif'
-        qq = qq1b + qq2b 
+        qq = qq1b 
         IF qq ne 1 THEN BEGIN
-          msg = 'Please select a GTB-generated *_fad_mscale.tif OR *_fad-app5/2_mscale.tif image.' + string(10b) + 'Returning...'
+          msg = 'Please select a GTB-generated *_fad_mscale.tif image.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
         ENDIF
        ;; check that both images have the same FAD type
-        res = (qq1a eq qq1b) + (qq2a eq qq2b)
-        IF res ne 2 THEN BEGIN
-          msg = 'We can not compare FAD with FAD-APP.' + string(10b) + 'Returning...'
+        res = (qq1a eq qq1b)          
+        IF res ne 1 THEN BEGIN
+          msg = 'These two FAD maps are not comparable.' + string(10b) + 'Returning...'
           res = dialog_message(msg, / information)
           openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
           GOTO, fin
-        ENDIF              
+        ENDIF
         IF info.my_os EQ 'windows' THEN BEGIN
           cmd = 'cd "' + info.dir_fwtools + '" & setfw.bat & gdalinfo -noct "' + im2_file + '"'
         ENDIF ELSE BEGIN
@@ -19420,9 +19273,7 @@ CASE strlowCase(eventValue) OF
         GOTO, fin
       ENDIF
 
-      widget_control, / hourglass
-;;      if eventValue2 eq 'change_simple' then GOTO, diffsim_nogeo
-      
+      widget_control, / hourglass     
       ;; a) common area coverage of geotiff images A and B requires:
       ;; - same projection
       ;; - same pixel resolution
@@ -19811,11 +19662,11 @@ CASE strlowCase(eventValue) OF
             fosclass = fragtype + 'class'
             a_app = 0
             ;; overwrite if APP
-            if strlen(fragtype) eq 9 then begin
-              fostype = 'FOS'+strmid(fragtype,8)
-              fosclass = fragtype + 'class'
-              a_app = 1
-            endif           
+;            if strlen(fragtype) eq 9 then begin
+;              fostype = 'FOS'+strmid(fragtype,8)
+;              fosclass = fragtype + 'class'
+;              a_app = 1
+;            endif           
           endif                          
           a_xdim=xdim & a_ydim=ydim & a_fostype = fostype & s1len = strlen(a_fostype)
           a_fosclass = fosclass & a_conn = conn_str & a_pres = pixres_str & a_kdim = kdim_str
@@ -19834,26 +19685,11 @@ CASE strlowCase(eventValue) OF
             fostype = 'FOS'+strmid(fragtype,4)
             fosclass = fragtype + 'class'
             b_app = 0
-            ;; overwrite if APP
-            if strlen(fragtype) eq 9 then begin
-              fostype = 'FOS'+strmid(fragtype,8) 
-              fosclass = fragtype + 'class'
-              b_app = 1
-           endif
           endif
           b_xdim=xdim & b_ydim=ydim & b_fostype = fostype & s2len = strlen(b_fostype)
           b_fosclass = fosclass & b_conn = conn_str & b_pres = pixres_str & b_kdim = kdim_str  
           b_grayt_str = GRAYT_STR
- 
- 
-          ;; don't do change for APP
-          if a_app eq 1 OR b_app eq 1 then begin
-            msg = 'FOSchange analysis of FOS-APP maps makes little sense.' + string(10b) + 'Returning...'
-            res = dialog_message(msg, /information)
-            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
-            goto, contnormal
-          endif
-        
+         
           ;; check if fad_av was saved, if so then use it
           b_tt = (size(fad_av))[1]
           if b_tt eq 4 then b_fad_av = fad_av
@@ -19871,15 +19707,7 @@ CASE strlowCase(eventValue) OF
             openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit
             GOTO, fin
           ENDIF
-
-          ;; ensure it is not FOS-APP
-          if (s1len GT 4) OR (s2len GT 4) then begin
-            msg = 'FOSchange analysis of FOS-APP maps makes little sense.' + string(10b) + 'Returning...'
-            res = dialog_message(msg, / information)
-            openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ', ERROR: ' + msg + info.bline & free_lun, unit           
-            GOTO, fin
-          endif
-     
+    
           res = (a_xdim eq b_xdim) + (a_ydim eq b_ydim) + (strmid(a_conn,0,6) eq strmid(b_conn,0,6)) + (a_pres eq b_pres) + $
             (a_kdim eq b_kdim) + (a_fostype eq b_fostype) + (a_fosclass eq b_fosclass)
           
@@ -20087,6 +19915,7 @@ CASE strlowCase(eventValue) OF
             y = h_rev[0:200]/forcom*100.0  ;; convert to %
             ymax = max(y)*1.05 & if ymax lt 1.0 then ymax = 1.05
             tit = 'FOSchange'
+
             b0 = barplot(x[99:101], y[99:101], xrange = [-xrg,xrg], yrange = [0, ymax], xticklen=0.02, yticklen=0.02, $
               title = tit, width=wdt, histogram = 0, ytitle = 'Frequency [%]', /buffer,thick=0, font_size=10, $
               xtitle = '<- connectivity decrease [% points] | connectivity increase [% points] ->', fill_color = [240,240,200])
@@ -20098,8 +19927,9 @@ CASE strlowCase(eventValue) OF
             b0 = barplot(x[121:200], y[121:200], width=wdt, histogram = 0, fill_color = [60,130,90],thick=0, /overplot) ;; strong decrease
             ;; save and open barplot image
             b0.save, outdir + 'FOSchange.png', resolution=300
-  
-            IF info.my_os EQ 'apple' THEN BEGIN
+
+
+            IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
               spawn, 'open ' + outdir + 'FOSchange.png'
             ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
               pushd, info.dir_tmp
@@ -20657,6 +20487,8 @@ CASE strlowCase(eventValue) OF
         restore, info.dir_guidossub + 'fadcolors.sav' & tvlct,r,g,b
         info.ctbl = - 1 & info.autostretch_id = 0 & info.disp_colors_id = 8 ;; fad
         scales = indgen(6)+1 & x_sum = [5.8, 6.2]
+
+
         b1 = PLOT(scales[0:4], b_intact[0:4], Color=[0,120,0], thick=3, yrange=[-4,104], xrange=[0.2, 9.9],$
           ytitle='Foreground proportion [%]', xtitle='              Observation scale | MultiScale | Legend', $
           title='Change in ' +fadtype + ': A -> B', xticklen=0.02,yticklen=0.02,xminor=1, xtickv=[1,2,3,4,5],/buffer)
@@ -20692,7 +20524,7 @@ CASE strlowCase(eventValue) OF
         a = text(7.4, 33, 'Time B',/data)
         ;; now the time A stats
         b1 = PLOT(scales[0:4], a_intact[0:4], Color=[0,120,0], thick=3, linestyle=1, /overplot)
-        b1a = PLOT(x_sum, [a_intact[5],a_intact[5]], Color=[0,120,0], thick=3, linestyle=1, /overplot) 
+        b1a = PLOT(x_sum, [a_intact[5],a_intact[5]], Color=[0,120,0], thick=3, linestyle=1, /overplot)
         y2 = a_interior+a_intact
         b2 = PLOT(scales[0:4],y2[0:4], Color=[0,175,0], thick=3, linestyle=1, /overplot)
         b2a = PLOT(x_sum, [y2[5],y2[5]], Color=[0,175,0], thick=3, linestyle=1, /overplot)
@@ -20714,8 +20546,10 @@ CASE strlowCase(eventValue) OF
         a = text(6.7,20,'FG-Area change [pixels]:',/data,/current)
         a = text(6.7,15, str, /data, /current)
         b1.save,info.dir_tmp + fadtype + '_change_barplot.png', resolution=300
+
+
         ;; open barplot image
-        IF info.my_os EQ 'apple' THEN BEGIN
+        IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
           spawn, 'open ' + info.dir_tmp + fadtype + '_change_barplot.png'
         ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
           pushd, info.dir_tmp
@@ -21673,7 +21507,7 @@ CASE strlowCase(eventValue) OF
      close,12
      
      ;; open heatmap image
-     IF info.my_os EQ 'apple' THEN BEGIN
+     IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open ' + info.dir_tmp + 'delta_heatmap.png'
      ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
        pushd, info.dir_tmp
@@ -21952,7 +21786,7 @@ CASE strlowCase(eventValue) OF
 ;;---------------  help menu --------------------------------------------
 ;;-----------------------------------------------------------------------
    'guidos_manual':  BEGIN  ;; xxxx
-      IF info.my_os EQ 'apple' THEN BEGIN
+      IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
          spawn, 'open ' + info.dir_guidos + 'GuidosToolbox_Manual.pdf'
          GOTO, fin
       ENDIF
@@ -21973,7 +21807,7 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    'mspa_guide':  BEGIN  ;; xxxx
-      IF info.my_os EQ 'apple' THEN BEGIN
+      IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
          spawn, 'open ' + info.dir_guidos + 'MSPAstandalone/MSPA_Guide.pdf'
          GOTO, fin
       ENDIF
@@ -21994,7 +21828,7 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    'gsc_guide':  BEGIN  ;; xxxx
-     IF info.my_os EQ 'apple' THEN BEGIN
+     IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open ' + info.dir_guidossub + 'spatcon/GRAYSPATCON_Guide.pdf'
        GOTO, fin
      ENDIF
@@ -22057,7 +21891,7 @@ CASE strlowCase(eventValue) OF
 
    'productsheets':  BEGIN  ;; xxxx
      webl = ' https://forest.jrc.ec.europa.eu/activities/lpa/gtb/#Productsheets'
-     IF info.my_os EQ 'apple' THEN BEGIN
+     IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open' + webl
      ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
        spawn, 'start' + webl,/hide
@@ -22103,7 +21937,7 @@ CASE strlowCase(eventValue) OF
         ELSE: GOTO, fin
       ENDCASE
       
-      IF info.my_os EQ 'apple' THEN BEGIN
+      IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
          spawn, 'open' + webl
       ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
         spawn, 'start' + webl,/hide
@@ -22130,7 +21964,7 @@ CASE strlowCase(eventValue) OF
    ;;*****************************************************************************************************
 
    'gt_eula':  BEGIN  ;; xxxx
-     IF info.my_os EQ 'apple' THEN BEGIN
+     IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
        spawn, 'open ' + info.dir_guidos + '../../../../../EULA_GTB.pdf'
        GOTO, fin
      ENDIF
@@ -22264,7 +22098,7 @@ CASE strlowCase(eventValue) OF
                   flines2=strmid(flines,0,5) & q=where(flines eq 'pause') & q=q[0]
                   openw,1,fn & for i=0,q-1 do printf,1,flines(i) & close,1
                   spawn, 'installGWS_Windows.cmd', /hide
-                ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+                ENDIF ELSE IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
                   pushd, gws_archivebase
                   spawn, 'chmod u+x installGWS*'
                   spawn, './installGWS_Mac'
@@ -22284,7 +22118,7 @@ CASE strlowCase(eventValue) OF
                 
                 ;; show the website
                 webl = ' https://forest.jrc.ec.europa.eu/activities/lpa/gtb-workshops/'
-                IF info.my_os EQ 'apple' THEN BEGIN
+                IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
                   spawn, 'open' + webl
                 ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
                   spawn, 'start' + webl,/hide
@@ -22359,7 +22193,7 @@ CASE strlowCase(eventValue) OF
               if res.exists eq 1 then begin
                 ;; caculate md5sum and compare to the one on the server  
                 ;; local: md5
-                IF info.my_os EQ 'apple' THEN BEGIN
+                IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
                   spawn, 'md5 ' + nlcd_pdf, res
                   res = res[0] & md5 = (strsplit(res,'=',/extract))[1] & md5 = strtrim(md5,2)
                 ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
@@ -22422,7 +22256,7 @@ CASE strlowCase(eventValue) OF
               res = dialog_message(title = 'NLCD Training', / information, msg)
               openu, unit, info.log,/append, /Get_lun & printf, unit, systime() + ': ' + msg + info.bline & free_lun, unit
               
-              IF info.my_os EQ 'apple' THEN BEGIN
+              IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
                 spawn, 'open ' + nlcd_pdf
               ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
                 spawn, 'start '+ nlcd_pdf, / nowait, /hide
@@ -22441,11 +22275,15 @@ CASE strlowCase(eventValue) OF
             fl_curr = float(vbase_curr) & fl_new = float(newv_base) & isnew = (fl_new - fl_curr) gt 0.02
             IF isnew THEN BEGIN
                ;; inform about new Guidos version
-               newGTB = 'GTB' + strtrim(newv_base,2)
+               newGTB = 'GTB'
                IF info.my_os EQ 'windows' THEN BEGIN
-                 newGTB = newGTB + '_64windows.exe' 
+                 newGTB = newGTB + '_windows.exe' 
+               ENDIF ELSE IF info.my_os eq 'darwin' THEN BEGIN
+                 newGTB = newGTB + '_Intel.dmg'
+               ENDIF ELSE IF info.my_os eq 'apple' THEN BEGIN
+                 newGTB = newGTB + '.dmg'
                ENDIF ELSE BEGIN
-                 IF info.my_os eq 'apple' THEN newGTB = newGTB + '_OSX.dmg' ELSE newGTB = newGTB + '_rpm/deb/run'
+                 newGTB = newGTB + '_rpm/deb/run'
                ENDELSE
 
                msg = 'New release: GTB ' + strtrim(newv_base,2) + ' available.' + string(10b) + $
@@ -22520,7 +22358,7 @@ CASE strlowCase(eventValue) OF
                            
                ;; c) open the downdir
                pushd, '..'
-               IF info.my_os EQ 'apple' THEN BEGIN
+               IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
                  spawn, 'open Downloads'
                ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
                  basedir=GETENV('userprofile')
@@ -22531,7 +22369,7 @@ CASE strlowCase(eventValue) OF
                popd
                
                ;; d) show the installation instructions
-               IF info.my_os EQ 'apple' THEN BEGIN
+               IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
                  spawn, 'open ' + ginst_file
                ENDIF ELSE IF info.my_os EQ 'windows' THEN BEGIN
                  pushd, downdir & spawn, 'start GuidosToolbox_Installation.pdf', / nowait, /hide & popd
@@ -22596,7 +22434,7 @@ CASE strlowCase(eventValue) OF
                  flines2=strmid(flines,0,5) & q=where(flines eq 'pause') & q=q[0]
                  openw,1,fn & for i=0,q-1 do printf,1,flines(i) & close,1               
                  spawn, 'installGTB_rev_Windows.cmd', /hide
-               ENDIF ELSE IF info.my_os EQ 'apple' THEN BEGIN
+               ENDIF ELSE IF info.my_os EQ 'darwin' OR info.my_os EQ 'apple' THEN BEGIN
                  pushd, bugfix_archivebase
                  spawn, 'chmod u+x installGTB*'
                  spawn, './installGTB_rev_Mac' 
@@ -22668,7 +22506,7 @@ CASE strlowCase(eventValue) OF
               gdd = gdd + string(10b) + '- QGIS ' + res + '(https://www.qgis.org)'
             ENDIF
          END
-         'apple':BEGIN
+         'darwin':BEGIN
             spawn,'/Library/Frameworks/GDAL.framework/Programs/gdalinfo --version', res & res = res[0]
             res = (strsplit(res,',',/extract))[0]
             gdd = '- ' + res + ' (W.Kyngesburye, https://www.kyngchaos.com)'
@@ -22681,16 +22519,29 @@ CASE strlowCase(eventValue) OF
             spawn, 'sw_vers -productVersion', res & res = res[0]
             osd = 'Mac OS X [' + res + ']'
          END
+         'apple':BEGIN
+           spawn,'/opt/homebrew/bin/gdalinfo --version', res & res = res[0]
+           res = (strsplit(res,',',/extract))[0]
+           gdd = '- ' + res + ' (Homebrew: https://brew.sh)'
+           IF strlen(info.qgis_exe) GT 0 THEN BEGIN
+             q = strpos(info.qgis_exe,'Contents') & plist = strmid(info.qgis_exe,0,q+9) + 'Info.plist'
+             cmd = 'echo $(/usr/libexec/PlistBuddy -c "print CFBundleShortVersionString" "' + plist + '")'
+               spawn, cmd, res & res = res[0]
+             gdd = gdd + string(10b) + '- QGIS ' + res + ' (https://www.qgis.org)'
+           ENDIF
+           spawn, 'sw_vers -productVersion', res & res = res[0]
+           osd = 'Mac OS X [' + res + ']'
+         END
       ENDCASE     
-      aa = ', Revision '  + strvrev + ' (' + strtrim(!version.memory_bits,2) + ' bit)'
-      
+      aa = ', Revision '  + strvrev       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, June 2026' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, July 2026' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
-                  '- mspa (v2.3), ggeo (P.Soille, P.Vogt)' + string(10b) + $
-                  '- (gray)spatcon, recode (K.Riitters)' + string(10b) + gdd
+                  '- mspa, ggeo (P.Soille, P.Vogt)' + string(10b) + $
+                  '- (gray)spatcon, recode (K.Riitters)' + string(10b) + $
+                  '- conefor (S.Saura, J.Torne)' + string(10b) + gdd
       ;; add info on image size
       mspamax = '10,000' & mbavail = 'N/A'
       if info.my_os eq 'linux' then begin
@@ -22699,7 +22550,7 @@ CASE strlowCase(eventValue) OF
         spawn,"free|awk 'FNR == 3 {print $4}'", mbavail2 & mbavail2 = float(mbavail2[0])/1024 ;; swap
         mbavail = mbavail + mbavail2          
         info.immaxsize = uint(mbavail/19) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
-      endif else if info.my_os eq 'apple' then begin
+      endif else if info.my_os eq 'darwin' OR info.my_os eq 'apple' then begin
         spawn, "vm_stat | grep free | awk '{ print $3 }' | sed 's/\.//'",fra & fra=float(fra[0])
         spawn,"vm_stat | grep inactive | awk '{ print $3 }' | sed 's/\.//'", frb & frb=float(frb[0])
         spawn,"vm_stat | grep speculative | awk '{ print $3 }' | sed 's/\.//'", frc & frc=float(frc[0])
@@ -22707,13 +22558,20 @@ CASE strlowCase(eventValue) OF
         mbavail = (fra+frb+frc+frd)*4096/1048576
         info.immaxsize = uint(mbavail/19) & mspamax = strtrim(long(sqrt(info.immaxsize) * 1000),2)
       endif 
+      
+      IF info.my_os EQ 'windows' then begin
+        sstr = '- For MSPA-processing of larger images please use:' + string(10b) + $
+               '    the Linux or macOS version of GTB or ' + string(10b) + $
+               '    use GWB for operational processing.' + string(10b) 
+      ENDIF ELSE BEGIN
+        sstr = '- For MSPA-processing of larger images please' + string(10b) + $
+               '    use GWB for operational processing.' + string(10b)         
+      ENDELSE     
+      
       str_about = str_about + string(10b) + string(10b) + 'Maximum map dimension [pixels]: ' + string(10b) + $
         '- GTB: 30,000 x 30,000' + string(10b) + $
         '- Contortion/ConeforInputs: 5,000 x 5,000' + string(10b) + $
-        '- MSPA: ' + mspamax + ' x ' + mspamax + string(10b) + $
-        '- For MSPA-processing of larger images please use: ' + string(10b) + $
-        '    the Linux or macOS version of GTB or ' + string(10b) + $
-        '    use GWB for operational processing.' + string(10b) + $
+        '- MSPA: ' + mspamax + ' x ' + mspamax + string(10b) + sstr + $
         '- Additional information is available under: ' + string(10b) + $
         '    Help -> GTB Documentation '
       
@@ -22791,9 +22649,15 @@ CASE strlowCase(eventValue) OF
             for id = 0, n_elements(osd) -1 do printf, 11, osd[id]
 
           END     
-          'apple':BEGIN
+          'darwin':BEGIN
              spawn, 'system_profiler SPHardwareDataType', osd
              for id = 0, n_elements(osd) -1 do printf, 11, osd[id]
+          END
+
+          'apple':BEGIN
+            spawn, 'system_profiler SPHardwareDataType', osd
+            for id = 0, n_elements(osd) -1 do printf, 11, osd[id]
+            spawn,'sysctl -n machdep.cpu.brand_string', res & res = res[0] & printf, 11, 'Chip: ' + res 
           END
         ENDCASE
         show_info:
@@ -22853,6 +22717,9 @@ CASE strlowCase(eventValue) OF
             IF strmid(res, 0, 1) EQ '/' THEN BEGIN ;;  found
               spawn, res + ' ' + GTBreport + ' &'
             ENDIF
+          END
+          'darwin':BEGIN
+            spawn, 'open -e ' + GTBreport
           END
           'apple':BEGIN
             spawn, 'open -e ' + GTBreport
@@ -23335,8 +23202,10 @@ ENDIF ELSE IF info.my_os EQ 'linux' THEN BEGIN ;; linux
   if strlen(info.sysgdal) gt 0 then $
     gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
   gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
-ENDIF ELSE BEGIN ;; apple
+ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN 
   gedit = '/Library/Frameworks/Python.framework/Versions/3.9/bin/gdal_edit.py -mo ' + tagsw
+ENDIF ELSE BEGIN ;; apple
+  gedit = '/opt/homebrew/bin/gdal_edit.py -mo ' + tagsw
 ENDELSE
 
 ;;=======================================================================
@@ -23439,18 +23308,6 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
         is_fos=2 & fostypen = 'fos-fed_5class'
     ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC_5class: ') GT 0) THEN BEGIN
         is_fos=2 & fostypen = 'fos-fac_5class'
-    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAD-APP_2class: ') GT 0) THEN BEGIN
-      is_fos=4 & fostypen = 'fos-fad-app_2class'
-    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FED-APP_2class: ') GT 0) THEN BEGIN
-      is_fos=4 & fostypen = 'fos-fed-app_2class'
-    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC-APP_2class: ') GT 0) THEN BEGIN
-      is_fos=4 & fostypen = 'fos-fac-app_2class'
-    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAD-APP_5class: ') GT 0) THEN BEGIN
-      is_fos=5 & fostypen = 'fos-fad-app_5class'
-    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FED-APP_5class: ') GT 0) THEN BEGIN
-      is_fos=5 & fostypen = 'fos-fed-app_5class'
-    ENDIF ELSE IF (strpos(info.add_title,'(FOS-FAC-APP_5class: ') GT 0) THEN BEGIN
-      is_fos=5 & fostypen = 'fos-fac-app_5class'
     ENDIF
     IF is_fos GT 0 THEN BEGIN
       restore,info.dir_tmp + 'fos.sav' ;; watch out there is a fostype variable in there with capital letters
@@ -23460,10 +23317,6 @@ IF strmid(fileaction, 0, 4) EQ 'save' THEN BEGIN
     ENDIF ELSE BEGIN
       IF strpos(info.add_title,'(FAD_6class: MultiScale summary)') GT 0 THEN BEGIN
         is_fad=1 & fadtypen = 'fad'
-      ENDIF ELSE IF strpos(info.add_title,'(FAD-APP_2class: MultiScale summary)') GT 0 THEN BEGIN
-        is_fad=2 & fadtypen = 'fad-app2'
-      ENDIF ELSE IF strpos(info.add_title,'(FAD-APP_5class: MultiScale summary)') GT 0 THEN BEGIN
-        is_fad=5 & fadtypen = 'fad-app5'
       ENDIF
       IF is_fad GT 0 THEN BEGIN
         restore,info.dir_tmp + 'fad.sav' ;; watch out there is a fadtype variable in there with captal letters
@@ -23798,9 +23651,7 @@ CASE fileaction OF
           restore, info.dir_guidossub + 'foschangecolors.sav'
         END
       ENDCASE   
-      tvlct, r, g, b     
-         
-      ;; end test
+      tvlct, r, g, b
       
       ;; get projname and EPSG code (caution: the EPSG code is not always well defined)
       ;; search for presence of GEOGCS
@@ -23975,13 +23826,6 @@ CASE fileaction OF
       ;; build the full path & name of the converted geotiff
       tt1 = file_dirname(ipsw, / mark_directory)
       tt2 = file_basename(ipsw)
-      ;; tiff is not allowed here and should be read otherwise
-;      tt3 = strlowcase(strmid(tt2, strpos(tt2, '.', / reverse_search)+1))
-;      IF tt3 EQ 'tif' OR tt3 EQ 'tiff' THEN BEGIN
-;         msg = 'Tiff images are read via the option' + string(10b) + $
-;               '"GeoTiff" or "Generic". ' + string(10b) + 'Returning...'
-;         res = dialog_message(msg, / information) & GOTO, fin
-;      ENDIF
       tt3 = strmid(tt2, 0, strpos(tt2, '.', / reverse_search)) + '_conv.tif'
       im_file = tt1 + tt3
 
@@ -24793,7 +24637,9 @@ CASE fileaction OF
       newkmlname:
       dir_kml = $
         dialog_pickfile(get_path = path2file, / write, / directory, path = info.dir_data, $
-        title = 'Select kml output directory')
+        title = 'Select kml output directory', file = 'GEoverlay')
+        
+      IF dir_kml EQ info.dir_data THEN dir_kml = dir_kml + 'GEoverlay' + info.os_sep
       IF (strlen(dir_kml) - strlen(path2file) EQ 4) OR $
         (dir_kml EQ '') THEN GOTO, finall  ;; no name or 'cancel' selected
         
@@ -24949,8 +24795,6 @@ CASE fileaction OF
         st = 'FAD1legend.png'
         IF mxx EQ 105b THEN st = 'FAD2legend.png'
         IF mxx EQ 106b THEN st = 'FAD3legend.png'         
-        if is_fos eq 4 or is_fad eq 2 then st = 'fadapp2legend.png'       
-        if is_fos eq 5 or is_fad eq 5 or fostype eq 'FOS5' then st = 'fadapp5legend.png'
         
         file_copy, info.dir_guidossub + st, $
           info.dir_tmp + file_basename(dir_kml) + $
@@ -25098,10 +24942,7 @@ widget_control, info.TLB, tlb_set_title = info.orig_image_title
 ;; list in the draw AND zoomwindow!! and make the draw widget window
 ;; the current graphics window
 widget_control, info.w_disp_colors, set_combobox_select = info.disp_colors_id, sensitive=1
-
 IF info.ctbl GE 0 THEN loadct, info.ctbl, / silent
-
-;;IF info.fullres EQ 1 THEN info.zoomfactor = 1 ELSE info.zoomfactor = 2
 
 ;; when reading a new image
 IF strmid(fileaction,0,4) EQ 'read' THEN BEGIN
@@ -25960,18 +25801,11 @@ widget_control, event.top, get_uvalue = info, / no_copy
 ;;===============================================
 ;; Note: do NOT search for a string starting with an empty space, it won't work properly!
 IF (strpos(info.add_title,'LM, kdim=') GT 0) THEN is_lm=1 else is_lm=0
-
 is_fos = 0
 IF (strpos(info.add_title,'(FOS-FAD_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC_5class: ') GT 0) THEN is_fos=2
 IF (strpos(info.add_title,'(FOS-FAD_6class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED_6class: ') GT 0) OR  (strpos(info.add_title,'(FOS-FAC_6class: ') GT 0) THEN is_fos=1 
-IF (strpos(info.add_title,'(FOS-FAD-APP_2class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED-APP_2class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC-APP_2class: ') GT 0) THEN is_fos=4
-IF (strpos(info.add_title,'(FOS-FAD-APP_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FED-APP_5class: ') GT 0) OR (strpos(info.add_title,'(FOS-FAC-APP_5class: ') GT 0) THEN is_fos=5 
-
 is_fad = 0
 IF strpos(info.add_title,'(FAD_6class: ') GT 0 THEN is_fad=1 
-IF strpos(info.add_title,'(FAD-APP_2class: ') GT 0 THEN is_fad=2
-IF strpos(info.add_title,'(FAD-APP_5class: ') GT 0 THEN is_fad=5
-
 IF strpos(info.add_title,'(restoration path between 5 largest objects') GT 0 THEN is_restore=1 ELSE is_restore=0
 is_mcd=0
 IF strmid(info.title,0,15) EQ 'MCD (A->B) FG: ' THEN is_mcd=1
@@ -26000,8 +25834,10 @@ ENDIF ELSE IF info.my_os EQ 'linux' THEN BEGIN ;; linux
   if strlen(info.sysgdal) gt 0 then $
     gedit = 'unset LD_LIBRARY_PATH; gdal_edit.py -mo ' + tagsw else $
   gedit = info.dir_fwtools + 'gdal_edit.py -mo ' + tagsw
-ENDIF ELSE BEGIN ;; apple
+ENDIF ELSE IF info.my_os EQ 'darwin' THEN BEGIN
   gedit = '/Library/Frameworks/Python.framework/Versions/3.9/bin/gdal_edit.py -mo ' + tagsw
+ENDIF ELSE BEGIN ;; apple
+  gedit = '/opt/homebrew/bin/gdal_edit.py -mo ' + tagsw
 ENDELSE
 
 IF event.type EQ 2 AND info.set_zoom EQ 0 THEN BEGIN
@@ -27998,7 +27834,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.400
+gtb_version = 3.401
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -28017,11 +27853,14 @@ ENDIF
 
 VERSION = WIDGET_INFO( / VERSION)
 my_os = !version.os & sysarch = !version.memory_bits
+;; make sure to properly detect M-processors on macOS, which may be falsely detected due to Rosetta2 translation
+IF my_os EQ 'darwin' THEN BEGIN
+  spawn,'sysctl -n machdep.cpu.brand_string', res & res = res[0] 
+  if strmid(res,0,5) eq 'Apple' then my_os = 'apple'
+ENDIF
+
 ;; test on widget availability, current device name
-
 IF !version.os_family EQ 'Windows' THEN my_os = 'windows' 
-IF my_os EQ 'darwin' THEN my_os = 'apple'
-
 IF my_os EQ 'linux' THEN BEGIN
   ;; test on availability of TrueColor mode for the local display
    spawn, 'unset LD_LIBRARY_PATH; xdpyinfo', res
@@ -28101,7 +27940,7 @@ IF res EQ 0b THEN BEGIN ;; if that file does not exist, go ahead with the proxy 
         proxport = strtrim(fix(proxport),2)
       ENDIF
     ENDIF
-  ENDIF ELSE IF my_os EQ 'apple' THEN BEGIN  
+  ENDIF ELSE IF my_os EQ 'darwin' OR my_os EQ 'apple' THEN BEGIN  
     ;; find out proxy configuration if it is not specified as ENV or via proxy.pac
     ;; spawn, 'system_profiler SPNetworkDataType|grep proxy', envproxy 
     ;; system_profiler SPNetworkDataType | grep "HTTP Proxy Server" | awk '{print $4}' | head -1
@@ -28473,12 +28312,21 @@ button = Widget_Button(w_gissw, Value = 'GTB Terminal', uvalue = 'gdalterminal')
 IF my_os EQ 'windows' THEN BEGIN
    button = Widget_Button(w_gissw, Value = 'OpenEV Viewer', uvalue = 'openev')
 ENDIF
+;; Conefor only when in MS-Windows
+;IF my_os EQ 'windows' THEN BEGIN
+;  button = Widget_Button(w_gissw, Value = 'Conefor', uvalue = 'conefor')
+;ENDIF
 
 ;; QGIS / xdgop
 qgis_exe = '' & xdgop = ''
-IF my_os EQ 'apple' THEN BEGIN
+IF my_os EQ 'darwin' OR my_os EQ 'apple' THEN BEGIN
    res = file_info('/Applications/QGIS*')
-   if res.exists EQ 1 then qgis_exe = res.name + '/Contents/MacOS/QGIS'
+   if res.exists EQ 1 then begin
+    q1 = strpos(res.name,'/',/reverse_search) & q1 = q1+1
+    q2 = strpos(res.name,'.app',/reverse_search)
+    ss = strmid(res.name,q1, q2-q1)
+    qgis_exe = res.name + '/Contents/MacOS/' + ss
+   endif
 ENDIF ELSE IF my_os EQ 'linux' THEN BEGIN
    spawn, 'unset LD_LIBRARY_PATH; which qgis 2>/dev/null', res & res = res[0]
    IF strmid(res, 0, 1) EQ '/' THEN qgis_exe = 'unset LD_LIBRARY_PATH; ' + res   
@@ -28677,9 +28525,12 @@ w_lp1112 = widget_base(w_lp111, / column);, / frame)
 w_ctbl = widget_base(w_lp1112, / column, / frame)
 button = $
   widget_label(w_ctbl, value = 'Select Colortable', / align_center)
+;tls = ['grayscale', 'Rainbow', 'Temperature', 'Classification', $
+;  'Distance', 'Normalized', 'Contortion', 'LM', 'FOS_6', 'FOS_5', 'FOS-APP_2', 'Resistance', $
+;  'LM_AGR', 'LM_NAT', 'LM_DEV', 'LM_BGR', 'LM_DIV', 'LM_ANT', 'FOSchange', 'User-defined', 'Save/Restore']
 tls = ['grayscale', 'Rainbow', 'Temperature', 'Classification', $
-  'Distance', 'Normalized', 'Contortion', 'LM', 'FOS_6', 'FOS_5', 'FOS-APP_2', 'Resistance', $
-  'LM_AGR', 'LM_NAT', 'LM_DEV', 'LM_BGR', 'LM_DIV', 'LM_ANT', 'FOSchange', 'User-defined', 'Save/Restore']
+    'Distance', 'Normalized', 'Contortion', 'LM', 'FOS_6', 'FOS_5', 'Resistance', $
+    'LM_AGR', 'LM_NAT', 'LM_DEV', 'LM_BGR', 'LM_DIV', 'LM_ANT', 'FOSchange', 'User-defined', 'Save/Restore']
 w_disp_colors  = Widget_Combobox(w_ctbl, Value = tls, UVALUE = 'disp_colors')
 
 ;; zoom factor and factor
@@ -28951,7 +28802,7 @@ CASE my_os OF
     IF isBDAP then EULA = dir_guidos + 'EULA_GTB.pdf'
   END
 
-  'apple':BEGIN
+  'darwin':BEGIN
     ;;================================================================================================
     ;; test for Yosemite or later
     spawn, 'sw_vers -productVersion', res & res=res[0] 
@@ -29003,6 +28854,53 @@ CASE my_os OF
     EULA = dir_guidos + '../../../../../EULA_GTB.pdf'
   END
 
+  'apple':BEGIN
+    ;;================================================================================================
+    ;; test for macOS 12 Monterey or later
+    spawn, 'sw_vers -productVersion', res & res=res[0]
+    os1 = fix((strsplit(res,'.',/extract))[0]) & os2 = fix((strsplit(res,'.',/extract))[1])
+    IF (os1 EQ 12) AND (os2 GE 0) THEN BEGIN
+      res = dialog_message('GTB requires Yosemite (OSX 10.10) or newer' + string(10b) + 'Exiting...', title='GTB startup check:',/ error)
+      exit
+    ENDIF
+    ;; test for gdal installation
+    osxgdal = file_test('/opt/homebrew/bin', /Directory)
+    IF osxgdal eq 0 THEN BEGIN
+      st = "IMPORTANT: GDAL libraries are required but were NOT found. " + $
+        string(10b) + "Please install gdal via Homebrew (https://brew.sh) " + $
+        string(10b) + "GTB will now exit."
+      res = dialog_message(st, title='GTB startup check:',/ error)
+      spawn, 'open https://brew.sh'
+      exit
+    ENDIF    
+
+    ;; maximum image size for MSPA
+    ;; use command "vm_stat" and get amounts for
+    ;; TOTAL = FREE_BLOCKS + INACTIVE_BLOCKS + SPECULATIVE_BLOCKS + PURGEABLE
+    ;; see http://apple.stackexchange.com/questions/4286/is-there-a-mac-os-x-terminal-version-of-the-free-command-in-linux-systems
+    spawn, "vm_stat | grep free | awk '{ print $3 }' | sed 's/\.//'",fra & fra=float(fra[0])
+      spawn,"vm_stat | grep inactive | awk '{ print $3 }' | sed 's/\.//'", frb & frb=float(frb[0])
+      spawn,"vm_stat | grep speculative | awk '{ print $3 }' | sed 's/\.//'", frc & frc=float(frc[0])
+      spawn,"vm_stat | grep purgeable | awk '{ print $3 }' | sed 's/\.//'",frd & frd=float(frd[0])
+      mbavail = (fra+frb+frc+frd)*4096/1048576
+    immaxsize = uint(mbavail/19)
+    fn = dir_guidossub + 'mspa_mac'
+    file_copy, dir_guidos + 'MSPAstandalone/mspaARM_mac', fn, / overwrite
+    dir_fwtools = '/opt/homebrew/bin/'
+    ;; check for osx first start
+    fn = dir_guidossub + 'firststart.txt'
+    if file_test(fn) then begin
+      ;; we are in save_add
+      spawn, '../../../../../mkShortcuts'
+      spawn, 'open ../../../../../quickstart.rtf'
+      file_delete, fn
+    endif
+
+    ;; find out if nolimits is set
+    res = file_info('../../../../../data/nolimits.txt') & res = res.exists
+    IF res EQ 1b THEN immaxsizeg = 1.0e12
+    EULA = dir_guidos + '../../../../../EULA_GTB.pdf'
+  END
 ENDCASE
 
 
@@ -29058,7 +28956,7 @@ Guidos_Image, process, 1
 ;; default settings in left panel
 ;;=========================================================
 ;; exclusive button list:  set the first option (0)  on
-ctbl = - 1 & disp_colors_id = 19 ;; user-defined)
+ctbl = - 1 & disp_colors_id = 18 ;; user-defined)
 widget_control, w_disp_colors, set_combobox_select = disp_colors_id
 prev_disp_colors_id = disp_colors_id
 widget_control, zoomfactor, set_combobox_select = 2
@@ -29095,6 +28993,15 @@ boxcolor = !d.n_colors - 1
 ;; we should not use several instances of GTB because they may mix up the
 ;; intermediate files in mspatmp and result in crashes
 CASE my_OS OF
+  'darwin': BEGIN
+    spawn,'ps -ef|grep -c guidostoolbox.sav',res & ct = fix(res[0])
+    if ct gt 4 then begin
+      res = dialog_message('Existing IDL runtime process detected.' + string(10b) + $
+        'Running more than 1 instance of GTB' + string(10b) + $
+        'from the SAME GTB directory' + string(10b) + $
+        'may result in program crashes or incorrect results.', title='GTB startup check:' )
+    endif
+  END
   'apple': BEGIN
     spawn,'ps -ef|grep -c guidostoolbox.sav',res & ct = fix(res[0])
     if ct gt 4 then begin
@@ -29127,6 +29034,9 @@ ENDCASE
 
 ;; set the default path to the data directory
 CASE my_OS OF
+  'darwin': BEGIN
+    pushd, '../../../../../data' & cd, current = datapath & popd
+  END
   'apple': BEGIN
     pushd, '../../../../../data' & cd, current = datapath & popd
   END
