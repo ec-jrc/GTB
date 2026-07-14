@@ -4508,7 +4508,8 @@ CASE strlowCase(eventValue) OF
      pushd, info.dir_data
      res = file_info('Conefor26')
      IF res.exists EQ 1b THEN BEGIN
-       spawn, 'start Conefor26'
+       spawn, 'Conefor26\Conefor26.exe',/noshell,/nowait
+       spawn, 'start Conefor26',/nowait,/hide
      ENDIF ELSE BEGIN
        msg = "The directory Conefor26 was not found. "  + string(10b) + 'Returning...'
        res = dialog_message(msg, / error)
@@ -5716,10 +5717,8 @@ CASE strlowCase(eventValue) OF
          printf,1,'Y 10'
          printf,1,'K 5'
          close,1         
-         ;; amend image setup for GSC processing
-         ;; 1) set all BG to zero
-         image0[BGmask] = 0b
-         IF fosinp EQ 'Binary' THEN BEGIN ;; case (c) 
+         IF fosinp EQ 'Binary' THEN BEGIN ;; case (c), set all BG to zero
+           image0[BGmask] = 0b 
            image0[qFG] = 100b
            image0[qmiss] = 255b
            IF ct3b GT 0 THEN image0[q3b] = 0b ;; set special BG to zero
@@ -6352,10 +6351,8 @@ CASE strlowCase(eventValue) OF
            printf,1,'Y 10'
            printf,1,'K 5'
            close,1
-           ;; amend image setup for GSC processing
-           ;; 1) set all BG to zero
-           image0[BGmask] = 0b
-           IF fosinp EQ 'Binary' THEN BEGIN ;; case (c)
+           IF fosinp EQ 'Binary' THEN BEGIN ;; case (c), set all BG to zero
+             image0[BGmask] = 0b 
              image0[qFG] = 100b
              image0[qmiss] = 255b
              IF ct3b GT 0 THEN image0[q3b] = 0b ;; set special BG to zero
@@ -27834,7 +27831,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.401
+gtb_version = 3.402
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -28313,9 +28310,9 @@ IF my_os EQ 'windows' THEN BEGIN
    button = Widget_Button(w_gissw, Value = 'OpenEV Viewer', uvalue = 'openev')
 ENDIF
 ;; Conefor only when in MS-Windows
-;IF my_os EQ 'windows' THEN BEGIN
-;  button = Widget_Button(w_gissw, Value = 'Conefor', uvalue = 'conefor')
-;ENDIF
+IF my_os EQ 'windows' THEN BEGIN
+  button = Widget_Button(w_gissw, Value = 'Conefor', uvalue = 'conefor')
+ENDIF
 
 ;; QGIS / xdgop
 qgis_exe = '' & xdgop = ''
@@ -28335,6 +28332,14 @@ ENDIF ELSE IF my_os EQ 'linux' THEN BEGIN
 ENDIF ELSE IF my_os EQ 'windows' THEN BEGIN 
    tt = file_search(getenv('PROGRAMFILES') + '\QGIS*\bin\qgis.bat')
    nr = n_elements(tt) & if nr gt 0 then qgis_exe = (tt)[nr-1]
+   ;; if QGIS standalone is not found then try the OSGeo4W version
+   if qgis_exe eq '' then begin
+     qq = '' & qq = GETENV('LOCALAPPDATA')
+     if qq ne '' then begin
+       qq = qq + '\Programs\OsGeo4W\bin\qgis-bin.exe'
+       res = file_info(qq) & if res.execute then qgis_exe = qq
+     endif
+   endif 
 ENDIF
 if qgis_exe ne '' then button = Widget_Button(w_gissw, Value = 'QGIS', uvalue = 'qgis')
 
