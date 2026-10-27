@@ -4598,6 +4598,13 @@ CASE strlowCase(eventValue) OF
       if q gt 0 then begin
         q=log(q) & res=strsplit(q,' ',/extract,count=nx)
         if nx eq 3 then newimis_mspa=res(nx-1)
+        ;; check for pyGuidos notation
+        qq1 = strpos(q, '<') & qq2 = strpos(q, '>')
+        if qq1 ne -1 and qq2 ne -1 then begin
+          qq3 = strmid(q,qq1+1,qq2-qq1-1)
+          ;; replace , with _
+          newimis_mspa = qq3.replace(',','_')
+        endif
       endif
 ;      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FAD") & q=q[0] & if q gt 0 then newimis_fad = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FOS") & q=q[0] & if q gt 0 then newimis_fos = 1
@@ -10032,10 +10039,28 @@ CASE strlowCase(eventValue) OF
          popd
       ENDIF ELSE BEGIN
          pushd, info.dir_tmp
-         IF info.my_os EQ 'linux' THEN mspa_os = 'mspa_lin'
-         IF info.my_os EQ 'darwin' THEN mspa_os = 'mspa_mac'
-         IF info.my_os EQ 'apple' THEN mspa_os = 'mspa_mac'                
-         cmd = info.dir_guidossub + mspa_os + ' -graphfg ' + c_FGconn + $
+         IF info.my_os EQ 'linux' THEN BEGIN
+          mspa_os = 'mspa_lin'
+          file_copy, info.dir_guidos + 'MSPAstandalone/mspa_lin64', mspa_os, / overwrite
+         ENDIF
+         IF info.my_os EQ 'darwin' THEN BEGIN  ;; Intel
+          mspa_os = 'mspa_mac'        
+          file_copy, info.dir_guidos + 'MSPAstandalone/macOS_intel/mspa_macOS_Intel', mspa_os, / overwrite
+          ;; clean out potential dylib files that may not be overwritten
+          dyl = file_search('*.dylib',count=ct)
+          if ct gt 0 then for idx = 0, ct-1 do file_delete, dyl[idx], /ALLOW_NONEXISTENT, /quiet
+          file_copy, [info.dir_guidos + 'MSPAstandalone/macOS_intel/*.dylib'], info.dir_tmp                       
+         ENDIF
+         IF info.my_os EQ 'apple' THEN BEGIN ;; ARM
+          mspa_os = 'mspa_mac'
+          file_copy, info.dir_guidos + 'MSPAstandalone/macOS_arm/mspa_macOS_ARM', mspa_os, / overwrite
+          ;; clean out potential dylib files that may not be overwritten
+          dyl = file_search('*.dylib',count=ct)
+          if ct gt 0 then for idx = 0, ct-1 do file_delete, dyl[idx], /ALLOW_NONEXISTENT, /quiet
+          file_copy, [info.dir_guidos + 'MSPAstandalone/macOS_arm/*.dylib'], info.dir_tmp                  
+         ENDIF
+                                  
+         cmd = info.dir_tmp + mspa_os + ' -graphfg ' + c_FGconn + $
                ' -eew ' + c_size + ' -internal ' + c_intext + ' -disk -transition ' + c_trans + $
                ' -i inputmorph.tif -o outputmorph.tif -odir ./'
          time0 = systime( / sec)
@@ -10063,10 +10088,6 @@ CASE strlowCase(eventValue) OF
       ;; rotate image back to orientation in GTB!!!
       ;;
       image0 = rotate(image0,7)
-      ;; huge image?
-      IF c_size EQ '1' THEN BEGIN
-        q = where(image0 EQ 2b, ct, /l64) & IF ct GT 0 THEN image0[q] = 0b
-      ENDIF
       iFG = ulong64(total(image0 eq 100b or image0 eq 220b)) + FGp
 
       popd
@@ -10688,6 +10709,18 @@ CASE strlowCase(eventValue) OF
            m2=strtrim(fix(z[zn-3]),2) & m1=strtrim(fix(z[zn-4]),2)
            mspaext = '_' + m1 + '_' + m2 + '_' + m3 + '_' + m4
          endif
+         ;; check for pyGuidos notation
+         qq1 = strpos(q, '<') & qq2 = strpos(q, '>')
+         if qq1 ne -1 and qq2 ne -1 then begin
+           qq3 = strmid(q,qq1+1,qq2-qq1-1)
+           ;; replace , with _
+           newimis_mspa = qq3.replace(',','_')
+           z=strsplit(newimis_mspa, '_', /extract, count=zn)
+           m4=strtrim(fix(z[zn-1]),2) & m3=strtrim(fix(z[zn-2]),2)
+           m2=strtrim(fix(z[zn-3]),2) & m1=strtrim(fix(z[zn-4]),2)
+           mspaext = '_' + m1 + '_' + m2 + '_' + m3 + '_' + m4
+         endif                
+         
        endif      
        
        IF mspaext eq '' THEN BEGIN
@@ -11435,10 +11468,28 @@ CASE strlowCase(eventValue) OF
             popd
          ENDIF ELSE BEGIN
             pushd, info.dir_tmp
-            IF info.my_os EQ 'linux' THEN mspa_os = 'mspa_lin' 
-            IF info.my_os EQ 'darwin' THEN mspa_os = 'mspa_mac'
-            IF info.my_os EQ 'apple' THEN mspa_os = 'mspa_mac'
-            cmd = info.dir_guidossub + mspa_os + ' -graphfg ' + c_FGconn + $
+            IF info.my_os EQ 'linux' THEN BEGIN
+              mspa_os = 'mspa_lin'
+              file_copy, info.dir_guidos + 'MSPAstandalone/mspa_lin64', mspa_os, / overwrite
+            ENDIF
+            IF info.my_os EQ 'darwin' THEN BEGIN  ;; Intel
+              mspa_os = 'mspa_mac'
+              file_copy, info.dir_guidos + 'MSPAstandalone/macOS_intel/mspa_macOS_Intel', mspa_os, / overwrite
+              ;; clean out potential dylib files that may not be overwritten
+              dyl = file_search('*.dylib',count=ct)
+              if ct gt 0 then for idx = 0, ct-1 do file_delete, dyl[idx], /ALLOW_NONEXISTENT, /quiet
+              file_copy, [info.dir_guidos + 'MSPAstandalone/macOS_intel/*.dylib'], info.dir_tmp
+            ENDIF
+            IF info.my_os EQ 'apple' THEN BEGIN ;; ARM
+              mspa_os = 'mspa_mac'
+              file_copy, info.dir_guidos + 'MSPAstandalone/macOS_arm/mspa_macOS_ARM', mspa_os, / overwrite
+              ;; clean out potential dylib files that may not be overwritten
+              dyl = file_search('*.dylib',count=ct)
+              if ct gt 0 then for idx = 0, ct-1 do file_delete, dyl[idx], /ALLOW_NONEXISTENT, /quiet
+              file_copy, [info.dir_guidos + 'MSPAstandalone/macOS_arm/*.dylib'], info.dir_tmp
+            ENDIF
+            
+            cmd = info.dir_tmp + mspa_os + ' -graphfg ' + c_FGconn + $
                   ' -eew ' + c_size + ' -internal ' + c_intext + $
                   ' -disk -transition ' + c_trans + $
                   ' -i inputmorph.tif -o outputmorph.tif -odir ./'
@@ -11456,10 +11507,6 @@ CASE strlowCase(eventValue) OF
          ;; add the statistics if they were set in the GUI
          IF statsout EQ 1b THEN BEGIN
             image0 = read_tiff(info.dir_tmp + 'outputmorph.tif')
-            ;; huge image?
-            IF c_size EQ '1' THEN BEGIN
-              q = where(image0 EQ 2b, ct, /l64) & IF ct GT 0 THEN image0[q] = 0b
-            ENDIF
             simplestats, image0, fconn, ttrans, tintext, info.do_label_groups_id, st
             fn_out_stats = dir_batch + res + '_' + c_FGconn + '_' + c_size + $
                            '_' + c_trans + '_' + c_intext + '.txt'            
@@ -21864,7 +21911,7 @@ CASE strlowCase(eventValue) OF
      oUrl -> SetProperty, URL_SCHEME = 'https'
      oUrl -> SetProperty, PROXY_HOSTNAME = info.proxhost
      oUrl -> SetProperty, PROXY_PORT = info.proxport
-     oUrl -> SetProperty, URL_HOST = 'forest.jrc.ec.europa.eu'
+     oUrl -> SetProperty, URL_HOST =  'forest.jrc.ec.europa.eu'
      oUrl -> SetProperty, URL_PATH = 'guidos/news'
      fn = oUrl -> Get(FILENAME = version_file)
      url_cont88:
@@ -22533,7 +22580,7 @@ CASE strlowCase(eventValue) OF
       aa = ', Revision '  + strvrev       
       str_about = '           GTB ' + vbase + aa + string(10b) + $
                   string(10b) + 'Copyright ' + string(169b) + $
-                  ' Peter Vogt, EC-JRC, July 2026' + string(10b) + $
+                  ' Peter Vogt, EC-JRC, October 2026' + string(10b) + $
                   'GTB is free and open-source software.' + string(10b) + string(10b) + $
                   'On this PC, GTB has access to: ' + string(10b) + $
                   '- mspa, ggeo (P.Soille, P.Vogt)' + string(10b) + $
@@ -23502,7 +23549,14 @@ CASE fileaction OF
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_MSP") & q=q[0] 
       if q gt 0 then begin
         q=log(q) & res=strsplit(q,' ',/extract,count=nx)
-        if nx eq 3 then newimis_mspa=res(nx-1)
+        if nx eq 3 then newimis_mspa = res(nx-1)
+        ;; check for pyGuidos notation
+        qq1 = strpos(q, '<') & qq2 = strpos(q, '>') 
+        if qq1 ne -1 and qq2 ne -1 then begin
+          qq3 = strmid(q,qq1+1,qq2-qq1-1)
+          ;; replace , with _
+          newimis_mspa = qq3.replace(',','_')
+        endif              
       endif
       q=where(strmid(log,0,36) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FADMS") & q=q[0] & if q gt 0 then newimis_fadms = 1
       q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FOS") & q=q[0] & if q gt 0 then newimis_fos = 1
@@ -23764,6 +23818,13 @@ CASE fileaction OF
      if q gt 0 then begin
        q=log(q) & res=strsplit(q,' ',/extract,count=nx)
        if nx eq 3 then newimis_mspa=res(nx-1)
+       ;; check for pyGuidos notation
+       qq1 = strpos(q, '<') & qq2 = strpos(q, '>')
+       if qq1 ne -1 and qq2 ne -1 then begin
+         qq3 = strmid(q,qq1+1,qq2-qq1-1)
+         ;; replace , with _
+         newimis_mspa = qq3.replace(',','_')
+       endif
      endif
      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_FOS") & q=q[0] & if q gt 0 then newimis_fos = 1
      q=where(strmid(log,0,34) eq "  TIFFTAG_IMAGEDESCRIPTION=GTB_SPA") & q=q[0] & if q gt 0 then newimis_spa = 1
@@ -27831,7 +27892,7 @@ PRO guidostoolbox, verify = verify, ColorId = colorId, Bottom=bottom, $
             Cubic = interp_cubic, maindir = maindir, $
             dir_data = dir_data, result_dir_data = result_dir_data
 
-gtb_version = 3.402
+gtb_version = 3.403
 isBDAP = 0  ;; default = 0    NOTE: only set to 1 if I test on BDAP! (in directory $HOME/bdap)
 
 IF (xregistered("guidostoolbox") NE 0) THEN BEGIN
@@ -28791,13 +28852,11 @@ CASE my_os OF
     cont_lin:
     ;; maximum image size for MSPA
     immaxsize = 101.0
-    fn = dir_guidossub + 'mspa_lin'
     ;; find out how much available RAM (MB) we have: free+buffers+cache
     spawn,"free|awk 'FNR == 2 {print $7}'", mbavail & mbavail = float(mbavail[0])/1024 ;; available
     spawn,"free|awk 'FNR == 3 {print $4}'", mbavail2 & mbavail2 = float(mbavail2[0])/1024 ;; swap
     mbavail = mbavail + mbavail2
     immaxsize = uint(mbavail/19)
-    file_copy, dir_guidos + 'MSPAstandalone/mspa_lin64', fn, / overwrite
 
     ;; find out if nolimits is set
     res = file_info('../../data/nolimits.txt') & res = res.exists
@@ -28808,7 +28867,7 @@ CASE my_os OF
   END
 
   'darwin':BEGIN
-    ;;================================================================================================
+    ;;===============================  INTEL  =================================================================
     ;; test for Yosemite or later
     spawn, 'sw_vers -productVersion', res & res=res[0] 
     os1 = fix((strsplit(res,'.',/extract))[0]) & os2 = fix((strsplit(res,'.',/extract))[1])   
@@ -28840,9 +28899,8 @@ CASE my_os OF
       spawn,"vm_stat | grep speculative | awk '{ print $3 }' | sed 's/\.//'", frc & frc=float(frc[0])
       spawn,"vm_stat | grep purgeable | awk '{ print $3 }' | sed 's/\.//'",frd & frd=float(frd[0])
       mbavail = (fra+frb+frc+frd)*4096/1048576
-    immaxsize = uint(mbavail/19)
-    fn = dir_guidossub + 'mspa_mac'
-    file_copy, dir_guidos + 'MSPAstandalone/mspa_mac', fn, / overwrite
+    immaxsize = uint(mbavail/19)    
+    
     dir_fwtools = '/Library/Frameworks/GDAL.framework/Programs/'
     ;; check for osx first start
     fn = dir_guidossub + 'firststart.txt'
@@ -28860,7 +28918,7 @@ CASE my_os OF
   END
 
   'apple':BEGIN
-    ;;================================================================================================
+    ;;=================================  ARM  ===============================================================
     ;; test for macOS 12 Monterey or later
     spawn, 'sw_vers -productVersion', res & res=res[0]
     os1 = fix((strsplit(res,'.',/extract))[0]) & os2 = fix((strsplit(res,'.',/extract))[1])
@@ -28889,8 +28947,6 @@ CASE my_os OF
       spawn,"vm_stat | grep purgeable | awk '{ print $3 }' | sed 's/\.//'",frd & frd=float(frd[0])
       mbavail = (fra+frb+frc+frd)*4096/1048576
     immaxsize = uint(mbavail/19)
-    fn = dir_guidossub + 'mspa_mac'
-    file_copy, dir_guidos + 'MSPAstandalone/mspaARM_mac', fn, / overwrite
     dir_fwtools = '/opt/homebrew/bin/'
     ;; check for osx first start
     fn = dir_guidossub + 'firststart.txt'
